@@ -143,7 +143,7 @@ contract ChooChooTrain is ERC721Enumerable, Ownable {
      * @param to The address receiving the token.
      * @param tokenId The tokenId to transfer.
      * @param _data Additional data.
-     */
+     *
      * @dev Handles both train and ticket transfers. Only the train triggers ticket stamping and state updates.
      */
     function _customTransfer(address from, address to, uint256 tokenId, bytes memory _data)
@@ -207,8 +207,8 @@ contract ChooChooTrain is ERC721Enumerable, Ownable {
      * @param to The address of the passenger receiving the ticket.
      */
     function _stampTicket(address to) internal notInvalidAddress(to) {
-        string memory defaultTokenURI = ""; // @todo: add default tokenURI
-        string memory defaultImage = ""; // @todo: add default image
+        string memory defaultTokenURI = ""; // @todo: update when art is done
+        string memory defaultImage = ""; // @todo: update when art is done
         string memory defaultTraits = "{}";
         uint256 tokenId = nextTicketId;
         _safeMint(to, tokenId);
@@ -261,6 +261,36 @@ contract ChooChooTrain is ERC721Enumerable, Ownable {
 
     function setTrainWhistle(string memory _whistle) external onlyOwner {
         trainWhistle = _whistle;
+    }
+
+    /**
+     * @notice Allows the owner to update the tokenURI for a ticket NFT (tokenId > 0).
+     * @param tokenId The ticket tokenId to update.
+     * @param newTokenURI The new URL to the metadata JSON.
+     */
+    function setTicketTokenURI(uint256 tokenId, string memory newTokenURI) external onlyOwner {
+        require(tokenId != 0, "Cannot update train NFT");
+        ticketData[tokenId].tokenURI = newTokenURI;
+    }
+
+    /**
+     * @notice Allows the owner to update the image for a ticket NFT (tokenId > 0).
+     * @param tokenId The ticket tokenId to update.
+     * @param newImage The new URL to the image.
+     */
+    function setTicketImage(uint256 tokenId, string memory newImage) external onlyOwner {
+        require(tokenId != 0, "Cannot update train NFT");
+        ticketData[tokenId].image = newImage;
+    }
+
+    /**
+     * @notice Allows the owner to update the traits for a ticket NFT (tokenId > 0).
+     * @param tokenId The ticket tokenId to update.
+     * @param newTraits The new URL to the traits JSON.
+     */
+    function setTicketTraits(uint256 tokenId, string memory newTraits) external onlyOwner {
+        require(tokenId != 0, "Cannot update train NFT");
+        ticketData[tokenId].traits = newTraits;
     }
 
     /**
