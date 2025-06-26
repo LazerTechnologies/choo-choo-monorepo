@@ -1,11 +1,16 @@
 {
-  "name": "onchain-train",
+  "name": "onchain-train-monorepo",
   "version": "1.0.0",
   "private": true,
   "description": "Choo Choo on Base contracts and Farcaster mini-app",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "extract-abi": "bash extract-abi.sh"
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "test": "turbo test",
+    "lint": "turbo lint",
+    "clean": "turbo clean",
+    "anvil": "turbo anvil",
+    "extract-abi": "turbo run extract-abi"
   },
   "keywords": [
     "farcaster",
@@ -15,5 +20,8 @@
   ],
   "author": "Jon Bray <jonbray@lazertechnologies.com>",
   "license": "MIT",
-  "packageManager": "pnpm@10.12.1"
+  "packageManager": "pnpm@10.12.1",
+  "devDependencies": {
+    "turbo": "^2.5.4"
+  }
 }

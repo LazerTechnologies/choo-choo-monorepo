@@ -7,6 +7,7 @@
     "test": "forge test",
     "clean": "forge clean",
     "anvil": "anvil",
+    "extract-abi": "node ../scripts/extract-abi.js",
     "deploy": "forge script script/ChooChooTrain.s.sol:ChooChooTrainDeploy --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify -vvvv",
     "deploy:dry-run": "forge script script/ChooChooTrain.s.sol:ChooChooTrainDeploy --fork-url $BASE_SEPOLIA_RPC_URL -vvvv",
     "next-stop": "forge script script/NextStop.s.sol:NextStopScript --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast -vvvv",
