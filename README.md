@@ -9,9 +9,9 @@ Choo-Choo on Base, an homage to The Worm. How many wallets can Choo Choo visit?
 - Art by: [@yonfrula](https://warpcast.com/yonfrula)
 - Contracts by: [@jonbray.eth](https://warpcast.com/jonbray.eth)
 
-This project uses [pnpm](https://pnpm.io/) as the package manager and [Turborepo](https://turbo.build/) for orchestrating builds, tests, and scripts across the monorepo.
-
 ## Getting Started
+
+This project uses [pnpm](https://pnpm.io/) as the package manager and [Turborepo](https://turbo.build/) for orchestrating builds, tests, and scripts across the monorepo.
 
 1. Install dependencies (from the root):
 
