@@ -37,10 +37,14 @@ jobs:
 
       - name: Install Forge dependencies
         run: |
-          echo "Installing forge-std explicitly..."
+          echo "Installing all forge dependencies..."
           forge install foundry-rs/forge-std --no-git
-          echo "Verifying installation..."
-          ls -la lib/forge-std/src/Script.sol || echo "Script.sol not found"
+          forge install OpenZeppelin/openzeppelin-contracts --no-git
+          forge install vectorized/solady --no-git
+          echo "Verifying installations..."
+          ls -la lib/forge-std/src/Script.sol || echo "forge-std Script.sol not found"
+          ls -la lib/openzeppelin-contracts/contracts/token/ERC721/ERC721.sol || echo "OpenZeppelin ERC721.sol not found"
+          ls -la lib/solady/src/ || echo "solady not found"
         working-directory: contracts
 
       - name: Run Forge build
