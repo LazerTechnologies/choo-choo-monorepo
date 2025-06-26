@@ -26,8 +26,9 @@ This project uses [pnpm](https://pnpm.io/) as the package manager and [Turborepo
    # ...and more, see package.json scripts
    ```
 
-- Each package (`contracts/`, `app/`) can also be managed individually with their own scripts.
-- The root `package.json` contains scripts for orchestrating common tasks and ABI extraction.
+The root `package.json` contains scripts for orchestrating common tasks and ABI extraction, but each package (`contracts/`, `app/`) can also be managed individually with their own scripts.
+
+> `pnpm` build pipeline will ensure latest contract ABI is available to the Farcaster mini-app.
 
 ### Directory Structure
 
