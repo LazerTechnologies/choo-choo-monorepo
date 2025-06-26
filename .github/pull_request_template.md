@@ -9,5 +9,5 @@
 
 ## Checklist
 
-- [ ] `forge fmt`
-- [ ] `forge test`
+- [ ] `pnpm lint`
+- [ ] `pnpm test`

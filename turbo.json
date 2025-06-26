@@ -1,6 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "pipeline": {
+  "tasks": {
     "build": {
       "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**", "out/**", "cache/**"]
@@ -25,6 +25,14 @@
       "dependsOn": ["contracts#build"],
       "outputs": ["app/abi/**"],
       "inputs": ["contracts/out/**"]
+    },
+    "format": {
+      "cache": false,
+      "persistent": false
+    },
+    "format:fix": {
+      "cache": false,
+      "persistent": false
     }
   }
 }
