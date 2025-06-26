@@ -35,20 +35,12 @@ jobs:
         with:
           version: nightly
 
-      - name: Setup Forge dependencies
+      - name: Install Forge dependencies
         run: |
-          echo "Checking if submodules are initialized..."
-          git submodule status
-          echo "Initializing submodules if needed..."
-          git submodule update --init --recursive
-          echo "Checking forge-std directory after submodule init..."
-          ls -la lib/ || echo "lib directory not found"
-          ls -la lib/forge-std/ || echo "forge-std directory not found"
-          ls -la lib/forge-std/src/ || echo "forge-std src directory not found"
-          echo "Running forge install..."
-          forge install
-          echo "After forge install:"
-          ls -la lib/forge-std/src/ || echo "forge-std src still not found"
+          echo "Installing forge-std explicitly..."
+          forge install foundry-rs/forge-std --no-git
+          echo "Verifying installation..."
+          ls -la lib/forge-std/src/Script.sol || echo "Script.sol not found"
         working-directory: contracts
 
       - name: Run Forge build
@@ -56,7 +48,6 @@ jobs:
           forge --version
           forge build --sizes
         id: build
-        # don't fail if contract sizes are too large; tests will fail next if compilation failed
         continue-on-error: true
         working-directory: contracts
 
