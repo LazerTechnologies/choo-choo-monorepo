@@ -1,5 +1,9 @@
 # Choo-Choo on Base
 
+<p align="center">
+  <img src=".github/assets/ChooChoo.webp" alt="Choo Choo" width="320"/>
+</p>
+
 Choo-Choo on Base, an homage to The Worm. How many wallets can Choo Choo visit?
 
 - Art by: [@yonfrula](https://warpcast.com/yonfrula)
