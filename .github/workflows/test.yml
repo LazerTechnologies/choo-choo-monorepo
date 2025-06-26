@@ -35,8 +35,16 @@ jobs:
         with:
           version: nightly
 
-      - name: Install Forge dependencies
-        run: forge install
+      - name: Setup Forge dependencies
+        run: |
+          echo "Checking forge-std directory..."
+          ls -la lib/ || echo "lib directory not found"
+          ls -la lib/forge-std/ || echo "forge-std directory not found"
+          ls -la lib/forge-std/src/ || echo "forge-std src directory not found"
+          echo "Installing forge dependencies..."
+          forge install --no-commit
+          echo "After forge install:"
+          ls -la lib/forge-std/src/ || echo "forge-std src still not found"
         working-directory: contracts
 
       - name: Run Forge build
