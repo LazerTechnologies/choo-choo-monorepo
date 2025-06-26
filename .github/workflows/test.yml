@@ -27,6 +27,10 @@ jobs:
           ref: ${{ github.head_ref }}
           submodules: recursive
 
+      - name: Ensure submodules are up to date
+        run: git submodule update --init --recursive
+        working-directory: contracts
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
