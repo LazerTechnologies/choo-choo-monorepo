@@ -3,6 +3,8 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
 import {ChooChooTrain} from "../src/ChooChooTrain.sol";
+import {MockERC20} from "./mocks/MockERC20.sol";
+import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 contract ChooChooTrainTest is Test {
     ChooChooTrain train;
@@ -42,16 +44,16 @@ contract ChooChooTrainTest is Test {
 
     function testCannotSendToSelf() public {
         vm.prank(owner);
-        vm.expectRevert(ChooChooTrain.CannotSendToCurrentPassenger.selector);
+        vm.expectRevert(abi.encodeWithSignature("CannotSendToCurrentPassenger(address)", owner));
         train.nextStop(owner);
     }
 
     function testCannotSendToZeroOrDead() public {
         vm.prank(owner);
-        vm.expectRevert(ChooChooTrain.TransferToInvalidAddress.selector);
+        vm.expectRevert(abi.encodeWithSignature("TransferToInvalidAddress(address)", address(0)));
         train.nextStop(address(0));
         vm.prank(owner);
-        vm.expectRevert(ChooChooTrain.TransferToInvalidAddress.selector);
+        vm.expectRevert(abi.encodeWithSignature("TransferToInvalidAddress(address)", dead));
         train.nextStop(dead);
     }
 
@@ -64,13 +66,13 @@ contract ChooChooTrainTest is Test {
         train.nextStop(passenger3);
         // passenger1 tries to get train again
         vm.prank(passenger3);
-        vm.expectRevert(ChooChooTrain.AlreadyRodeTrain.selector);
+        vm.expectRevert(abi.encodeWithSignature("AlreadyRodeTrain(address)", passenger1));
         train.nextStop(passenger1);
     }
 
     function testOnlyOwnerOrApprovedCanNextStop() public {
         vm.prank(passenger1);
-        vm.expectRevert(ChooChooTrain.NotOwnerNorApproved.selector);
+        vm.expectRevert(abi.encodeWithSignature("NotOwnerNorApproved(address,uint256)", passenger1, 0));
         train.nextStop(passenger2);
     }
 
@@ -161,7 +163,7 @@ contract ChooChooTrainTest is Test {
         train.nextStop(passenger2);
         vm.warp(block.timestamp + 2 days);
         vm.prank(passenger1);
-        vm.expectRevert(ChooChooTrain.CannotSendToCurrentPassenger.selector);
+        vm.expectRevert(abi.encodeWithSignature("CannotSendToCurrentPassenger(address)", passenger2));
         train.yoink(passenger2);
     }
 
@@ -174,5 +176,22 @@ contract ChooChooTrainTest is Test {
         vm.expectEmit(true, true, false, true);
         emit TrainDeparted(passenger1, passenger2, block.timestamp);
         train.nextStop(passenger2);
+    }
+
+    function testWithdrawERC20() public {
+        MockERC20 mock = new MockERC20();
+        mock.mint(address(train), 1000 ether);
+        assertEq(mock.balanceOf(address(train)), 1000 ether);
+        vm.prank(passenger1);
+        vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", passenger1));
+        train.withdrawERC20(address(mock));
+        uint256 ownerBalanceBefore = mock.balanceOf(owner);
+        vm.prank(owner);
+        train.withdrawERC20(address(mock));
+        assertEq(mock.balanceOf(address(train)), 0);
+        assertEq(mock.balanceOf(owner), ownerBalanceBefore + 1000 ether);
+        vm.prank(owner);
+        vm.expectRevert(bytes("No ERC20 tokens to withdraw"));
+        train.withdrawERC20(address(mock));
     }
 }

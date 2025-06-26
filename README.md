@@ -1,10 +1,12 @@
-# 🚂 Choo-Choo on Base
+# Choo-Choo the Train
 
 <p align="center">
   <img src=".github/assets/ChooChoo.webp" alt="Choo Choo" width="320"/>
 </p>
 
-Choo-Choo on Base, an homage to The Worm. How many wallets can Choo Choo visit?
+Choo-Choo is more than a train, Choo-Choo is a social experiment on Base and Farcaster with a goal of visiting **every** active wallet on the Base network, including yours!
+
+This project is an homage to [The Worm](https://theworm.wtf). Some say they can hear the ghost of The Worm as Choo-Choo puffs along the tracks.
 
 - Art by: [@yonfrula](https://warpcast.com/yonfrula)
 - Contracts by: [@jonbray.eth](https://warpcast.com/jonbray.eth)

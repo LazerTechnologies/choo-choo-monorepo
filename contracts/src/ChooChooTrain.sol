@@ -5,6 +5,7 @@ import "openzeppelin-contracts/token/ERC721/ERC721.sol";
 import "openzeppelin-contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "openzeppelin-contracts/access/Ownable.sol";
 import "openzeppelin-contracts/utils/Strings.sol";
+import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 /*
 Choo-Choo on Base is an homage to The Worm. How many wallets can Choo Choo visit?
@@ -299,6 +300,17 @@ contract ChooChooTrain is ERC721Enumerable, Ownable {
      */
     function getTrainWhistle() external view returns (string memory) {
         return trainWhistle;
+    }
+
+    /**
+     * @notice Allows the owner to withdraw any ERC20 tokens sent to this contract.
+     * @param token The address of the ERC20 token contract.
+     */
+    function withdrawERC20(address token) external onlyOwner {
+        IERC20 erc20 = IERC20(token);
+        uint256 balance = erc20.balanceOf(address(this));
+        require(balance > 0, "No ERC20 tokens to withdraw");
+        require(erc20.transfer(owner(), balance), "ERC20 withdrawal failed");
     }
 
     // ========== YOINK MECHANIC ========== //
