@@ -36,9 +36,6 @@ contract SetData is Script {
         vm.stopBroadcast();
     }
 
-    // dry run: forge script script/SetData.s.sol:SetData --fork-url $BASE_SEPOLIA_RPC_URL -vvvv --sig "setAll()"
-    // broadcast: forge script script/SetData.s.sol:SetData --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast -vvvv --sig "setAll()"
-
     function setAll() public {
         string memory mainImage = vm.readFile("base64/mainImage.txt");
         string memory mainTokenURI = vm.readFile("base64/mainTokenURI.txt");

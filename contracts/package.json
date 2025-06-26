@@ -1,0 +1,19 @@
+{
+  "name": "contracts",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test",
+    "clean": "forge clean",
+    "anvil": "anvil",
+    "deploy": "forge script script/ChooChooTrain.s.sol:ChooChooTrainDeploy --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify -vvvv",
+    "deploy:dry-run": "forge script script/ChooChooTrain.s.sol:ChooChooTrainDeploy --fork-url $BASE_SEPOLIA_RPC_URL -vvvv",
+    "next-stop": "forge script script/NextStop.s.sol:NextStopScript --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast -vvvv",
+    "next-stop:dry-run": "forge script script/NextStop.s.sol:NextStopScript --fork-url $BASE_SEPOLIA_RPC_URL -vvvv",
+    "set-data": "forge script script/SetData.s.sol:SetData --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast -vvvv --sig 'setAll()'",
+    "set-data:dry-run": "forge script script/SetData.s.sol:SetData --fork-url $BASE_SEPOLIA_RPC_URL -vvvv --sig 'setAll()'",
+    "yoink": "forge script script/Yoink.s.sol:YoinkScript --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast -vvvv",
+    "yoink:dry-run": "forge script script/Yoink.s.sol:YoinkScript --fork-url $BASE_SEPOLIA_RPC_URL -vvvv"
+  }
+}

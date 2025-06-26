@@ -18,6 +18,16 @@ choo-choo-monorepo/
 └── ...          # root config
 ```
 
+@todo: move `abi/` and `environments/` into `app/` add script to extract ABI:
+
+```json
+{
+  "scripts": {
+    "extract-abi": "bash ../extract-abi.sh"
+  }
+}
+```
+
 ---
 
 ## How does the `ChooChooTrain` contract work?

@@ -4,9 +4,6 @@ pragma solidity ^0.8.20;
 import "forge-std/Script.sol";
 import {ChooChooTrain} from "../src/ChooChooTrain.sol";
 
-// dry run: forge script script/NextStop.s.sol:NextStopScript --fork-url $BASE_SEPOLIA_RPC_URL -vvvv
-// broadcast: forge script script/NextStop.s.sol:NextStopScript --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast -vvvv
-
 contract NextStopScript is Script {
     function run() public {
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");

@@ -21,3 +21,34 @@ contracts/lib/
 .env.*
 !.env.example
 !.env.sample
+
+# Node.js
+node_modules/
+
+# pnpm
+pnpm-lock.yaml
+.pnpm-debug.log
+.pnpm-store/
+
+# Turbopack / Turborepo
+.turbo/
+.turbopack/
+
+# Yarn
+yarn.lock
+
+# npm
+package-lock.json
+
+# Next.js
+.next/
+
+# Vercel
+.vercel/
+
+# Build output
+dist/
+build/
+
+# Misc
+.DS_Store

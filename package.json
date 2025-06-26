@@ -1,0 +1,19 @@
+{
+  "name": "onchain-train",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Choo Choo on Base contracts and Farcaster mini-app",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "extract-abi": "bash extract-abi.sh"
+  },
+  "keywords": [
+    "farcaster",
+    "base",
+    "solidity",
+    "foundry"
+  ],
+  "author": "Jon Bray <jonbray@lazertechnologies.com>",
+  "license": "MIT",
+  "packageManager": "pnpm@10.12.1"
+}
