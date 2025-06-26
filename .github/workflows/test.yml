@@ -39,8 +39,10 @@ jobs:
         id: build
         # don't fail if contract sizes are too large; tests will fail next if compilation failed
         continue-on-error: true
+        working-directory: contracts
 
       - name: Run Forge tests
         run: |
           FOUNDRY_PROFILE=CI forge test -vvv
         id: test
+        working-directory: contracts
