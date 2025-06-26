@@ -6,6 +6,8 @@
     "build": "forge build",
     "test": "forge test",
     "clean": "forge clean",
+    "lint": "forge fmt --check",
+    "format": "forge fmt",
     "anvil": "anvil",
     "extract-abi": "node ../scripts/extract-abi.js",
     "deploy": "forge script script/ChooChooTrain.s.sol:ChooChooTrainDeploy --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify -vvvv",
