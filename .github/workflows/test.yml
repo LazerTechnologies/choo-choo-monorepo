@@ -32,6 +32,10 @@ jobs:
         with:
           version: nightly
 
+      - name: Install Forge dependencies
+        run: forge install
+        working-directory: contracts
+
       - name: Run Forge build
         run: |
           forge --version
