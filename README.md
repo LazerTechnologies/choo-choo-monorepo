@@ -1,4 +1,4 @@
-# Choo-Choo on Base
+# 🚂 Choo-Choo on Base
 
 <p align="center">
   <img src=".github/assets/ChooChoo.webp" alt="Choo Choo" width="320"/>
@@ -58,7 +58,7 @@ choo-choo-monorepo/
 
 ---
 
-## Contracts
+## Nerd Corner
 
 ### How does the `ChooChooTrain` contract work?
 
