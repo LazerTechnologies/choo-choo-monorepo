@@ -36,12 +36,24 @@ The root `package.json` contains scripts for orchestrating common tasks and ABI 
 
 ### Directory Structure
 
-```txt
+```t
 choo-choo-monorepo/
-├── contracts/   # Smart contracts (Foundry)
-├── app/         # Farcaster mini-app
-├── README.md
-└── ...          # root config
+├── app/                # Farcaster mini-app
+│   ├── abi/            # Contract ABIs
+│   ├── environments/   # Environment configs (testnet, mainnet)
+│   ├── public/
+│   ├── src/
+│   ├── ...
+├── contracts/          # Foundry smart contracts
+│   ├── src/            # Solidity contracts
+│   ├── script/         # Deployment/interaction scripts
+│   ├── test/           # Contract tests
+│   ├── out/            # Foundry build output
+│   ├── ...
+├── scripts/            # Cross-project scripts
+├── package.json        # Root package.json (pnpm workspaces, turbo scripts)
+├── pnpm-workspace.yaml # pnpm workspace config
+├── turbo.json          # Turborepo config
 ```
 
 ---
