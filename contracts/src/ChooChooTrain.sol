@@ -324,6 +324,7 @@ contract ChooChooTrain is ERC721Enumerable, Ownable {
      * @return timestamps Array of timestamps when each ticket was minted.
      */
     function getTicketMintedAtBatch(uint256[] calldata tokenIds) external view returns (uint256[] memory timestamps) {
+        require(tokenIds.length <= 200, "Batch size too large");
         timestamps = new uint256[](tokenIds.length);
         for (uint256 i = 0; i < tokenIds.length; i++) {
             timestamps[i] = ticketMintedAt[tokenIds[i]];
@@ -336,6 +337,7 @@ contract ChooChooTrain is ERC721Enumerable, Ownable {
      * @return uris Array of token URIs.
      */
     function getTokenURIBatch(uint256[] calldata tokenIds) external view returns (string[] memory uris) {
+        require(tokenIds.length <= 200, "Batch size too large");
         uris = new string[](tokenIds.length);
         for (uint256 i = 0; i < tokenIds.length; i++) {
             uris[i] = tokenURI(tokenIds[i]);
