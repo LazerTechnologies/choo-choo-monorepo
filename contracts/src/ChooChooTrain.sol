@@ -303,6 +303,46 @@ contract ChooChooTrain is ERC721Enumerable, Ownable {
     }
 
     /**
+     * @notice Returns the complete train journey as an array of addresses.
+     * @return An array of all addresses that have ever held the train, in chronological order.
+     */
+    function getTrainJourney() external view returns (address[] memory) {
+        return trainJourney;
+    }
+
+    /**
+     * @notice Returns the length of the train journey.
+     * @return The number of stops the train has made.
+     */
+    function getTrainJourneyLength() external view returns (uint256) {
+        return trainJourney.length;
+    }
+
+    /**
+     * @notice Returns ticket minting timestamps for a batch of token IDs.
+     * @param tokenIds Array of token IDs to query.
+     * @return timestamps Array of timestamps when each ticket was minted.
+     */
+    function getTicketMintedAtBatch(uint256[] calldata tokenIds) external view returns (uint256[] memory timestamps) {
+        timestamps = new uint256[](tokenIds.length);
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            timestamps[i] = ticketMintedAt[tokenIds[i]];
+        }
+    }
+
+    /**
+     * @notice Returns token URIs for a batch of token IDs.
+     * @param tokenIds Array of token IDs to query.
+     * @return uris Array of token URIs.
+     */
+    function getTokenURIBatch(uint256[] calldata tokenIds) external view returns (string[] memory uris) {
+        uris = new string[](tokenIds.length);
+        for (uint256 i = 0; i < tokenIds.length; i++) {
+            uris[i] = tokenURI(tokenIds[i]);
+        }
+    }
+
+    /**
      * @notice Allows the owner to withdraw any ERC20 tokens sent to this contract.
      * @param token The address of the ERC20 token contract.
      */
