@@ -14,5 +14,12 @@ export const APP_WEBHOOK_URL =
     ? `https://api.neynar.com/f/app/${process.env.NEYNAR_CLIENT_ID}/event`
     : `${APP_URL}/api/webhook`;
 export const USE_WALLET = process.env.NEXT_PUBLIC_USE_WALLET === 'true';
-export const CHOOCHOO_TRAIN_ADDRESS =
-  process.env.NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS!;
+export const CHOOCHOO_TRAIN_ADDRESS = (() => {
+  const address = process.env.NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS;
+  if (!address) {
+    throw new Error(
+      'NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS environment variable is required'
+    );
+  }
+  return address as `0x${string}`;
+})();

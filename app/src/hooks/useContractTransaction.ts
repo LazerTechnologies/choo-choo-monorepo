@@ -86,6 +86,10 @@ export function useContractTransaction(): UseContractTransactionResult {
       if (!publicClient) {
         throw new Error('No public client available');
       }
+      // Validate hash format before casting
+      if (!/^0x[a-fA-F0-9]{64}$/.test(hash)) {
+        throw new Error('Invalid transaction hash format');
+      }
       const receipt = await publicClient.waitForTransactionReceipt({
         hash: hash as `0x${string}`,
       });
@@ -97,7 +101,6 @@ export function useContractTransaction(): UseContractTransactionResult {
       }
     } catch (err) {
       setStatus('error');
-      setTxHash(null);
       setError(err);
     }
   };

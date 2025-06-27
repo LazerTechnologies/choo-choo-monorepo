@@ -1,15 +1,15 @@
 {
   "network": {
-    "chainId": 84532,
+    "chainId": 8453,
     "gasSymbol": "ETH",
-    "name": "Base Sepolia",
-    "rpcUrl": "https://base-sepolia.g.alchemy.com/v2/demo",
-    "explorerUrl": "https://sepolia.basescan.org",
+    "name": "Base",
+    "rpcUrl": "https://getblocks.io/${GETBLOCKS_API_KEY}",
+    "explorerUrl": "https://basescan.org",
     "iconUrl": "/assets/base-logo.svg",
-    "explorerApiKey": "demo"
+    "explorerApiKey": "${BASESCAN_API_KEY}"
   },
   "ChooChooContract": {
-    "address": "0xf03d69cba7865ec842c6710af1eb77249b5345bc",
+    "address": "0x0000000000000000000000000000000000000000",
     "abi": "/abi/ChooChooTrain.abi.json"
   }
 }

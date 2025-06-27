@@ -6,6 +6,8 @@ import { useContractTransaction } from './useContractTransaction';
 
 const ChooChooAbi = ChooChooAbiJson as Abi;
 
+type WriteFunction = (to: `0x${string}`) => Promise<void>;
+
 export function useChooChoo() {
   // Write contract
   const { writeContractAsync } = useWriteContract();
@@ -20,31 +22,26 @@ export function useChooChoo() {
   const nextStopTx = useContractTransaction();
   const yoinkTx = useContractTransaction();
 
-  // Write: nextStop
-  const nextStop = async (to: `0x${string}`) => {
-    await nextStopTx.sendTransaction(async () => {
-      const hash = await writeContractAsync({
-        ...contractConfig,
-        functionName: 'nextStop',
-        args: [to],
+  const createWriteFunction =
+    (
+      functionName: string,
+      txHook: ReturnType<typeof useContractTransaction>
+    ): WriteFunction =>
+    async (to) => {
+      await txHook.sendTransaction(async () => {
+        const hash = await writeContractAsync({
+          ...contractConfig,
+          functionName,
+          args: [to],
+        });
+        return hash as string;
       });
-      return hash as string;
-    });
-  };
+    };
 
-  // Write: yoink
-  const yoink = async (to: `0x${string}`) => {
-    await yoinkTx.sendTransaction(async () => {
-      const hash = await writeContractAsync({
-        ...contractConfig,
-        functionName: 'yoink',
-        args: [to],
-      });
-      return hash as string;
-    });
-  };
+  const nextStop = createWriteFunction('nextStop', nextStopTx);
+  const yoink = createWriteFunction('yoink', yoinkTx);
 
-  // Read helpers using useReadContract
+  // Reads
   const useOwner = () =>
     useReadContract({ ...contractConfig, functionName: 'owner' });
   const useOwnerOf = (tokenId: bigint) =>
@@ -141,12 +138,12 @@ export function useChooChoo() {
     useReadContract({ ...contractConfig, functionName: 'name' });
 
   return {
-    // Write actions
+    // write actions
     nextStop,
     nextStopTx,
     yoink,
     yoinkTx,
-    // Read hooks
+    // read hooks
     useOwner,
     useOwnerOf,
     useBalanceOf,
@@ -169,7 +166,7 @@ export function useChooChoo() {
     useTokenURI,
     useSymbol,
     useName,
-    // Contract address and ABI (for UI/debugging)
+    // expose contract address and abi
     address: CHOOCHOO_TRAIN_ADDRESS,
     abi: ChooChooAbi,
   };
