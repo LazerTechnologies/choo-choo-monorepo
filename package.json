@@ -9,6 +9,7 @@
     "test": "turbo test",
     "lint": "turbo lint",
     "format": "turbo format",
+    "format:check": "turbo format:check",
     "clean": "turbo clean",
     "anvil": "turbo anvil",
     "extract-abi": "turbo run extract-abi"
