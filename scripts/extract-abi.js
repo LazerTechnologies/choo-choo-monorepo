@@ -12,7 +12,7 @@ const contractArtifactPath = path.join(
   `${CONTRACT_NAME}.json`
 );
 
-const appAbiDir = path.join(__dirname, '..', 'app', 'abi');
+const appAbiDir = path.join(__dirname, '..', 'app', 'src', 'abi');
 
 const outputAbiPath = path.join(appAbiDir, `${CONTRACT_NAME}.abi.json`);
 
