@@ -1,8 +1,7 @@
 export const APP_URL = process.env.NEXT_PUBLIC_URL!;
 export const APP_NAME = process.env.NEXT_PUBLIC_MINI_APP_NAME;
 export const APP_DESCRIPTION = process.env.NEXT_PUBLIC_MINI_APP_DESCRIPTION;
-export const APP_PRIMARY_CATEGORY =
-  process.env.NEXT_PUBLIC_MINI_APP_PRIMARY_CATEGORY;
+export const APP_PRIMARY_CATEGORY = process.env.NEXT_PUBLIC_MINI_APP_PRIMARY_CATEGORY;
 export const APP_TAGS = process.env.NEXT_PUBLIC_MINI_APP_TAGS?.split(',');
 export const APP_ICON_URL = `${APP_URL}/icon.png`;
 export const APP_OG_IMAGE_URL = `${APP_URL}/api/opengraph-image`;
@@ -17,9 +16,7 @@ export const USE_WALLET = process.env.NEXT_PUBLIC_USE_WALLET === 'true';
 export const CHOOCHOO_TRAIN_ADDRESS = (() => {
   const address = process.env.NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS;
   if (!address) {
-    throw new Error(
-      'NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS environment variable is required'
-    );
+    throw new Error('NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS environment variable is required');
   }
   return address as `0x${string}`;
 })();

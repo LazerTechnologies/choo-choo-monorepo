@@ -3,7 +3,7 @@
 import { useCallback, useState, useEffect } from 'react';
 import { Button } from './Button';
 import { useMiniApp } from '@neynar/react';
-import { type ComposeCast } from "@farcaster/frame-sdk";
+import { type ComposeCast } from '@farcaster/frame-sdk';
 
 interface EmbedConfig {
   path?: string;
@@ -23,9 +23,14 @@ interface ShareButtonProps {
   isLoading?: boolean;
 }
 
-export function ShareButton({ buttonText, cast, className = '', isLoading = false }: ShareButtonProps) {
+export function ShareButton({
+  buttonText,
+  cast,
+  className = '',
+  isLoading = false,
+}: ShareButtonProps) {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [bestFriends, setBestFriends] = useState<{ fid: number; username: string; }[] | null>(null);
+  const [bestFriends, setBestFriends] = useState<{ fid: number; username: string }[] | null>(null);
   const [isLoadingBestFriends, setIsLoadingBestFriends] = useState(false);
   const { context, actions } = useMiniApp();
 
@@ -34,9 +39,9 @@ export function ShareButton({ buttonText, cast, className = '', isLoading = fals
     if (cast.bestFriends && context?.user?.fid) {
       setIsLoadingBestFriends(true);
       fetch(`/api/best-friends?fid=${context.user.fid}`)
-        .then(res => res.json())
-        .then(data => setBestFriends(data.bestFriends))
-        .catch(err => console.error('Failed to fetch best friends:', err))
+        .then((res) => res.json())
+        .then((data) => setBestFriends(data.bestFriends))
+        .catch((err) => console.error('Failed to fetch best friends:', err))
         .finally(() => setIsLoadingBestFriends(false));
     }
   }, [cast.bestFriends, context?.user?.fid]);

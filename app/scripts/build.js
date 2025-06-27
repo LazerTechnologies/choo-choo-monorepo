@@ -26,9 +26,9 @@ async function lookupFidByCustodyAddress(custodyAddress, apiKey) {
     `https://api.neynar.com/v2/farcaster/user/bulk-by-address?addresses=${lowerCasedCustodyAddress}&address_types=custody_address`,
     {
       headers: {
-        'accept': 'application/json',
-        'x-api-key': 'FARCASTER_V2_FRAMES_DEMO'
-      }
+        accept: 'application/json',
+        'x-api-key': 'FARCASTER_V2_FRAMES_DEMO',
+      },
     }
   );
 
@@ -37,7 +37,10 @@ async function lookupFidByCustodyAddress(custodyAddress, apiKey) {
   }
 
   const data = await response.json();
-  if (!data[lowerCasedCustodyAddress]?.length || !data[lowerCasedCustodyAddress][0].custody_address) {
+  if (
+    !data[lowerCasedCustodyAddress]?.length ||
+    !data[lowerCasedCustodyAddress][0].custody_address
+  ) {
     throw new Error('No FID found for this custody address');
   }
 
@@ -51,19 +54,20 @@ async function loadEnvLocal() {
         {
           type: 'confirm',
           name: 'loadLocal',
-          message: 'Found .env.local, likely created by the install script - would you like to load its values?',
-          default: false
-        }
+          message:
+            'Found .env.local, likely created by the install script - would you like to load its values?',
+          default: false,
+        },
       ]);
 
       if (loadLocal) {
         console.log('Loading values from .env.local...');
         const localEnv = dotenv.parse(fs.readFileSync('.env.local'));
-        
+
         // Copy all values except SEED_PHRASE to .env
         const envContent = fs.existsSync('.env') ? fs.readFileSync('.env', 'utf8') + '\n' : '';
         let newEnvContent = envContent;
-        
+
         for (const [key, value] of Object.entries(localEnv)) {
           if (key !== 'SEED_PHRASE') {
             // Update process.env
@@ -74,7 +78,7 @@ async function loadEnvLocal() {
             }
           }
         }
-        
+
         // Write updated content to .env
         fs.writeFileSync('.env', newEnvContent);
         console.log('✅ Values from .env.local have been written to .env');
@@ -102,7 +106,7 @@ const projectRoot = path.join(__dirname, '..');
 async function validateDomain(domain) {
   // Remove http:// or https:// if present
   const cleanDomain = domain.replace(/^https?:\/\//, '');
-  
+
   // Basic domain validation
   if (!cleanDomain.match(/^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9](?:\.[a-zA-Z]{2,})+$/)) {
     throw new Error('Invalid domain format');
@@ -116,14 +120,11 @@ async function queryNeynarApp(apiKey) {
     return null;
   }
   try {
-    const response = await fetch(
-      `https://api.neynar.com/portal/app_by_api_key`,
-      {
-        headers: {
-          'x-api-key': apiKey
-        }
-      }
-    );
+    const response = await fetch(`https://api.neynar.com/portal/app_by_api_key`, {
+      headers: {
+        'x-api-key': apiKey,
+      },
+    });
     const data = await response.json();
     return data;
   } catch (error) {
@@ -151,13 +152,13 @@ async function generateFarcasterMetadata(domain, fid, accountAddress, seedPhrase
   const encodedHeader = Buffer.from(JSON.stringify(header), 'utf-8').toString('base64');
 
   const payload = {
-    domain
+    domain,
   };
   const encodedPayload = Buffer.from(JSON.stringify(payload), 'utf-8').toString('base64url');
 
   const account = mnemonicToAccount(seedPhrase);
-  const signature = await account.signMessage({ 
-    message: `${encodedHeader}.${encodedPayload}`
+  const signature = await account.signMessage({
+    message: `${encodedHeader}.${encodedPayload}`,
   });
   const encodedSignature = Buffer.from(signature, 'utf-8').toString('base64url');
 
@@ -167,17 +168,17 @@ async function generateFarcasterMetadata(domain, fid, accountAddress, seedPhrase
     accountAssociation: {
       header: encodedHeader,
       payload: encodedPayload,
-      signature: encodedSignature
+      signature: encodedSignature,
     },
     frame: {
-      version: "1",
+      version: '1',
       name: process.env.NEXT_PUBLIC_MINI_APP_NAME,
       iconUrl: `https://${domain}/icon.png`,
       homeUrl: `https://${domain}`,
       imageUrl: `https://${domain}/api/opengraph-image`,
       buttonTitle: process.env.NEXT_PUBLIC_MINI_APP_BUTTON_TEXT,
       splashImageUrl: `https://${domain}/splash.png`,
-      splashBackgroundColor: "#f7f7f7",
+      splashBackgroundColor: '#f7f7f7',
       webhookUrl,
       description: process.env.NEXT_PUBLIC_MINI_APP_DESCRIPTION,
       primaryCategory: process.env.NEXT_PUBLIC_MINI_APP_PRIMARY_CATEGORY,
@@ -190,7 +191,7 @@ async function main() {
   try {
     console.log('\n📝 Checking environment variables...');
     console.log('Loading values from .env...');
-    
+
     // Load .env.local if user wants to
     await loadEnvLocal();
 
@@ -207,8 +208,8 @@ async function main() {
           } catch (error) {
             return error.message;
           }
-        }
-      }
+        },
+      },
     ]);
 
     // Get frame name from user
@@ -223,8 +224,8 @@ async function main() {
             return 'Mini app name cannot be empty';
           }
           return true;
-        }
-      }
+        },
+      },
     ]);
 
     // Get button text from user
@@ -239,8 +240,8 @@ async function main() {
             return 'Button text cannot be empty';
           }
           return true;
-        }
-      }
+        },
+      },
     ]);
 
     // Get Neynar configuration
@@ -255,8 +256,8 @@ async function main() {
             type: 'password',
             name: 'neynarApiKey',
             message: 'Enter your Neynar API key (optional - leave blank to skip):',
-            default: null
-          }
+            default: null,
+          },
         ]);
         neynarApiKey = inputNeynarApiKey;
       } else {
@@ -290,8 +291,8 @@ async function main() {
           type: 'confirm',
           name: 'retry',
           message: 'Would you like to try a different API key?',
-          default: true
-        }
+          default: true,
+        },
       ]);
 
       // Reset for retry
@@ -311,9 +312,10 @@ async function main() {
         {
           type: 'password',
           name: 'seedPhrase',
-          message: 'Your farcaster custody account seed phrase is required to create a signature proving this app was created by you.\n' +
-          `⚠️ ${yellow}${italic}seed phrase is only used to sign the mini app manifest, then discarded${reset} ⚠️\n` +
-          'Seed phrase:',
+          message:
+            'Your farcaster custody account seed phrase is required to create a signature proving this app was created by you.\n' +
+            `⚠️ ${yellow}${italic}seed phrase is only used to sign the mini app manifest, then discarded${reset} ⚠️\n` +
+            'Seed phrase:',
           validate: async (input) => {
             try {
               await validateSeedPhrase(input);
@@ -321,8 +323,8 @@ async function main() {
             } catch (error) {
               return error.message;
             }
-          }
-        }
+          },
+        },
       ]);
       seedPhrase = inputSeedPhrase;
     } else {
@@ -333,17 +335,27 @@ async function main() {
     const accountAddress = await validateSeedPhrase(seedPhrase);
     console.log('✅ Generated account address from seed phrase');
 
-    const fid = await lookupFidByCustodyAddress(accountAddress, neynarApiKey ?? 'FARCASTER_V2_FRAMES_DEMO');
+    const fid = await lookupFidByCustodyAddress(
+      accountAddress,
+      neynarApiKey ?? 'FARCASTER_V2_FRAMES_DEMO'
+    );
 
     // Generate and sign manifest
     console.log('\n🔨 Generating mini app manifest...');
-    
-    // Determine webhook URL based on environment variables
-    const webhookUrl = neynarApiKey && neynarClientId 
-      ? `https://api.neynar.com/f/app/${neynarClientId}/event`
-      : `${domain}/api/webhook`;
 
-    const metadata = await generateFarcasterMetadata(domain, fid, accountAddress, seedPhrase, webhookUrl);
+    // Determine webhook URL based on environment variables
+    const webhookUrl =
+      neynarApiKey && neynarClientId
+        ? `https://api.neynar.com/f/app/${neynarClientId}/event`
+        : `${domain}/api/webhook`;
+
+    const metadata = await generateFarcasterMetadata(
+      domain,
+      fid,
+      accountAddress,
+      seedPhrase,
+      webhookUrl
+    );
     console.log('\n✅ Mini app manifest generated' + (seedPhrase ? ' and signed' : ''));
 
     // Read existing .env file or create new one
@@ -366,10 +378,8 @@ async function main() {
       `NEXT_PUBLIC_ANALYTICS_ENABLED="${process.env.NEXT_PUBLIC_ANALYTICS_ENABLED || 'false'}"`,
 
       // Neynar configuration (if it exists in current env)
-      ...(process.env.NEYNAR_API_KEY ? 
-        [`NEYNAR_API_KEY="${process.env.NEYNAR_API_KEY}"`] : []),
-      ...(neynarClientId ? 
-        [`NEYNAR_CLIENT_ID="${neynarClientId}"`] : []),
+      ...(process.env.NEYNAR_API_KEY ? [`NEYNAR_API_KEY="${process.env.NEYNAR_API_KEY}"`] : []),
+      ...(neynarClientId ? [`NEYNAR_CLIENT_ID="${neynarClientId}"`] : []),
 
       // FID (if it exists in current env)
       ...(process.env.FID ? [`FID="${process.env.FID}"`] : []),
@@ -384,13 +394,13 @@ async function main() {
     ];
 
     // Filter out empty values and join with newlines
-    const validEnvVars = newEnvVars.filter(line => {
+    const validEnvVars = newEnvVars.filter((line) => {
       const [, value] = line.split('=');
       return value && value !== '""';
     });
 
     // Update or append each environment variable
-    validEnvVars.forEach(varLine => {
+    validEnvVars.forEach((varLine) => {
       const [key] = varLine.split('=');
       if (envContent.includes(`${key}=`)) {
         envContent = envContent.replace(new RegExp(`${key}=.*`), varLine);
@@ -407,15 +417,16 @@ async function main() {
     // Run next build
     console.log('\nBuilding Next.js application...');
     const nextBin = path.normalize(path.join(projectRoot, 'node_modules', '.bin', 'next'));
-    execSync(`"${nextBin}" build`, { 
-      cwd: projectRoot, 
+    execSync(`"${nextBin}" build`, {
+      cwd: projectRoot,
       stdio: 'inherit',
-      shell: process.platform === 'win32'
+      shell: process.platform === 'win32',
     });
 
     console.log('\n✨ Build complete! Your mini app is ready for deployment. 🪐');
-    console.log('📝 Make sure to configure the environment variables from .env in your hosting provider');
-
+    console.log(
+      '📝 Make sure to configure the environment variables from .env in your hosting provider'
+    );
   } catch (error) {
     console.error('\n❌ Error:', error.message);
     process.exit(1);

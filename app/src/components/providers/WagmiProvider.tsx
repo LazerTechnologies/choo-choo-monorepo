@@ -1,12 +1,12 @@
-import { createConfig, http, WagmiProvider } from "wagmi";
-import { base, degen, mainnet, optimism, unichain, celo } from "wagmi/chains";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { farcasterFrame } from "@farcaster/frame-wagmi-connector";
+import { createConfig, http, WagmiProvider } from 'wagmi';
+import { base, degen, mainnet, optimism, unichain, celo } from 'wagmi/chains';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { farcasterFrame } from '@farcaster/frame-wagmi-connector';
 import { coinbaseWallet, metaMask } from 'wagmi/connectors';
-import { APP_NAME, APP_ICON_URL, APP_URL } from "~/lib/constants";
-import { useEffect, useState } from "react";
-import { useConnect, useAccount } from "wagmi";
-import React from "react";
+import { APP_NAME, APP_ICON_URL, APP_URL } from '@/lib/constants';
+import { useEffect, useState } from 'react';
+import { useConnect, useAccount } from 'wagmi';
+import React from 'react';
 
 // Custom hook for Coinbase Wallet detection and auto-connection
 function useCoinbaseWalletAutoConnect() {
@@ -17,15 +17,16 @@ function useCoinbaseWalletAutoConnect() {
   useEffect(() => {
     // Check if we're running in Coinbase Wallet
     const checkCoinbaseWallet = () => {
-      const isInCoinbaseWallet = window.ethereum?.isCoinbaseWallet || 
+      const isInCoinbaseWallet =
+        window.ethereum?.isCoinbaseWallet ||
         window.ethereum?.isCoinbaseWalletExtension ||
         window.ethereum?.isCoinbaseWalletBrowser;
       setIsCoinbaseWallet(!!isInCoinbaseWallet);
     };
-    
+
     checkCoinbaseWallet();
     window.addEventListener('ethereum#initialized', checkCoinbaseWallet);
-    
+
     return () => {
       window.removeEventListener('ethereum#initialized', checkCoinbaseWallet);
     };
@@ -79,9 +80,7 @@ export default function Provider({ children }: { children: React.ReactNode }) {
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <CoinbaseWalletAutoConnect>
-          {children}
-        </CoinbaseWalletAutoConnect>
+        <CoinbaseWalletAutoConnect>{children}</CoinbaseWalletAutoConnect>
       </QueryClientProvider>
     </WagmiProvider>
   );

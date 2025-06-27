@@ -73,9 +73,7 @@ export function useContractTransaction(): UseContractTransactionResult {
    * @param txFunc - An async function that sends the transaction and returns a transaction hash.
    * @returns {Promise<void>} Resolves when the transaction is confirmed or fails.
    */
-  const sendTransaction = async (
-    txFunc: () => Promise<string>
-  ): Promise<void> => {
+  const sendTransaction = async (txFunc: () => Promise<string>): Promise<void> => {
     setStatus('pending');
     setTxHash(null);
     setError(null);

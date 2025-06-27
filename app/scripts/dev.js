@@ -18,16 +18,16 @@ let isCleaningUp = false;
 async function checkPort(port) {
   return new Promise((resolve) => {
     const server = createServer();
-    
+
     server.once('error', () => {
       resolve(true); // Port is in use
     });
-    
+
     server.once('listening', () => {
       server.close();
       resolve(false); // Port is free
     });
-    
+
     server.listen(port);
   });
 }
@@ -49,15 +49,18 @@ async function killProcessOnPort(port) {
       // Unix-like systems: Use lsof
       const lsof = spawn('lsof', ['-ti', `:${port}`]);
       lsof.stdout.on('data', (data) => {
-        data.toString().split('\n').forEach(pid => {
-          if (pid) {
-            try {
-              process.kill(parseInt(pid), 'SIGKILL');
-            } catch (e) {
-              if (e.code !== 'ESRCH') throw e;
+        data
+          .toString()
+          .split('\n')
+          .forEach((pid) => {
+            if (pid) {
+              try {
+                process.kill(parseInt(pid), 'SIGKILL');
+              } catch (e) {
+                if (e.code !== 'ESRCH') throw e;
+              }
             }
-          }
-        });
+          });
       });
       await new Promise((resolve) => lsof.on('close', resolve));
     }
@@ -70,13 +73,15 @@ async function startDev() {
   // Check if port 3000 is already in use
   const isPortInUse = await checkPort(3000);
   if (isPortInUse) {
-    console.error('Port 3000 is already in use. To find and kill the process using this port:\n\n' +
-      (process.platform === 'win32' 
-        ? '1. Run: netstat -ano | findstr :3000\n' +
-          '2. Note the PID (Process ID) from the output\n' +
-          '3. Run: taskkill /PID <PID> /F\n'
-        : `On macOS/Linux, run:\nnpm run cleanup\n`) +
-      '\nThen try running this command again.');
+    console.error(
+      'Port 3000 is already in use. To find and kill the process using this port:\n\n' +
+        (process.platform === 'win32'
+          ? '1. Run: netstat -ano | findstr :3000\n' +
+            '2. Note the PID (Process ID) from the output\n' +
+            '3. Run: taskkill /PID <PID> /F\n'
+          : `On macOS/Linux, run:\nnpm run cleanup\n`) +
+        '\nThen try running this command again.'
+    );
     process.exit(1);
   }
 
@@ -88,7 +93,9 @@ async function startDev() {
     tunnel = await localtunnel({ port: 3000 });
     let ip;
     try {
-      ip = await fetch('https://ipv4.icanhazip.com').then(res => res.text()).then(ip => ip.trim());
+      ip = await fetch('https://ipv4.icanhazip.com')
+        .then((res) => res.text())
+        .then((ip) => ip.trim());
     } catch (error) {
       console.error('Error getting IP address:', error);
     }
@@ -126,7 +133,7 @@ async function startDev() {
    4. Click "Preview" to test your mini app (note that it may take ~5 seconds to load the first time)
 `);
   }
-  
+
   // Start next dev with appropriate configuration
   const nextBin = path.normalize(path.join(projectRoot, 'node_modules', '.bin', 'next'));
 
@@ -134,7 +141,7 @@ async function startDev() {
     stdio: 'inherit',
     env: { ...process.env, NEXT_PUBLIC_URL: miniAppUrl, NEXTAUTH_URL: miniAppUrl },
     cwd: projectRoot,
-    shell: process.platform === 'win32' // Add shell option for Windows
+    shell: process.platform === 'win32', // Add shell option for Windows
   });
 
   // Handle cleanup
@@ -164,7 +171,7 @@ async function startDev() {
           console.log('Note: Next.js process already terminated');
         }
       }
-      
+
       if (tunnel) {
         try {
           await tunnel.close();
@@ -192,4 +199,4 @@ async function startDev() {
   }
 }
 
-startDev().catch(console.error); 
+startDev().catch(console.error);

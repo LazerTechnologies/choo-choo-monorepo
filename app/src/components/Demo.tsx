@@ -1,12 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { signIn, signOut, getCsrfToken } from "next-auth/react";
-import sdk, {
-  SignIn as SignInCore,
-  type Haptics,
-} from "@farcaster/frame-sdk";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { signIn, signOut, getCsrfToken } from 'next-auth/react';
+import sdk, { SignIn as SignInCore, type Haptics } from '@farcaster/frame-sdk';
 import {
   useAccount,
   useSendTransaction,
@@ -17,25 +14,25 @@ import {
   useConnect,
   useSwitchChain,
   useChainId,
-} from "wagmi";
+} from 'wagmi';
 import {
   useConnection as useSolanaConnection,
   useWallet as useSolanaWallet,
 } from '@solana/wallet-adapter-react';
-import { useHasSolanaProvider } from "./providers/SafeFarcasterSolanaProvider";
-import { ShareButton } from "./ui/Share";
+import { useHasSolanaProvider } from './providers/SafeFarcasterSolanaProvider';
+import { ShareButton } from './ui/Share';
 
-import { config } from "~/components/providers/WagmiProvider";
-import { Button } from "~/components/ui/Button";
-import { truncateAddress } from "~/lib/truncateAddress";
-import { base, degen, mainnet, optimism, unichain } from "wagmi/chains";
-import { BaseError, UserRejectedRequestError } from "viem";
-import { useSession } from "next-auth/react";
-import { useMiniApp } from "@neynar/react";
+import { config } from '@/components/providers/WagmiProvider';
+import { Button } from '@/components/ui/Button';
+import { truncateAddress } from '@/lib/truncateAddress';
+import { base, degen, mainnet, optimism, unichain } from 'wagmi/chains';
+import { BaseError, UserRejectedRequestError } from 'viem';
+import { useSession } from 'next-auth/react';
+import { useMiniApp } from '@neynar/react';
 import { PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
-import { Header } from "~/components/ui/Header";
-import { Footer } from "~/components/ui/Footer";
-import { USE_WALLET, APP_NAME } from "~/lib/constants";
+import { Header } from '@/components/ui/Header';
+import { Footer } from '@/components/ui/Footer';
+import { USE_WALLET, APP_NAME } from '@/lib/constants';
 
 export type Tab = 'home' | 'actions' | 'context' | 'wallet';
 
@@ -44,9 +41,7 @@ interface NeynarUser {
   score: number;
 }
 
-export default function Demo(
-  { title }: { title?: string } = { title: "Neynar Starter Kit" }
-) {
+export default function Demo({ title }: { title?: string } = { title: 'Neynar Starter Kit' }) {
   const {
     isSDKLoaded,
     context,
@@ -60,7 +55,7 @@ export default function Demo(
   } = useMiniApp();
   const [isContextOpen, setIsContextOpen] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
-  const [sendNotificationResult, setSendNotificationResult] = useState("");
+  const [sendNotificationResult, setSendNotificationResult] = useState('');
   const [copied, setCopied] = useState(false);
   const [neynarUser, setNeynarUser] = useState<NeynarUser | null>(null);
   const [hapticIntensity, setHapticIntensity] = useState<Haptics.ImpactOccurredType>('medium');
@@ -79,11 +74,11 @@ export default function Demo(
   }, [isSDKLoaded, setInitialTab]);
 
   useEffect(() => {
-    console.log("isSDKLoaded", isSDKLoaded);
-    console.log("context", context);
-    console.log("address", address);
-    console.log("isConnected", isConnected);
-    console.log("chainId", chainId);
+    console.log('isSDKLoaded', isSDKLoaded);
+    console.log('context', context);
+    console.log('address', address);
+    console.log('isConnected', isConnected);
+    console.log('chainId', chainId);
   }, [context, address, isConnected, chainId, isSDKLoaded]);
 
   // Fetch Neynar user object when context is available
@@ -112,10 +107,9 @@ export default function Demo(
     isPending: isSendTxPending,
   } = useSendTransaction();
 
-  const { isLoading: isConfirming, isSuccess: isConfirmed } =
-    useWaitForTransactionReceipt({
-      hash: txHash as `0x${string}`,
-    });
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash: txHash as `0x${string}`,
+  });
 
   const {
     signTypedData,
@@ -153,16 +147,16 @@ export default function Demo(
   }, [switchChain, nextChain.id]);
 
   const sendNotification = useCallback(async () => {
-    setSendNotificationResult("");
+    setSendNotificationResult('');
     if (!notificationDetails || !context) {
       return;
     }
 
     try {
-      const response = await fetch("/api/send-notification", {
-        method: "POST",
-        mode: "same-origin",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/send-notification', {
+        method: 'POST',
+        mode: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fid: context.user.fid,
           notificationDetails,
@@ -170,10 +164,10 @@ export default function Demo(
       });
 
       if (response.status === 200) {
-        setSendNotificationResult("Success");
+        setSendNotificationResult('Success');
         return;
       } else if (response.status === 429) {
-        setSendNotificationResult("Rate limited");
+        setSendNotificationResult('Rate limited');
         return;
       }
 
@@ -188,8 +182,8 @@ export default function Demo(
     sendTransaction(
       {
         // call yoink() on Yoink contract
-        to: "0x4bBFD120d9f352A0BEd7a014bd67913a2007a878",
-        data: "0x9846cd9efc000023c0",
+        to: '0x4bBFD120d9f352A0BEd7a014bd67913a2007a878',
+        data: '0x9846cd9efc000023c0',
       },
       {
         onSuccess: (hash) => {
@@ -203,16 +197,16 @@ export default function Demo(
     signTypedData({
       domain: {
         name: APP_NAME,
-        version: "1",
+        version: '1',
         chainId,
       },
       types: {
-        Message: [{ name: "content", type: "string" }],
+        Message: [{ name: 'content', type: 'string' }],
       },
       message: {
         content: `Hello from ${APP_NAME}!`,
       },
-      primaryType: "Message",
+      primaryType: 'Message',
     });
   }, [chainId, signTypedData]);
 
@@ -249,19 +243,24 @@ export default function Demo(
 
         {currentTab === 'actions' && (
           <div className="space-y-3 px-6 w-full max-w-md mx-auto">
-            <ShareButton 
+            <ShareButton
               buttonText="Share Mini App"
               cast={{
-                text: "Check out this awesome frame @1 @2 @3! 🚀🪐",
+                text: 'Check out this awesome frame @1 @2 @3! 🚀🪐',
                 bestFriends: true,
-                embeds: [`${process.env.NEXT_PUBLIC_URL}/share/${context?.user?.fid || ''}`]
+                embeds: [`${process.env.NEXT_PUBLIC_URL}/share/${context?.user?.fid || ''}`],
               }}
               className="w-full"
             />
 
             <SignIn />
 
-            <Button onClick={() => actions.openUrl("https://www.youtube.com/watch?v=dQw4w9WgXcQ")} className="w-full">Open Link</Button>
+            <Button
+              onClick={() => actions.openUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ')}
+              className="w-full"
+            >
+              Open Link
+            </Button>
 
             <Button onClick={actions.addMiniApp} disabled={added} className="w-full">
               Add Mini App to Client
@@ -276,7 +275,7 @@ export default function Demo(
               Send notification
             </Button>
 
-            <Button 
+            <Button
               onClick={async () => {
                 if (context?.user?.fid) {
                   const shareUrl = `${process.env.NEXT_PUBLIC_URL}/share/${context.user.fid}`;
@@ -288,7 +287,7 @@ export default function Demo(
               disabled={!context?.user?.fid}
               className="w-full"
             >
-              {copied ? "Copied!" : "Copy share URL"}
+              {copied ? 'Copied!' : 'Copy share URL'}
             </Button>
 
             <div className="space-y-2">
@@ -306,7 +305,7 @@ export default function Demo(
                 <option value="soft">Soft</option>
                 <option value="rigid">Rigid</option>
               </select>
-              <Button 
+              <Button
                 onClick={async () => {
                   try {
                     await haptics.impactOccurred(hapticIntensity);
@@ -348,31 +347,19 @@ export default function Demo(
             )}
 
             {isConnected ? (
-              <Button
-                onClick={() => disconnect()}
-                className="w-full"
-              >
+              <Button onClick={() => disconnect()} className="w-full">
                 Disconnect
               </Button>
             ) : context ? (
-              <Button
-                onClick={() => connect({ connector: connectors[0] })}
-                className="w-full"
-              >
+              <Button onClick={() => connect({ connector: connectors[0] })} className="w-full">
                 Connect
               </Button>
             ) : (
               <div className="space-y-3 w-full">
-                <Button
-                  onClick={() => connect({ connector: connectors[1] })}
-                  className="w-full"
-                >
+                <Button onClick={() => connect({ connector: connectors[1] })} className="w-full">
                   Connect Coinbase Wallet
                 </Button>
-                <Button
-                  onClick={() => connect({ connector: connectors[2] })}
-                  className="w-full"
-                >
+                <Button onClick={() => connect({ connector: connectors[2] })} className="w-full">
                   Connect MetaMask
                 </Button>
               </div>
@@ -396,12 +383,8 @@ export default function Demo(
                   <div className="text-xs w-full">
                     <div>Hash: {truncateAddress(txHash)}</div>
                     <div>
-                      Status:{" "}
-                      {isConfirming
-                        ? "Confirming..."
-                        : isConfirmed
-                        ? "Confirmed!"
-                        : "Pending"}
+                      Status:{' '}
+                      {isConfirming ? 'Confirming...' : isConfirmed ? 'Confirmed!' : 'Pending'}
                     </div>
                   </div>
                 )}
@@ -436,7 +419,11 @@ export default function Demo(
 
 // Solana functions inspired by farcaster demo
 // https://github.com/farcasterxyz/frames-v2-demo/blob/main/src/components/Demo.tsx
-function SignSolanaMessage({ signMessage }: { signMessage?: (message: Uint8Array) => Promise<Uint8Array> }) {
+function SignSolanaMessage({
+  signMessage,
+}: {
+  signMessage?: (message: Uint8Array) => Promise<Uint8Array>;
+}) {
   const [signature, setSignature] = useState<string | undefined>();
   const [signError, setSignError] = useState<Error | undefined>();
   const [signPending, setSignPending] = useState(false);
@@ -447,7 +434,7 @@ function SignSolanaMessage({ signMessage }: { signMessage?: (message: Uint8Array
       if (!signMessage) {
         throw new Error('no Solana signMessage');
       }
-      const input = new TextEncoder().encode("Hello from Solana!");
+      const input = new TextEncoder().encode('Hello from Solana!');
       const signatureBytes = await signMessage(input);
       const signature = btoa(String.fromCharCode(...signatureBytes));
       setSignature(signature);
@@ -516,7 +503,7 @@ function SendSolana() {
           fromPubkey: new PublicKey(fromPubkeyStr),
           toPubkey: new PublicKey(toPubkeyStr),
           lamports: 0n,
-        }),
+        })
       );
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = new PublicKey(fromPubkeyStr);
@@ -583,11 +570,7 @@ function SignEvmMessage() {
 
   return (
     <>
-      <Button
-        onClick={handleSignMessage}
-        disabled={isSignPending}
-        isLoading={isSignPending}
-      >
+      <Button onClick={handleSignMessage} disabled={isSignPending} isLoading={isSignPending}>
         Sign Message
       </Button>
       {isSignError && renderError(signError)}
@@ -610,16 +593,15 @@ function SendEth() {
     isPending: isSendTxPending,
   } = useSendTransaction();
 
-  const { isLoading: isConfirming, isSuccess: isConfirmed } =
-    useWaitForTransactionReceipt({
-      hash: data,
-    });
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
+    hash: data,
+  });
 
   const toAddr = useMemo(() => {
     // Protocol guild address
     return chainId === base.id
-      ? "0x32e3C7fD24e175701A35c224f2238d18439C7dBC"
-      : "0xB3d8d7887693a9852734b4D25e9C0Bb35Ba8a830";
+      ? '0x32e3C7fD24e175701A35c224f2238d18439C7dBC'
+      : '0xB3d8d7887693a9852734b4D25e9C0Bb35Ba8a830';
   }, [chainId]);
 
   const handleSend = useCallback(() => {
@@ -643,12 +625,7 @@ function SendEth() {
         <div className="mt-2 text-xs">
           <div>Hash: {truncateAddress(data)}</div>
           <div>
-            Status:{" "}
-            {isConfirming
-              ? "Confirming..."
-              : isConfirmed
-              ? "Confirmed!"
-              : "Pending"}
+            Status: {isConfirming ? 'Confirming...' : isConfirmed ? 'Confirmed!' : 'Pending'}
           </div>
         </div>
       )}
@@ -665,7 +642,7 @@ function SignIn() {
 
   const getNonce = useCallback(async () => {
     const nonce = await getCsrfToken();
-    if (!nonce) throw new Error("Unable to generate nonce");
+    if (!nonce) throw new Error('Unable to generate nonce');
     return nonce;
   }, []);
 
@@ -677,18 +654,18 @@ function SignIn() {
       const result = await sdk.actions.signIn({ nonce });
       setSignInResult(result);
 
-      await signIn("credentials", {
+      await signIn('credentials', {
         message: result.message,
         signature: result.signature,
         redirect: false,
       });
     } catch (e) {
       if (e instanceof SignInCore.RejectedByUser) {
-        setSignInFailure("Rejected by user");
+        setSignInFailure('Rejected by user');
         return;
       }
 
-      setSignInFailure("Unknown error");
+      setSignInFailure('Unknown error');
     } finally {
       setSigningIn(false);
     }
@@ -706,12 +683,12 @@ function SignIn() {
 
   return (
     <>
-      {status !== "authenticated" && (
+      {status !== 'authenticated' && (
         <Button onClick={handleSignIn} disabled={signingIn}>
           Sign In with Farcaster
         </Button>
       )}
-      {status === "authenticated" && (
+      {status === 'authenticated' && (
         <Button onClick={handleSignOut} disabled={signingOut}>
           Sign out
         </Button>
@@ -719,9 +696,7 @@ function SignIn() {
       {session && (
         <div className="my-2 p-2 text-xs overflow-x-scroll bg-gray-100 rounded-lg font-mono">
           <div className="font-semibold text-gray-500 mb-1">Session</div>
-          <div className="whitespace-pre">
-            {JSON.stringify(session, null, 2)}
-          </div>
+          <div className="whitespace-pre">{JSON.stringify(session, null, 2)}</div>
         </div>
       )}
       {signInFailure && !signingIn && (
@@ -733,9 +708,7 @@ function SignIn() {
       {signInResult && !signingIn && (
         <div className="my-2 p-2 text-xs overflow-x-scroll bg-gray-100 rounded-lg font-mono">
           <div className="font-semibold text-gray-500 mb-1">SIWF Result</div>
-          <div className="whitespace-pre">
-            {JSON.stringify(signInResult, null, 2)}
-          </div>
+          <div className="whitespace-pre">{JSON.stringify(signInResult, null, 2)}</div>
         </div>
       )}
     </>
@@ -745,9 +718,7 @@ function SignIn() {
 const renderError = (error: Error | null) => {
   if (!error) return null;
   if (error instanceof BaseError) {
-    const isUserRejection = error.walk(
-      (e) => e instanceof UserRejectedRequestError
-    );
+    const isUserRejection = error.walk((e) => e instanceof UserRejectedRequestError);
 
     if (isUserRejection) {
       return <div className="text-red-500 text-xs mt-1">Rejected by user.</div>;
@@ -756,4 +727,3 @@ const renderError = (error: Error | null) => {
 
   return <div className="text-red-500 text-xs mt-1">{error.message}</div>;
 };
-

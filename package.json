@@ -12,7 +12,8 @@
     "format:check": "turbo format:check",
     "clean": "turbo clean",
     "anvil": "turbo anvil",
-    "extract-abi": "turbo run extract-abi"
+    "extract-abi": "turbo run extract-abi",
+    "tsc": "turbo run tsc"
   },
   "keywords": [
     "farcaster",
@@ -20,7 +21,7 @@
     "solidity",
     "foundry"
   ],
-  "author": "Jon Bray <jonbray@lazertechnologies.com>",
+  "author": "Jon Bray <me@jonbray.dev>",
   "license": "MIT",
   "packageManager": "pnpm@10.12.1",
   "devDependencies": {

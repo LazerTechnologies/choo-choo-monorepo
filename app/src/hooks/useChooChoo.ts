@@ -23,10 +23,7 @@ export function useChooChoo() {
   const yoinkTx = useContractTransaction();
 
   const createWriteFunction =
-    (
-      functionName: string,
-      txHook: ReturnType<typeof useContractTransaction>
-    ): WriteFunction =>
+    (functionName: string, txHook: ReturnType<typeof useContractTransaction>): WriteFunction =>
     async (to) => {
       await txHook.sendTransaction(async () => {
         const hash = await writeContractAsync({
@@ -42,8 +39,7 @@ export function useChooChoo() {
   const yoink = createWriteFunction('yoink', yoinkTx);
 
   // Reads
-  const useOwner = () =>
-    useReadContract({ ...contractConfig, functionName: 'owner' });
+  const useOwner = () => useReadContract({ ...contractConfig, functionName: 'owner' });
   const useOwnerOf = (tokenId: bigint) =>
     useReadContract({
       ...contractConfig,
@@ -69,8 +65,7 @@ export function useChooChoo() {
       ...contractConfig,
       functionName: 'lastTransferTimestamp',
     });
-  const useMainImage = () =>
-    useReadContract({ ...contractConfig, functionName: 'mainImage' });
+  const useMainImage = () => useReadContract({ ...contractConfig, functionName: 'mainImage' });
   const useMainTokenURI = () =>
     useReadContract({ ...contractConfig, functionName: 'mainTokenURI' });
   const useTrainWhistle = () =>
@@ -112,8 +107,7 @@ export function useChooChoo() {
       functionName: 'isYoinkable',
       args: [caller],
     });
-  const useTotalSupply = () =>
-    useReadContract({ ...contractConfig, functionName: 'totalSupply' });
+  const useTotalSupply = () => useReadContract({ ...contractConfig, functionName: 'totalSupply' });
   const useTokenByIndex = (index: bigint) =>
     useReadContract({
       ...contractConfig,
@@ -132,10 +126,8 @@ export function useChooChoo() {
       functionName: 'tokenURI',
       args: [tokenId],
     });
-  const useSymbol = () =>
-    useReadContract({ ...contractConfig, functionName: 'symbol' });
-  const useName = () =>
-    useReadContract({ ...contractConfig, functionName: 'name' });
+  const useSymbol = () => useReadContract({ ...contractConfig, functionName: 'symbol' });
+  const useName = () => useReadContract({ ...contractConfig, functionName: 'name' });
 
   return {
     // write actions
