@@ -14,6 +14,6 @@ cd ..
 mkdir -p app/abi
 
 # Extract ABI using jq
-jq .abi contracts/out/ChooChooTrain.sol/ChooChooTrain.json > app/abi/ChooChooTrain.abi.json
+jq .abi contracts/out/ChooChooTrain.sol/ChooChooTrain.json > app/src/abi/ChooChooTrain.abi.json
 
-echo "ABI extracted to app/abi/ChooChooTrain.abi.json" 
+echo "ABI extracted to app/src/abi/ChooChooTrain.abi.json" 

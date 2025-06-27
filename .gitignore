@@ -1,5 +1,6 @@
 # IDE
 .cursor/
+.cursor/docs/
 
 # Compiler files
 cache/
