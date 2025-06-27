@@ -7,6 +7,7 @@ import "openzeppelin-contracts/access/Ownable.sol";
 import "openzeppelin-contracts/utils/Strings.sol";
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
+//@todo: set up for admin key on the backend that can call `nextStop` so the function is either manual or automated, and make sure it follows a game-flow as described in our convo on warpcast
 /*
 Choo-Choo on Base is an homage to The Worm. How many wallets can Choo Choo visit?
 
