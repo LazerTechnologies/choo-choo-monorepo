@@ -43,6 +43,8 @@
     "mipd": "^0.0.7",
     "next": "^15",
     "next-auth": "^4.24.11",
+    "node-fetch": "^3.3.2",
+    "pinata": "^2.4.8",
     "react": "^19",
     "react-dom": "^19",
     "tailwind-merge": "^2.6.0",

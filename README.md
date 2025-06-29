@@ -119,3 +119,21 @@ To mint a ticket with custom metadata, generate the full metadata JSON (includin
 > Unlike The Worm, the contract does **not** perform any on-chain encoding or JSON assembly—all metadata is prepared off-chain and referenced by IPFS URL.
 
 ---
+
+## Route Authentication
+
+The `/api/next-stop` route is protected by Farcaster session-based authentication using NextAuth. Only users who are signed in with their Farcaster account (via the mini-app) can call this route.
+
+Example:
+
+```http
+POST /api/next-stop
+Content-Type: application/json
+
+{
+  "recipient": "0x...",
+  "tokenURI": "ipfs://..."
+}
+```
+
+If the user is not authenticated, the request will be rejected with a 401 error.
