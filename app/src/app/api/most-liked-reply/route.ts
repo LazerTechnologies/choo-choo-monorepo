@@ -12,6 +12,7 @@ interface NeynarReaction {
 interface NeynarUser {
   fid: number;
   custody_address: string;
+  verifications?: string[];
   username?: string;
 }
 
@@ -20,7 +21,7 @@ const NEYNAR_API_BASE = 'https://api.neynar.com/v2/farcaster';
 /**
  * API Route: /api/most-liked-reply
  *
- * Given a cast ID, finds the reply with the most likes and returns the user and their wallet address.
+ * Given a cast ID, finds the reply with the most likes and returns the user and their primary wallet address.
  *
  * Query Parameters:
  *   - castId (string, required): The hash of the cast to analyze.
@@ -107,13 +108,18 @@ export async function GET(request: Request) {
     }
     const userData = await userRes.json();
     const user: NeynarUser = userData.result?.user;
-    if (!user || !user.custody_address) {
-      return NextResponse.json({ error: 'User or wallet address not found.' }, { status: 404 });
+    if (!user) {
+      return NextResponse.json({ error: 'User not found.' }, { status: 404 });
+    }
+    // Use the first address in verifications as the primary wallet, fallback to custody_address
+    const primaryWallet = (user.verifications && user.verifications[0]) || user.custody_address;
+    if (!primaryWallet) {
+      return NextResponse.json({ error: 'User wallet address not found.' }, { status: 404 });
     }
 
     return NextResponse.json({
       user,
-      walletAddress: user.custody_address,
+      walletAddress: primaryWallet,
       reply: mostReactedReply,
     });
   } catch (error) {
