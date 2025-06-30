@@ -60,7 +60,73 @@ choo-choo-monorepo/
 
 ---
 
-## Nerd Corner
+## System Architecture
+
+```mermaid
+flowchart LR
+  %% Frontend
+  subgraph Frontend
+    FE["Mini-app"]
+    UIUX["User Interface"]
+    FE -->|"Fetch cast hash"| KV["KV Store"]
+    FE --> UIUX
+    FE -->|"Trigger next stop"| BE["Backend API"]
+  end
+
+  %% Backend
+  subgraph Backend
+    BE["Backend API"]
+    WIN["Winner Selection Logic"]
+    META["Metadata/Image Generator"]
+    BE -->|"Fetch cast hash"| KV
+    BE -->|"Fetch replies & reactions"| Neynar[Neynar API]
+    BE --> WIN
+    WIN --> META
+    META -->|"Upload metadata/image"| Pinata["IPFS/Pinata"]
+    META -->|"Store tokenURI"| Contract["ChooChooTrain Contract"]
+    BE -->|"Call nextStop on contract"| Contract
+    BE -->|"Post update cast"| Farcaster["Farcaster Client/Signer"]
+  end
+
+  %% Infra
+  subgraph Infra
+    KV["Vercel KV Store"]
+    Pinata["IPFS/Pinata"]
+    Contract["ChooChooTrain Contract"]
+    Farcaster["Farcaster Client/Signer"]
+    Neynar["Neynar API"]
+  end
+
+  %% View-only flows
+  FE -.->|"View only"| Pinata
+  FE -.->|"View only"| Contract
+  FE -.->|"View only"| Farcaster
+  FE -.->|"View only"| Neynar
+
+  %% Comments for clarity
+  %% Frontend fetches cast hash from KV, triggers backend
+  %% Backend orchestrates: fetches cast hash, gets replies from Neynar, selects winner, generates metadata, uploads to Pinata, calls contract, posts to Farcaster
+  %% Users can view journey/tickets from Pinata, Contract, Farcaster
+```
+
+**Flow Description:**
+
+- The user who currently holds ChooChoo sends a cast via the **frontend**, and the cast hash is stored in **Vercel KV**.
+- The **frontend** fetches the current cast hash from the **KV store** to know which cast to use for reply eligibility.
+- When a user clicks "Next Stop", the **frontend** calls the **backend API**.
+- The **backend**:
+  - Fetches the current cast hash from the **KV Store**.
+  - Fetches replies and reactions from **Neynar**.
+  - Selects the winner (most reactions, valid wallet).
+  - Generates NFT metadata and image.
+  - Uploads metadata/image to **IPFS/Pinata**.
+  - Calls the **ChooChooTrain Contract** to move the train and mint the ticket.
+  - Posts an update cast to Farcaster using the **Farcaster Client/Signer** (e.g., ChooChoo account).
+- The **Frontend** and users can view the journey, tickets, and contract state by reading from **IPFS/Pinata**, the **Contract**, and **Farcaster**.
+
+---
+
+## Smart Contract Design
 
 ### How does the `ChooChooTrain` contract work?
 
