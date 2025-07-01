@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
+import { isAddress } from 'viem';
 
 interface NeynarCast {
   hash: string;
   author: { fid: number };
+  timestamp: number;
 }
 
 interface NeynarReaction {
@@ -50,46 +52,81 @@ export async function GET(request: Request) {
   }
 
   try {
-    // first we get all of the replies to that cast
-    const repliesRes = await fetch(
-      `${NEYNAR_API_BASE}/cast/replies?cast_hash=${castId}&limit=100`,
-      {
+    // Fetch all replies with pagination
+    let allReplies: NeynarCast[] = [];
+    let cursor: string | undefined = undefined;
+    do {
+      const url = new URL(`${NEYNAR_API_BASE}/cast/replies`);
+      url.searchParams.set('cast_hash', castId!);
+      url.searchParams.set('limit', '100');
+      if (cursor) url.searchParams.set('cursor', cursor);
+
+      const repliesRes = await fetch(url.toString(), {
         headers: { 'x-api-key': apiKey },
+      });
+      if (!repliesRes.ok) {
+        throw new Error(`Failed to fetch replies: ${repliesRes.statusText}`);
       }
-    );
-    if (!repliesRes.ok) {
-      throw new Error(`Failed to fetch replies: ${repliesRes.statusText}`);
-    }
-    const repliesData = await repliesRes.json();
-    const replies: NeynarCast[] = repliesData.result?.casts ?? [];
-    if (replies.length === 0) {
+      const repliesData = await repliesRes.json();
+      const replies: NeynarCast[] = repliesData.result?.casts ?? [];
+      allReplies = allReplies.concat(replies);
+      cursor = repliesData.result?.next?.cursor || repliesData.result?.next;
+    } while (cursor);
+
+    if (allReplies.length === 0) {
       return NextResponse.json({ error: 'No replies found for this cast.' }, { status: 404 });
     }
 
     // then we need reaction counts for each reply
-    const repliesWithReactions = await Promise.all(
-      replies.map(async (reply) => {
-        const reactionsRes = await fetch(
-          `${NEYNAR_API_BASE}/cast/reactions?cast_hash=${reply.hash}`,
-          {
-            headers: { 'x-api-key': apiKey },
-          }
-        );
-        if (!reactionsRes.ok) {
-          return { ...reply, reactionCount: 0 };
+    // Throttle concurrent fetches to avoid rate limits
+    async function asyncPool<T, R>(
+      poolLimit: number,
+      array: T[],
+      iteratorFn: (item: T) => Promise<R>
+    ): Promise<R[]> {
+      const ret: R[] = [];
+      const executing: Promise<void>[] = [];
+      for (const item of array) {
+        const p: Promise<void> = iteratorFn(item).then((res) => {
+          ret.push(res);
+        });
+        executing.push(p);
+        if (executing.length >= poolLimit) {
+          await Promise.race(executing);
         }
-        const reactionsData = await reactionsRes.json();
-        const likes: NeynarReaction[] = reactionsData.result?.likes ?? [];
-        const recasts: NeynarReaction[] = reactionsData.result?.recasts ?? [];
-        const reactionCount = likes.length + recasts.length;
-        return { ...reply, reactionCount };
-      })
-    );
+      }
+      await Promise.all(executing);
+      return ret;
+    }
+
+    const repliesWithReactions = await asyncPool(5, allReplies, async (reply) => {
+      const reactionsRes = await fetch(
+        `${NEYNAR_API_BASE}/cast/reactions?cast_hash=${reply.hash}`,
+        {
+          headers: { 'x-api-key': apiKey },
+        }
+      );
+      if (!reactionsRes.ok) {
+        return { ...reply, reactionCount: 0 };
+      }
+      const reactionsData = await reactionsRes.json();
+      const likes: NeynarReaction[] = reactionsData.result?.likes ?? [];
+      const recasts: NeynarReaction[] = reactionsData.result?.recasts ?? [];
+      const reactionCount = likes.length + recasts.length;
+      return { ...reply, reactionCount };
+    });
 
     // get the one with the most reactions...
-    const mostReactedReply = repliesWithReactions.reduce((max, curr) =>
-      curr.reactionCount > max.reactionCount ? curr : max
-    );
+    const mostReactedReply = repliesWithReactions.reduce((max, curr) => {
+      if (curr.reactionCount > max.reactionCount) {
+        return curr;
+      } else if (curr.reactionCount === max.reactionCount) {
+        // prefer earlier timestamp for tie-breaker
+        // @todo make sure it's not created_at
+        return new Date(curr.timestamp) < new Date(max.timestamp) ? curr : max;
+      }
+      return max;
+    });
 
     if (!mostReactedReply || mostReactedReply.reactionCount === 0) {
       return NextResponse.json(
@@ -113,8 +150,11 @@ export async function GET(request: Request) {
     }
     // Use the first address in verifications as the primary wallet, fallback to custody_address
     const primaryWallet = (user.verifications && user.verifications[0]) || user.custody_address;
-    if (!primaryWallet) {
-      return NextResponse.json({ error: 'User wallet address not found.' }, { status: 404 });
+    if (!primaryWallet || !isAddress(primaryWallet)) {
+      return NextResponse.json(
+        { error: 'User wallet address not found or invalid.' },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json({

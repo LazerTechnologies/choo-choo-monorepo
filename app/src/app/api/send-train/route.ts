@@ -15,30 +15,60 @@ async function fetchRepliesAndReactions(
   castHash: string
 ): Promise<Array<{ primaryWallet: string; reactions: number; fid: number }>> {
   if (!NEYNAR_API_KEY) throw new Error('Missing NEYNAR_API_KEY');
-  // 1. Fetch replies to the cast
-  const repliesRes = await fetch(
-    `https://api.neynar.com/v2/farcaster/cast/replies?cast_hash=${castHash}&limit=100`,
-    {
-      headers: { accept: 'application/json', api_key: NEYNAR_API_KEY },
-    }
-  );
-  if (!repliesRes.ok) throw new Error('Failed to fetch replies from Neynar');
-  const repliesData = await repliesRes.json();
-  const replies = repliesData?.result?.casts ?? [];
-
-  // 2. For each reply, fetch reactions and primary wallet address
-  const results: Array<{ primaryWallet: string; reactions: number; fid: number }> = [];
-  for (const reply of replies) {
-    const fid = reply.author?.fid;
-    if (!fid) continue;
-    const userRes = await fetch(`https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`, {
+  // 1. Fetch all replies to the cast with pagination
+  let allReplies: Array<{
+    author?: { fid?: number };
+    reactions?: { likes?: unknown[]; recasts?: unknown[] };
+  }> = [];
+  let cursor: string | undefined = undefined;
+  do {
+    const url = new URL(`https://api.neynar.com/v2/farcaster/cast/replies`);
+    url.searchParams.set('cast_hash', castHash);
+    url.searchParams.set('limit', '100');
+    if (cursor) url.searchParams.set('cursor', cursor);
+    const repliesRes = await fetch(url.toString(), {
       headers: { accept: 'application/json', api_key: NEYNAR_API_KEY },
     });
+    if (!repliesRes.ok) throw new Error('Failed to fetch replies from Neynar');
+    const repliesData = await repliesRes.json();
+    const replies = repliesData?.result?.casts ?? [];
+    allReplies = allReplies.concat(replies);
+    cursor = repliesData?.result?.next?.cursor;
+  } while (cursor);
+
+  // 2. Collect all unique fids
+  const fidSet = new Set<number>();
+  for (const reply of allReplies) {
+    if (reply.author?.fid) fidSet.add(reply.author.fid);
+  }
+  const allFids = Array.from(fidSet);
+
+  // 3. Bulk fetch user data in chunks of 100
+  const fidToUser: Record<number, { verifications?: string[]; custody_address?: string }> = {};
+  for (let i = 0; i < allFids.length; i += 100) {
+    const chunk = allFids.slice(i, i + 100);
+    const userRes = await fetch(
+      `https://api.neynar.com/v2/farcaster/user/bulk?fids=${chunk.join(',')}`,
+      {
+        headers: { accept: 'application/json', api_key: NEYNAR_API_KEY },
+      }
+    );
     if (!userRes.ok) continue;
     const userData = await userRes.json();
-    // Use the first address in verifications as the primary wallet, fallback to custody_address
-    const verifications = userData?.users?.[0]?.verifications ?? [];
-    const primaryWallet = verifications[0] || userData?.users?.[0]?.custody_address;
+    for (const user of userData?.users ?? []) {
+      if (user.fid) fidToUser[user.fid] = user;
+    }
+  }
+
+  // 4. Assemble results using the user map
+  const results: Array<{ primaryWallet: string; reactions: number; fid: number }> = [];
+  for (const reply of allReplies) {
+    const fid = reply.author?.fid;
+    if (!fid) continue;
+    const user = fidToUser[fid];
+    if (!user) continue;
+    const verifications = user?.verifications ?? [];
+    const primaryWallet = verifications[0] || user?.custody_address;
     if (!primaryWallet || !isAddress(primaryWallet)) continue;
     // Sum reactions (likes + recasts)
     const reactions =
@@ -49,7 +79,7 @@ async function fetchRepliesAndReactions(
 }
 
 /**
- * POST /api/trigger-next-stop
+ * POST /api/send-train
  *
  * Orchestrates the next stop for the ChooChoo train journey. Anyone can call this endpoint.
  *
@@ -61,7 +91,7 @@ async function fetchRepliesAndReactions(
  * - Filters for replies with a valid primary wallet address.
  * - Selects the reply with the most reactions as the winner.
  * - Generates placeholder NFT metadata.
- * - Uploads metadata to Pinata and calls /api/next-stop with the winner's address and tokenURI.
+ * - Uploads metadata to Pinata and calls /api/internal/next-stop with the winner's address and tokenURI.
  *
  * @param request - The HTTP request object (expects JSON body with castHash).
  * @returns 200 with { success: true, winner } on success, or 400/500 with error message.
@@ -93,13 +123,13 @@ export async function POST(request: Request) {
 
     // 3. Generate NFT metadata and image (placeholder)
     const metadata = {
-      name: 'ChooChoo Ticket',
+      name: 'ChooChoo Ticket', // @todo: add tokenId or unique name to each stop
       description: 'Thank you for riding ChooChoo!',
-      attributes: [{ trait_type: 'Reactions', value: winner.reactions.toString() }],
+      attributes: [{ trait_type: 'Reactions', value: winner.reactions.toString() }], // @todo: add actual traits, and include the castId and FID of the user who receives the ticket
     };
 
     // 4. Upload to Pinata
-    const pinataRes = await fetch(`${process.env.NEXTAUTH_URL}/api/pinata/mint`, {
+    const pinataRes = await fetch(`${process.env.APP_URL}/api/internal/pinata/mint`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(metadata),
@@ -110,18 +140,21 @@ export async function POST(request: Request) {
     }
     const { tokenURI } = await pinataRes.json();
 
-    // 5. Call /api/next-stop
-    const nextStopRes = await fetch(`${process.env.NEXTAUTH_URL}/api/next-stop`, {
+    // 5. Call /api/internal/next-stop
+    if (!process.env.INTERNAL_SECRET) {
+      throw new Error('INTERNAL_SECRET is not set in the environment');
+    }
+    const nextStopRes = await fetch(`${process.env.APP_URL}/api/internal/next-stop`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-internal-secret': process.env.INTERNAL_SECRET || '',
+        'x-internal-secret': process.env.INTERNAL_SECRET,
       },
       body: JSON.stringify({ recipient: winnerAddress, tokenURI }),
     });
     if (!nextStopRes.ok) {
       const data = await nextStopRes.json().catch(() => ({}));
-      throw new Error(data.error || 'Failed to call next-stop');
+      throw new Error(data.error || 'Failed to call internal/next-stop');
     }
 
     return NextResponse.json({ success: true, winner: winnerAddress });
