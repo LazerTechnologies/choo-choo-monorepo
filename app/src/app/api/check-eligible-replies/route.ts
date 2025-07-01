@@ -3,6 +3,8 @@ import { isAddress } from 'viem';
 
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
 
+type Reply = { author?: { fid?: number } };
+
 /**
  * Checks if a given cast has any eligible replies (replies with a valid primary wallet address).
  * Uses the first address in the verifications array as the primary wallet, falling back to custody_address if needed.
@@ -12,29 +14,53 @@ const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
  */
 async function hasEligibleReplies(castHash: string): Promise<boolean> {
   if (!NEYNAR_API_KEY) throw new Error('Missing NEYNAR_API_KEY');
-  const repliesRes = await fetch(
-    `https://api.neynar.com/v2/farcaster/cast/replies?cast_hash=${castHash}&limit=100`,
-    {
-      headers: { accept: 'application/json', api_key: NEYNAR_API_KEY },
-    }
-  );
-  if (!repliesRes.ok) throw new Error('Failed to fetch replies from Neynar');
-  const repliesData = await repliesRes.json();
-  const replies = repliesData?.result?.casts ?? [];
-  for (const reply of replies) {
-    const fid = reply.author?.fid;
-    if (!fid) continue;
-    const userRes = await fetch(`https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`, {
+  let allReplies: Reply[] = [];
+  let cursor: string | undefined = undefined;
+  let foundEligible = false;
+
+  do {
+    const url = new URL(`https://api.neynar.com/v2/farcaster/cast/replies`);
+    url.searchParams.set('cast_hash', castHash);
+    url.searchParams.set('limit', '100');
+    if (cursor) url.searchParams.set('cursor', cursor);
+
+    const repliesRes = await fetch(url.toString(), {
       headers: { accept: 'application/json', api_key: NEYNAR_API_KEY },
     });
-    if (!userRes.ok) continue;
+    if (!repliesRes.ok) throw new Error('Failed to fetch replies from Neynar');
+    const repliesData = await repliesRes.json();
+    const replies: Reply[] = repliesData?.result?.casts ?? [];
+    allReplies = allReplies.concat(replies);
+    cursor = repliesData?.result?.next?.cursor;
+
+    // Collect all unique FIDs from reply authors so far
+    const fids = [...new Set(allReplies.map((reply) => reply.author?.fid).filter(Boolean))];
+    if (fids.length === 0) continue;
+
+    // Batch fetch all users at once
+    const userRes = await fetch(
+      `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fids.join(',')}`,
+      {
+        headers: { accept: 'application/json', api_key: NEYNAR_API_KEY },
+      }
+    );
+    if (!userRes.ok) throw new Error('Failed to fetch users from Neynar');
     const userData = await userRes.json();
-    // Use the first address in verifications as the primary wallet, fallback to custody_address
-    const verifications = userData?.users?.[0]?.verifications ?? [];
-    const primaryWallet = verifications[0] || userData?.users?.[0]?.custody_address;
-    if (primaryWallet && isAddress(primaryWallet)) return true;
-  }
-  return false;
+    const users = userData?.users ?? [];
+
+    // Check if any user has a valid primary wallet (verifications[0] or custody_address)
+    for (const user of users) {
+      const verifications = user?.verifications ?? [];
+      const primaryWallet = verifications[0] || user?.custody_address;
+      if (primaryWallet && isAddress(primaryWallet)) {
+        foundEligible = true;
+        break;
+      }
+    }
+    if (foundEligible) break;
+  } while (cursor);
+
+  return foundEligible;
 }
 
 /**

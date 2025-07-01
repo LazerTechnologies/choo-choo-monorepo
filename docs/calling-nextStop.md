@@ -49,7 +49,7 @@ export function PassTrainButton({
 
 ---
 
-## Transferring vis Cast Actions and Social Data
+## Transferring via Cast Actions and Social Data
 
 Choo-Choo is a social experience, and as such, the train can be moved based on Farcaster social actions—replies or likes on a cast. This is where the Neynar API comes in, allowing us to fetch social data and map Farcaster IDs (FIDs) to wallet addresses without having to sift through raw Farcaster data. The contract call is still triggered through the mini-app by the current holder, only after the app determines the next recipient.
 
@@ -68,19 +68,20 @@ When the train holder creates a cast, we record its hash (unique ID).
 
 #### 2. Fetch Replies (or Likes) with Neynar
 
-```ts
 const castHash = '0x...'; // The original cast's hash
 const apiKey = process.env.NEYNAR_API_KEY!;
 
 export async function fetchReplies(): Promise<number[]> {
-  const res = await fetch(
-    `https://api.neynar.com/v2/farcaster/cast/replies?cast_hash=${castHash}`,
-    { headers: { 'x-api-key': apiKey } }
-  );
-  const data = await res.json();
-  return data.result.casts.map((c: any) => c.author.fid);
+const res = await fetch(
+`https://api.neynar.com/v2/farcaster/cast/replies?cast_hash=${castHash}`,
+{ headers: { 'x-api-key': apiKey } }
+);
+if (!res.ok) {
+throw new Error(`Neynar API returned ${res.status}: ${res.statusText}`);
 }
-```
+const data = await res.json();
+return data.result.casts.map((c: any) => c.author.fid);
+}
 
 #### 3. Map FIDs to Wallet Addresses
 

@@ -6,7 +6,7 @@ import { useState, useCallback } from 'react';
 export interface UseNextStopFlowResult {
   /**
    * Triggers the next stop orchestration for the ChooChoo train.
-   * Sends a POST request to /api/trigger-next-stop with the provided castHash.
+   * Sends a POST request to /api/send-train with the provided castHash.
    */
   sendTrain: () => Promise<void>;
   /** True if the request is in progress. */
@@ -17,6 +17,9 @@ export interface UseNextStopFlowResult {
   isError: boolean;
   /** Error message if the request failed, otherwise null. */
   error: string | null;
+  /** Resets the success and error state. */
+  reset: () => void;
+  loadingText: string | null;
 }
 
 /**
@@ -42,14 +45,14 @@ export function useNextStopFlow(castHash: string): UseNextStopFlowResult {
     setIsError(false);
     setError(null);
     try {
-      const res = await fetch('/api/trigger-next-stop', {
+      const res = await fetch('/api/send-train', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ castHash }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to trigger next stop');
+        throw new Error(data.error || 'Failed to send train');
       }
       setIsSuccess(true);
     } catch (e: unknown) {
@@ -60,11 +63,23 @@ export function useNextStopFlow(castHash: string): UseNextStopFlowResult {
     }
   }, [castHash]);
 
+  const reset = useCallback(() => {
+    setIsSuccess(false);
+    setIsError(false);
+    setError(null);
+  }, []);
+
+  const loadingText = isLoading
+    ? 'Choo-Choo is on the move... this could take a few seconds.'
+    : null;
+
   return {
     sendTrain,
     isLoading,
+    loadingText,
     isSuccess,
     isError,
     error,
+    reset,
   };
 }

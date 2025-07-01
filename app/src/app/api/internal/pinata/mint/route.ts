@@ -1,4 +1,6 @@
 /**
+ * INTERNAL ENDPOINT — Only callable by backend jobs/services. Never expose to frontend or users.
+ *
  * @fileoverview API route for minting NFT metadata and images to IPFS via Pinata.
  *
  * This route:
@@ -12,13 +14,17 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getSession } from '@/auth';
+//import { getSession } from '@/auth'; @todo: add auth
 import { PinataSDK } from 'pinata';
 import { z } from 'zod';
 
+if (!process.env.PINATA_JWT) {
+  throw new Error('PINATA_JWT environment variable is required');
+}
+
 const pinata = new PinataSDK({
-  pinataJwt: process.env.PINATA_JWT!,
-  pinataGateway: process.env.PINATA_GATEWAY, // @todo: need gateway?
+  pinataJwt: process.env.PINATA_JWT,
+  pinataGateway: process.env.PINATA_GATEWAY,
 });
 
 export const runtime = 'nodejs';
@@ -41,7 +47,7 @@ const mintSchema = z.object({
 });
 
 /**
- * POST /api/pinata/mint
+ * POST /api/internal/pinata/mint
  *
  * Uploads an NFT image and metadata to IPFS via Pinata.
  *
@@ -58,16 +64,34 @@ const mintSchema = z.object({
 export async function POST(request: Request) {
   try {
     // Auth: Only allow Farcaster-authenticated users
-    const session = await getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const ALLOWED_IMAGE_TYPES = ['image/png'];
 
     // parse multipart form data
     const formData = await request.formData();
     const imageFile = formData.get('image');
     if (!imageFile || !(imageFile instanceof File)) {
       return NextResponse.json({ error: 'Missing image file' }, { status: 400 });
+    }
+
+    // Validate file size
+    if (imageFile.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        {
+          error: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Validate file type
+    if (!ALLOWED_IMAGE_TYPES.includes(imageFile.type)) {
+      return NextResponse.json(
+        {
+          error: `Invalid file type. Allowed types: ${ALLOWED_IMAGE_TYPES.join(', ')}`,
+        },
+        { status: 400 }
+      );
     }
 
     // parse and validate metadata fields
@@ -106,10 +130,9 @@ export async function POST(request: Request) {
     };
 
     // upload metadata JSON to Pinata
-    const metadataUpload = await pinata.upload.public.json({
-      ...metadata,
-      name: 'metadata.json',
-    });
+    const metadataUpload = await pinata.upload.public
+      .json(metadata)
+      .name(`${validName}-metadata.json`);
     const metadataCid = metadataUpload.cid;
     const tokenURI = `ipfs://${metadataCid}`;
 
@@ -122,7 +145,17 @@ export async function POST(request: Request) {
       metadataCid,
     });
   } catch (error) {
-    console.error('Failed to mint and upload to Pinata:', error);
-    return NextResponse.json({ error: 'Failed to mint and upload to Pinata.' }, { status: 500 });
+    if (error instanceof Error) {
+      console.error('Failed to upload to Pinata:', error.message, error.stack);
+    } else {
+      console.error('Failed to upload to Pinata:', error);
+    }
+    return NextResponse.json(
+      {
+        error: 'Failed to upload to Pinata.',
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
   }
 }

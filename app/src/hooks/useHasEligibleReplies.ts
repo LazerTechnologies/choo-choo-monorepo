@@ -11,28 +11,47 @@ import { useEffect, useState } from 'react';
  * const hasReplies = useHasEligibleReplies(castHash);
  * if (hasReplies === false) return <div>No eligible replies.</div>;
  */
-export function useHasEligibleReplies(castHash: string | undefined): boolean | undefined {
+export function useHasEligibleReplies(castHash: string | undefined): {
+  hasReplies: boolean | undefined;
+  isLoading: boolean;
+  error: string | null;
+} {
   const [hasReplies, setHasReplies] = useState<boolean | undefined>(undefined);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!castHash) {
       setHasReplies(undefined);
+      setIsLoading(false);
+      setError(null);
       return;
     }
     let cancelled = false;
     setHasReplies(undefined);
+    setIsLoading(true);
+    setError(null);
+
     fetch(`/api/check-eligible-replies?castHash=${encodeURIComponent(castHash)}`)
       .then((res) => res.json())
       .then((data) => {
-        if (!cancelled) setHasReplies(Boolean(data.hasReplies));
+        if (!cancelled) {
+          setHasReplies(Boolean(data.hasReplies));
+          setIsLoading(false);
+        }
       })
-      .catch(() => {
-        if (!cancelled) setHasReplies(false);
+      .catch((err) => {
+        if (!cancelled) {
+          setHasReplies(false);
+          setIsLoading(false);
+          setError(err.message || 'Failed to check eligible replies');
+        }
       });
+
     return () => {
       cancelled = true;
     };
   }, [castHash]);
 
-  return hasReplies;
+  return { hasReplies, isLoading, error };
 }

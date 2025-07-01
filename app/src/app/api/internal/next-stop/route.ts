@@ -1,3 +1,4 @@
+/** INTERNAL ENDPOINT — Only callable by backend jobs/services. Never expose to frontend or users. */
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createWalletClient, http, isAddress, Address, type Abi, getContract } from 'viem';
@@ -24,6 +25,17 @@ const bodySchema = z.object({
   }),
 });
 
+const validateEnvironment = () => {
+  const missing = [];
+  if (!CHOOCHOO_TRAIN_ADDRESS) missing.push('CHOOCHOO_TRAIN_ADDRESS');
+  if (!ADMIN_PRIVATE_KEY) missing.push('ADMIN_PRIVATE_KEY');
+  if (!RPC_URL) missing.push('RPC_URL');
+
+  if (missing.length > 0) {
+    throw new Error(`Missing environment variables: ${missing.join(', ')}`);
+  }
+};
+
 /**
  * Internal-only endpoint to call nextStop on the contract using the admin key.
  * Only callable by backend jobs/services with the correct INTERNAL_SECRET header.
@@ -44,21 +56,7 @@ export async function POST(request: Request) {
     }
     const { recipient, tokenURI } = parsed.data as { recipient: Address; tokenURI: string };
 
-    if (!CHOOCHOO_TRAIN_ADDRESS) {
-      return NextResponse.json(
-        { error: 'Missing contract address: CHOOCHOO_TRAIN_ADDRESS is not set.' },
-        { status: 500 }
-      );
-    }
-    if (!ADMIN_PRIVATE_KEY) {
-      return NextResponse.json(
-        { error: 'Missing admin private key: ADMIN_PRIVATE_KEY is not set.' },
-        { status: 500 }
-      );
-    }
-    if (!RPC_URL) {
-      return NextResponse.json({ error: 'Missing RPC URL: RPC_URL is not set.' }, { status: 500 });
-    }
+    validateEnvironment();
 
     const chain = useMainnet ? base : baseSepolia;
 
