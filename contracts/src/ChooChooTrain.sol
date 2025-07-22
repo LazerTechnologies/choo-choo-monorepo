@@ -6,6 +6,7 @@ import "openzeppelin-contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "openzeppelin-contracts/access/Ownable.sol";
 import "openzeppelin-contracts/utils/Strings.sol";
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
+import "openzeppelin-contracts/metatx/ERC2771Context.sol";
 
 //@todo: set up for admin key on the backend that can call `nextStop` so the function is either manual or automated, and make sure it follows a game-flow as described in our convo on warpcast
 /*
@@ -21,7 +22,7 @@ If the train gets stuck, previous passengers can "yoink" the train after a certa
 @warpcast https://warpcast.com/jonbray.eth
 @email me@jonbray.dev
 */
-contract ChooChooTrain is ERC721Enumerable, Ownable {
+contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context {
     using Strings for uint256;
 
     // ========== TRACKING ========== //
@@ -105,7 +106,11 @@ contract ChooChooTrain is ERC721Enumerable, Ownable {
     /**
      * @notice Deploys the ChooChooTrain contract and mints the original train to the deployer.
      */
-    constructor() ERC721("ChooChooTrain", "CHOOCHOO") Ownable(msg.sender) {
+    constructor(address trustedForwarder)
+        ERC721("ChooChooTrain", "CHOOCHOO")
+        Ownable(msg.sender)
+        ERC2771Context(trustedForwarder)
+    {
         _safeMint(msg.sender, 0);
         lastTransferTimestamp = block.timestamp;
         hasBeenPassenger[msg.sender] = true;
@@ -390,7 +395,7 @@ contract ChooChooTrain is ERC721Enumerable, Ownable {
      * @param to The address to send the train to.
      */
     function yoink(address to) external onlyPreviousPassengers notInvalidAddress(to) {
-        (bool canYoink, string memory reason) = isYoinkable(msg.sender);
+        (bool canYoink, string memory reason) = isYoinkable(_msgSender());
         if (!canYoink) {
             revert NotEligibleToYoink(reason);
         }
@@ -405,7 +410,7 @@ contract ChooChooTrain is ERC721Enumerable, Ownable {
         trainJourney.push(to);
         emit TrainDeparted(from, to, block.timestamp);
         _stampTicket(from);
-        emit Yoink(msg.sender, to, block.timestamp);
+        emit Yoink(_msgSender(), to, block.timestamp);
     }
 
     // ========== METADATA ========== //
@@ -420,5 +425,17 @@ contract ChooChooTrain is ERC721Enumerable, Ownable {
         } else {
             return ticketData[tokenId].tokenURI;
         }
+    }
+
+    function _msgSender() internal view override(Context, ERC2771Context) returns (address sender) {
+        return ERC2771Context._msgSender();
+    }
+
+    function _msgData() internal view override(Context, ERC2771Context) returns (bytes calldata) {
+        return ERC2771Context._msgData();
+    }
+
+    function _contextSuffixLength() internal view override(Context, ERC2771Context) returns (uint256) {
+        return ERC2771Context._contextSuffixLength();
     }
 }

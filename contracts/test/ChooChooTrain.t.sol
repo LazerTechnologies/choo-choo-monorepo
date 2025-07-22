@@ -21,7 +21,7 @@ contract ChooChooTrainTest is Test {
 
     function setUp() public {
         vm.prank(owner);
-        train = new ChooChooTrain();
+        train = new ChooChooTrain(address(0));
     }
 
     function testInitialState() public view {
