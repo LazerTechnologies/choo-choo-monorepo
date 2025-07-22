@@ -9,6 +9,8 @@ import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 contract ChooChooTrainTest is Test {
     ChooChooTrain train;
     address owner = address(0x420);
+    address admin1 = address(0x111);
+    address admin2 = address(0x222);
     address passenger1 = address(0x001);
     address passenger2 = address(0x002);
     address passenger3 = address(0x003);
@@ -18,6 +20,8 @@ contract ChooChooTrainTest is Test {
     event TrainDeparted(address indexed from, address indexed to, uint256 timestamp);
     event TicketStamped(address indexed to, uint256 indexed tokenId, string traits);
     event Yoink(address indexed by, address indexed to, uint256 timestamp);
+    event AdminAdded(address indexed admin);
+    event AdminRemoved(address indexed admin);
 
     function setUp() public {
         vm.prank(owner);
@@ -38,8 +42,14 @@ contract ChooChooTrainTest is Test {
         assertEq(train.balanceOf(owner), 1); // owner has ticket
         assertEq(train.trainJourney(1), passenger1);
         assertTrue(train.hasBeenPassenger(passenger1));
-        // Ticket NFT for owner
+        // Ticket NFT for owner (but no metadata yet)
         assertEq(train.ownerOf(1), owner);
+
+        // Check that ticket has no metadata initially
+        (string memory tUri, string memory tImg, string memory tTraits) = train.ticketData(1);
+        assertEq(tUri, "");
+        assertEq(tImg, "");
+        assertEq(tTraits, "");
     }
 
     function testCannotSendToSelf() public {
@@ -193,5 +203,132 @@ contract ChooChooTrainTest is Test {
         vm.prank(owner);
         vm.expectRevert(bytes("No ERC20 tokens to withdraw"));
         train.withdrawERC20(address(mock));
+    }
+
+    function testOwnerIsInitialAdmin() public view {
+        address[] memory adminList = train.getAdmins();
+        assertEq(adminList.length, 1);
+        assertEq(adminList[0], owner);
+        assertTrue(train.hasRole(train.ADMIN_ROLE(), owner));
+    }
+
+    function testAddAdmin() public {
+        vm.prank(owner);
+        vm.expectEmit(true, false, false, false);
+        emit AdminAdded(admin1);
+        train.addAdmin(admin1);
+
+        assertTrue(train.hasRole(train.ADMIN_ROLE(), admin1));
+        address[] memory adminList = train.getAdmins();
+        assertEq(adminList.length, 2);
+        assertEq(adminList[1], admin1);
+    }
+
+    function testRemoveAdmin() public {
+        // Add admin first
+        vm.prank(owner);
+        train.addAdmin(admin1);
+
+        // Remove admin
+        vm.prank(owner);
+        vm.expectEmit(true, false, false, false);
+        emit AdminRemoved(admin1);
+        train.removeAdmin(admin1);
+
+        assertFalse(train.hasRole(train.ADMIN_ROLE(), admin1));
+        address[] memory adminList = train.getAdmins();
+        assertEq(adminList.length, 1);
+        assertEq(adminList[0], owner);
+    }
+
+    function testOnlyOwnerCanAddRemoveAdmins() public {
+        vm.prank(passenger1);
+        vm.expectRevert();
+        train.addAdmin(admin1);
+
+        vm.prank(owner);
+        train.addAdmin(admin1);
+
+        vm.prank(passenger1);
+        vm.expectRevert();
+        train.removeAdmin(admin1);
+    }
+
+    function testCannotAddExistingAdmin() public {
+        vm.prank(owner);
+        train.addAdmin(admin1);
+
+        vm.prank(owner);
+        vm.expectRevert(bytes("Already an admin"));
+        train.addAdmin(admin1);
+    }
+
+    function testCannotRemoveNonAdmin() public {
+        vm.prank(owner);
+        vm.expectRevert(bytes("Not an admin"));
+        train.removeAdmin(admin1);
+    }
+
+    function testSetTicketDataByAdmin() public {
+        // First create a ticket by moving the train
+        vm.prank(owner);
+        train.nextStop(passenger1);
+
+        // Admin sets ticket metadata
+        string memory uri = "ipfs://QmMetaHash";
+        string memory img = "ipfs://QmImageHash";
+        string memory traits = "ipfs://QmTraitsHash";
+
+        vm.prank(owner); // owner is admin
+        train.setTicketData(1, uri, img, traits);
+
+        (string memory tUri, string memory tImg, string memory tTraits) = train.ticketData(1);
+        assertEq(tUri, uri);
+        assertEq(tImg, img);
+        assertEq(tTraits, traits);
+    }
+
+    function testSetTicketDataByAddedAdmin() public {
+        // Add a new admin
+        vm.prank(owner);
+        train.addAdmin(admin1);
+
+        // Create a ticket
+        vm.prank(owner);
+        train.nextStop(passenger1);
+
+        // New admin sets ticket metadata
+        string memory uri = "ipfs://QmMetaHash";
+        string memory img = "ipfs://QmImageHash";
+        string memory traits = "ipfs://QmTraitsHash";
+
+        vm.prank(admin1);
+        train.setTicketData(1, uri, img, traits);
+
+        (string memory tUri, string memory tImg, string memory tTraits) = train.ticketData(1);
+        assertEq(tUri, uri);
+        assertEq(tImg, img);
+        assertEq(tTraits, traits);
+    }
+
+    function testOnlyAdminCanSetTicketData() public {
+        vm.prank(owner);
+        train.nextStop(passenger1);
+        // sorry normie
+        vm.prank(passenger1);
+        vm.expectRevert(bytes("Not an admin"));
+        train.setTicketData(1, "ipfs://test", "ipfs://img", "ipfs://traits");
+    }
+
+    function testCannotSetTicketDataForTrainNFT() public {
+        vm.prank(owner);
+        vm.expectRevert(bytes("Cannot update train NFT"));
+        train.setTicketData(0, "ipfs://test", "ipfs://img", "ipfs://traits");
+    }
+
+    function testCannotSetTicketDataForNonExistentToken() public {
+        vm.prank(owner);
+        vm.expectRevert(bytes("Token does not exist"));
+        train.setTicketData(999, "ipfs://test", "ipfs://img", "ipfs://traits");
     }
 }

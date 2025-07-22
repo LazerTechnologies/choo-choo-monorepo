@@ -7,6 +7,7 @@ import "openzeppelin-contracts/access/Ownable.sol";
 import "openzeppelin-contracts/utils/Strings.sol";
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 import "openzeppelin-contracts/metatx/ERC2771Context.sol";
+import "openzeppelin-contracts/access/AccessControl.sol";
 
 //@todo: set up for admin key on the backend that can call `nextStop` so the function is either manual or automated, and make sure it follows a game-flow as described in our convo on warpcast
 /*
@@ -22,7 +23,7 @@ If the train gets stuck, previous passengers can "yoink" the train after a certa
 @warpcast https://warpcast.com/jonbray.eth
 @email me@jonbray.dev
 */
-contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context {
+contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessControl {
     using Strings for uint256;
 
     // ========== TRACKING ========== //
@@ -59,6 +60,10 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context {
     address public previousPassenger;
     mapping(address => bool) public hasBeenPassenger;
 
+    // ========== ADMIN MANAGEMENT ========== //
+    bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
+    address[] public admins;
+
     // ========== EVENTS ========== //
     /// @dev Emitted when a previous holder receives a ticket NFT.
     event TicketStamped(address indexed to, uint256 indexed tokenId, string traits);
@@ -68,6 +73,9 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context {
 
     /// @dev Emitted when a previous passenger yoinks the train to a new address.
     event Yoink(address indexed by, address indexed to, uint256 timestamp);
+
+    event AdminAdded(address indexed admin);
+    event AdminRemoved(address indexed admin);
 
     // ========== ERRORS ========== //
     /// @dev Caller is not the owner nor approved for the token.
@@ -102,6 +110,11 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context {
         _;
     }
 
+    modifier onlyAdmin() {
+        require(hasRole(ADMIN_ROLE, _msgSender()), "Not an admin");
+        _;
+    }
+
     // ========== CONSTRUCTOR ========== //
     /**
      * @notice Deploys the ChooChooTrain contract and mints the original train to the deployer.
@@ -115,6 +128,9 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context {
         lastTransferTimestamp = block.timestamp;
         hasBeenPassenger[msg.sender] = true;
         trainJourney.push(msg.sender);
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(ADMIN_ROLE, msg.sender);
+        admins.push(msg.sender);
     }
 
     // ========== TRANSFER LOGIC ========== //
@@ -214,15 +230,11 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context {
      * @param to The address of the passenger receiving the ticket.
      */
     function _stampTicket(address to) internal notInvalidAddress(to) {
-        string memory defaultTokenURI = ""; // @todo: update when art is done
-        string memory defaultImage = ""; // @todo: update when art is done
-        string memory defaultTraits = "{}";
         uint256 tokenId = nextTicketId;
         _safeMint(to, tokenId);
-        ticketData[tokenId] = TicketData({tokenURI: defaultTokenURI, image: defaultImage, traits: defaultTraits});
         ticketMintedAt[tokenId] = block.timestamp;
         nextTicketId++;
-        emit TicketStamped(to, tokenId, defaultTraits);
+        emit TicketStamped(to, tokenId, "");
     }
 
     /**
@@ -413,6 +425,61 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context {
         emit Yoink(_msgSender(), to, block.timestamp);
     }
 
+    // ========== ADMIN CONTROLS ========== //
+    /**
+     * @notice Adds a new admin address.
+     * @param admin The address to grant admin role.
+     */
+    function addAdmin(address admin) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(!hasRole(ADMIN_ROLE, admin), "Already an admin");
+        _grantRole(ADMIN_ROLE, admin);
+        admins.push(admin);
+        emit AdminAdded(admin);
+    }
+
+    /**
+     * @notice Removes an admin address.
+     * @param admin The address to revoke admin role from.
+     */
+    function removeAdmin(address admin) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(hasRole(ADMIN_ROLE, admin), "Not an admin");
+        _revokeRole(ADMIN_ROLE, admin);
+
+        // Remove from admins array
+        for (uint256 i = 0; i < admins.length; i++) {
+            if (admins[i] == admin) {
+                admins[i] = admins[admins.length - 1];
+                admins.pop();
+                break;
+            }
+        }
+        emit AdminRemoved(admin);
+    }
+
+    /**
+     * @notice Returns all current admin addresses.
+     * @return Array of admin addresses.
+     */
+    function getAdmins() external view returns (address[] memory) {
+        return admins;
+    }
+
+    /**
+     * @notice Sets ticket metadata after minting. Only callable by admins.
+     * @param tokenId The ticket tokenId to update.
+     * @param fullTokenURI URL to the metadata JSON for the ticket.
+     * @param image URL to the image for the ticket.
+     * @param traits URL to the traits JSON for the ticket.
+     */
+    function setTicketData(uint256 tokenId, string memory fullTokenURI, string memory image, string memory traits)
+        external
+        onlyAdmin
+    {
+        require(tokenId != 0, "Cannot update train NFT");
+        require(_ownerOf(tokenId) != address(0), "Token does not exist");
+        ticketData[tokenId] = TicketData({tokenURI: fullTokenURI, image: image, traits: traits});
+    }
+
     // ========== METADATA ========== //
     /**
      * @notice Returns the tokenURI for a given tokenId (train or ticket).
@@ -437,5 +504,14 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context {
 
     function _contextSuffixLength() internal view override(Context, ERC2771Context) returns (uint256) {
         return ERC2771Context._contextSuffixLength();
+    }
+
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC721Enumerable, AccessControl)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
     }
 }
