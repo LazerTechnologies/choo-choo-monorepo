@@ -50,13 +50,13 @@ jobs:
       - name: Run Forge build
         run: |
           forge --version
-          forge build --sizes
+          FOUNDRY_DISABLE_NIGHTLY_WARNING=1 FOUNDRY_PROFILE=CI forge build --sizes
         id: build
         continue-on-error: true
         working-directory: contracts
 
       - name: Run Forge tests
         run: |
-          FOUNDRY_PROFILE=CI forge test -vvv
+          FOUNDRY_DISABLE_NIGHTLY_WARNING=1 FOUNDRY_PROFILE=CI forge test -vvv
         id: test
         working-directory: contracts

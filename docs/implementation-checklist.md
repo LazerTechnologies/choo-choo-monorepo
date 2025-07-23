@@ -26,9 +26,12 @@ To support gasless transactions with Coinbase Paymaster and allow the backend to
     3. Inside the function, update the `ticketData` mapping for the given `tokenId`.
 
 - [ ] **Modify `_stampTicket` to Only Mint:**
+
   - **Goal:** Separate the minting of the ticket from the setting of its metadata.
   - **How:**
     - In the `_stampTicket` function, remove the lines that set the `tokenURI`, `image`, and `traits`. The function should only be responsible for minting the new ticket NFT.
+
+- [ ] write scripts to set and manage admin accounts in the `/contracts/script` directory. place them all in one file, but have different function/contract/scripts for each of the actions
 
 ## 2. Backend API Development
 

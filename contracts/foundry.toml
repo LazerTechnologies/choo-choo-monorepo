@@ -28,6 +28,10 @@ fs_permissions = [
 # bytecode is typically unaffected past ~1 million runs anyway
 optimizer_runs = 99_999_999
 
+[profile.CI]
+# update solc version for OpenZeppelin compatibility in CI
+solc = '0.8.24'
+
 [rpc_endpoints]
 sepolia = "${SEPOLIA_RPC_URL}"
 mainnet = "${ETHEREUM_RPC_URL}"
