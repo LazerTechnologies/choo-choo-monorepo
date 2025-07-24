@@ -20,7 +20,7 @@
     "deploy:vercel": "node scripts/deploy.js",
     "cleanup": "lsof -ti :3000 | xargs kill -9",
     "tsc": "tsc --noEmit",
-    "test": "vitest"
+    "test": "cross-env NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS=0x0000000000000000000000000000000000000001 vitest"
   },
   "dependencies": {
     "@farcaster/auth-client": ">=0.3.0 <1.0.0",
@@ -45,6 +45,7 @@
     "clsx": "^2.1.1",
     "dotenv": "^16.4.7",
     "generator": "workspace:*",
+    "jsdom": "^26.1.0",
     "lucide-react": "^0.469.0",
     "mipd": "^0.0.7",
     "next": "^15",
@@ -67,6 +68,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cross-env": "^7.0.3",
     "crypto": "^1.0.1",
     "eslint": "^8",
     "eslint-config-next": "15.0.3",

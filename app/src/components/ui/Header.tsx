@@ -1,5 +1,4 @@
-'use client';
-
+import Image from 'next/image';
 import { useState } from 'react';
 import { APP_NAME } from '@/lib/constants';
 import sdk from '@farcaster/frame-sdk';
@@ -30,9 +29,11 @@ export function Header({ neynarUser }: HeaderProps) {
             }}
           >
             {context.user.pfpUrl && (
-              <img
+              <Image
                 src={context.user.pfpUrl}
                 alt="Profile"
+                width={40}
+                height={40}
                 className="w-10 h-10 rounded-full border-2 border-purple-500"
               />
             )}
