@@ -7,7 +7,10 @@
     "test": "vitest run",
     "build": "tsc",
     "prepublishOnly": "npm run build",
-    "generate-test-nfts": "ts-node src/generate-test-nfts.ts"
+    "generate-test-nfts": "ts-node src/generate-test-nfts.ts",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "keywords": [],
   "author": "Jon Bray <me@jonbray.dev>",
@@ -20,6 +23,8 @@
     "ts-node": "^10.9.1",
     "typescript": "^5.0.0",
     "vitest": "^3.2.4",
-    "@types/node": "^20.0.0"
+    "@types/node": "^20.0.0",
+    "eslint": "^8",
+    "prettier": "^3.6.2"
   }
 }
