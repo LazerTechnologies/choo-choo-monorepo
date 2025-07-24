@@ -1,9 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import {
-  composeImage,
-  collectionName,
-  collectionDescription,
-} from '../src/index';
+import { composeImage } from '../src/utils/compose';
+import { collectionName, collectionDescription } from '../src/config';
 import fs from 'fs/promises';
 import path from 'path';
 
