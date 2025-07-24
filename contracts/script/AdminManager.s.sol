@@ -5,16 +5,12 @@ import "forge-std/Script.sol";
 import {ChooChooTrain} from "../src/ChooChooTrain.sol";
 
 contract AdminManager is Script {
-    address[] adminsToAdd = [
-      0xef00A763368C98C361a9a30cE44D24c8Fed43844, // jon
-      0x0000000000000000000000000000000000000000, // garrett
-      0x0000000000000000000000000000000000000000, // yon
-    ];
-    address[] adminsToRemove = [
-      0xef00A763368C98C361a9a30cE44D24c8Fed43844, // jon
-      0x0000000000000000000000000000000000000000, // garrett
-      0x0000000000000000000000000000000000000000, // yon
-    ];
+    address jon = 0xef00A763368C98C361a9a30cE44D24c8Fed43844;
+    address garrett = 0x0000000000000000000000000000000000000001;
+    address yon = 0x0000000000000000000000000000000000000002;
+
+    address[] adminsToAdd = [jon, garrett, yon];
+    address[] adminsToRemove = [jon, garrett, yon];
 
     // forge script contracts/script/AdminManager.s.sol:addAdmin --fork-url $RPC_URL --broadcast --private-key $DEPLOYER_PRIVATE_KEY
     function addAdmin() public {
