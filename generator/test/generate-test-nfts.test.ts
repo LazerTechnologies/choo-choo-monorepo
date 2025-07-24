@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { composeImage } from '../src/utils/compose';
-import { collectionName, collectionDescription } from '../src/config';
-import fs from 'fs/promises';
-import path from 'path';
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { composeImage } from "../src/utils/compose";
+import { collectionName, collectionDescription } from "../src/config";
+import fs from "fs/promises";
+import path from "path";
 
-describe('Generate Test NFTs', () => {
-  const testOutputDir = path.join(__dirname, '../test-out');
-  const testImagesDir = path.join(testOutputDir, 'images');
-  const testMetadataDir = path.join(testOutputDir, 'metadata');
+describe("Generate Test NFTs", () => {
+  const testOutputDir = path.join(__dirname, "../test-out");
+  const testImagesDir = path.join(testOutputDir, "images");
+  const testMetadataDir = path.join(testOutputDir, "metadata");
 
   beforeEach(async () => {
     // Clean up any existing test output
@@ -27,16 +27,16 @@ describe('Generate Test NFTs', () => {
     }
   });
 
-  it('should export required functions and constants', () => {
+  it("should export required functions and constants", () => {
     expect(composeImage).toBeDefined();
-    expect(typeof composeImage).toBe('function');
+    expect(typeof composeImage).toBe("function");
     expect(collectionName).toBeDefined();
-    expect(typeof collectionName).toBe('string');
+    expect(typeof collectionName).toBe("string");
     expect(collectionDescription).toBeDefined();
-    expect(typeof collectionDescription).toBe('string');
+    expect(typeof collectionDescription).toBe("string");
   });
 
-  it('should generate a single NFT with valid image buffer and attributes', async () => {
+  it("should generate a single NFT with valid image buffer and attributes", async () => {
     const result = await composeImage();
 
     expect(result).toBeDefined();
@@ -50,14 +50,14 @@ describe('Generate Test NFTs', () => {
 
     // Verify attributes structure
     result.attributes.forEach((attr) => {
-      expect(attr).toHaveProperty('trait_type');
-      expect(attr).toHaveProperty('value');
-      expect(typeof attr.trait_type).toBe('string');
-      expect(typeof attr.value).toBe('string');
+      expect(attr).toHaveProperty("trait_type");
+      expect(attr).toHaveProperty("value");
+      expect(typeof attr.trait_type).toBe("string");
+      expect(typeof attr.value).toBe("string");
     });
   });
 
-  it('should create directories and generate test NFTs successfully', async () => {
+  it("should create directories and generate test NFTs successfully", async () => {
     const numTestNfts = 2; // Generate fewer for testing speed
 
     // Ensure output directories exist
@@ -93,7 +93,7 @@ describe('Generate Test NFTs', () => {
 
       // Verify metadata content
       const savedMetadata = JSON.parse(
-        await fs.readFile(metadataPath, 'utf-8')
+        await fs.readFile(metadataPath, "utf-8"),
       );
       expect(savedMetadata.name).toBe(`${collectionName} #${i}`);
       expect(savedMetadata.description).toBe(collectionDescription);
@@ -109,7 +109,7 @@ describe('Generate Test NFTs', () => {
     expect(metadataFiles).toHaveLength(numTestNfts);
   });
 
-  it('should handle errors gracefully during generation', async () => {
+  it("should handle errors gracefully during generation", async () => {
     // This is a basic smoke test - the actual error handling is in the generate-test-nfts.ts file
     // We just ensure the core composeImage function doesn't throw unexpectedly
     await expect(composeImage()).resolves.toBeDefined();

@@ -30,8 +30,7 @@ const overlayVariants = cva(
   }
 );
 
-type IDialogBackgroupProps = HTMLAttributes<HTMLDivElement> &
-  VariantProps<typeof overlayVariants>;
+type IDialogBackgroupProps = HTMLAttributes<HTMLDivElement> & VariantProps<typeof overlayVariants>;
 
 const DialogBackdrop = React.forwardRef<HTMLDivElement, IDialogBackgroupProps>(
   function DialogBackdrop(inputProps: IDialogBackgroupProps, forwardedRef) {
