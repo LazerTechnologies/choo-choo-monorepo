@@ -7,8 +7,8 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Jon Bray <me@jonbray.dev>",
+  "license": "MIT",
   "dependencies": {
     "@pinata/sdk": "^2.1.0",
     "canvas": "^3.1.2"
