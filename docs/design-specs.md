@@ -101,26 +101,27 @@ These are the main components to be built by composing elements from `components
 
 This is the required set of atomic components needed from the `retroUi` library to build the UI described above. Each should be simple, un-opinionated, and highly reusable.
 
-- [ ] **`Container.tsx`**: A `div` with standardized padding and max-width to wrap main page sections.
-- [ ] **`Card.tsx`**: A styled container with a border (pixelated style), subtle box-shadow, and border-radius. It should accept a `variant` prop (e.g., `default`, `highlighted`).
-- [ ] **`Button.tsx`**: The core action element.
+- [x] **`Container.tsx`**: A `div` with standardized padding and max-width to wrap main page sections.
+- [x] **`Card.tsx`**: A styled container with a border (pixelated style), subtle box-shadow, and border-radius. It should accept a `variant` prop (e.g., `default`, `highlighted`).
+- [x] **`Button.tsx`**: The core action element.
   - **Props:** `variant` (`primary`, `secondary`), `disabled`, `isLoading`.
   - **Appearance:** Pixelated borders, solid background color. Should have clear `:hover` and `:active` states.
-  - When `isLoading` is true, it should show a `Spinner` inside.
-- [ ] **`Typography.tsx`**: A single component to handle all text rendering.
+  - [x] When `isLoading` is true, it should show a `Spinner` inside.
+- [x] **`Text.tsx`**: A single component to handle all text rendering.
   - **Props:** `variant` (`h1`, `h2`, `body`, `caption`), `as` (to render as `h1`, `p`, `span`, etc.).
   - This ensures font consistency.
-- [ ] **`Avatar.tsx`**: Renders a user's profile picture.
+- [x] **`Avatar.tsx`**: Renders a user's profile picture.
   - **Props:** `src`, `size` (`sm`, `md`, `lg`).
   - **Appearance:** Should have a pixelated border or be rendered in a circle/square with a border.
-- [ ] **`Spinner.tsx`**: A simple loading indicator.
+- [x] **`Spinner.tsx`**: A simple loading indicator.
   - **Appearance:** Could be a classic spinning circle or a custom 8-bit animation (e.g., spinning train wheel).
-- [ ] **`Icon.tsx`**: For rendering small SVG icons (e.g., the train logo in the header).
-- [ ] **`Divider.tsx`**: A horizontal line to separate content sections. Should have a pixelated or dashed style.
-- [ ] **`Tooltip.tsx`**: A small popover that appears on hover to provide extra information. Essential for the "Yoink" button.
-- [ ] **`Image.tsx`**: A wrapper for the Next.js `<Image>` component with default styling (e.g., `width: 100%`, `height: auto`).
-- [ ] **`Modal.tsx`**: quick dialog for confirmations
-- [ ] **`Toast.tsx`**: lightweight notification. will pop up when async actions complete
+- [x] **`Icon.tsx`**: For rendering small SVG icons (e.g., the train logo in the header).
+- [x] **`Divider.tsx`**: A horizontal line to separate content sections. Should have a pixelated or dashed style.
+- [x] **`Tooltip.tsx`**: A small popover that appears on hover to provide extra information. Essential for the "Yoink" button.
+- [x] **`Image.tsx`**: A wrapper for the Next.js `<Image>` component with default styling (e.g., `width: 100%`, `height: auto`).
+- [x] **`Dialog.tsx`**: quick dialog for confirmations
+- [x] **`Toast.tsx`**: lightweight notification. will pop up when async actions complete
+- [x] **`Input.tsx`**: for admin to choose an address to send to, and for writing casts
 
 ---
 
