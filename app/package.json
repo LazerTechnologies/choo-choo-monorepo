@@ -24,6 +24,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "generator": "workspace:*",
     "@farcaster/auth-client": ">=0.3.0 <1.0.0",
     "@farcaster/auth-kit": ">=0.6.0 <1.0.0",
     "@farcaster/frame-core": ">=0.0.29 <1.0.0",
