@@ -23,7 +23,7 @@ import { useHasSolanaProvider } from './providers/SafeFarcasterSolanaProvider';
 import { ShareButton } from './ui/Share';
 
 import { config } from '@/components/providers/WagmiProvider';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/base/Button';
 import { truncateAddress } from '@/lib/truncateAddress';
 import { base, degen, mainnet, optimism, unichain } from 'wagmi/chains';
 import { BaseError, UserRejectedRequestError } from 'viem';
