@@ -1,37 +1,21 @@
 # ChooChoo Train Implementation Checklist
 
-This document outlines the next steps for completing the ChooChoo Train project. It's broken down into logical sections to help you focus on one area at a time.
-
 ## 1. Smart Contract Modifications
-
-To support gasless transactions with Coinbase Paymaster and allow the backend to securely manage NFT metadata, you'll need to make the following changes to `contracts/src/ChooChooTrain.sol`:
 
 - [x] **Integrate OpenZeppelin `ERC2771Context`:**
 
-  - **Goal:** Allow the contract to correctly identify the original user (the "sender") when a transaction is relayed by a gasless provider (the "forwarder").
-  - **How:**
-    1. Import `ERC2771Context.sol`: `import {ERC2771Context} from "openzeppelin-contracts/metatx/ERC2771Context.sol";`
-    2. Inherit from `ERC2771Context` in your contract definition: `contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context { ... }`
-    3. Update the `constructor` to accept a `trustedForwarder` address and pass it to the `ERC2771Context` constructor: `constructor(address trustedForwarder) ERC721("ChooChooTrain", "CHOOCHOO") Ownable(msg.sender) ERC2771Context(trustedForwarder) { ... }`
-    4. Override the `_msgSender()` and `_msgData()` functions to use the `ERC2771Context` implementation.
+  1. Import `ERC2771Context.sol`: `import {ERC2771Context} from "openzeppelin-contracts/metatx/ERC2771Context.sol";`
+  2. Inherit from `ERC2771Context` in your contract definition: `contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context { ... }`
+  3. Update the `constructor` to accept a `trustedForwarder` address and pass it to the `ERC2771Context` constructor: `constructor(address trustedForwarder) ERC721("ChooChooTrain", "CHOOCHOO") Ownable(msg.sender) ERC2771Context(trustedForwarder) { ... }`
+  4. Override the `_msgSender()` and `_msgData()` functions to use the `ERC2771Context` implementation.
 
 - [x] **Update `nextStop` and `yoink` to use `_msgSender()`:**
 
-- [ ] **Add a `setTicketData` Function for Backend Metadata Updates:**
+- [x] **Add a `setTicketData` Function for Backend Metadata Updates:**
 
-  - **Goal:** Create a secure, owner-only function that allows the backend to update a ticket's metadata _after_ it has been minted by the user.
-  - **How:**
-    1. Create a new function `setTicketData(uint256 tokenId, string memory fullTokenURI, string memory image, string memory traits)`
-    2. Mark it as `external` and `onlyOwner`.
-    3. Inside the function, update the `ticketData` mapping for the given `tokenId`.
+- [x] **Modify `_stampTicket` to Only Mint:**
 
-- [ ] **Modify `_stampTicket` to Only Mint:**
-
-  - **Goal:** Separate the minting of the ticket from the setting of its metadata.
-  - **How:**
-    - In the `_stampTicket` function, remove the lines that set the `tokenURI`, `image`, and `traits`. The function should only be responsible for minting the new ticket NFT.
-
-- [ ] write scripts to set and manage admin accounts in the `/contracts/script` directory. place them all in one file, but have different function/contract/scripts for each of the actions
+- [x] write scripts to set and manage admin accounts in the `/contracts/script` directory. place them all in one file, but have different function/contract/scripts for each of the actions
 
 ## 2. Backend API Development
 
@@ -77,6 +61,111 @@ This section focuses on creating the visual assets for the NFTs and uploading th
   - **How:**
     1. **Pinata SDK:** Use the Pinata SDK to upload the image and metadata JSON.
     2. **API Integration:** Integrate the IPFS upload logic into your `/api/pinata/mint` route.
+
+### 3.1 On-Demand Generation with HashLips Art Engine (Vercel-friendly)
+
+assuming <5 mints/day - Vercel backgrond function
+
+- [ ] **Project Structure & Assets**
+
+  1. **Add `/art/layers`** folder at the repo root; store trait PNGs here.
+  2. **Git Hygiene:**
+     - Commit only _low-res_ or placeholder layers.
+     - Add `art/output` and large binaries to `.gitignore` or Git LFS.
+  3. **Environment Variable:** `ART_LAYERS_PATH` → defaults to `process.cwd()/art/layers` for flexibility across local & CI.
+
+- [ ] **Install HashLips Art Engine**
+
+  ```bash
+  pnpm add -D @hashlips-lab/art-engine @napi-rs/canvas
+  ```
+
+  (`@napi-rs/canvas` bundles pre-built binaries → smaller Vercel uploads.)
+
+- [ ] **Create a Vercel Background Function**
+      Path: `app/api/internal/generate-art/route.ts`
+
+  - Exports a `POST` handler; body: `{ tokenId: number }`.
+  - Sets `runtime = "edge"` _false_ → forces Node (needed for native modules).
+  - Uses the snippet below to generate **one** edition:
+
+  ```ts
+  import {
+    ArtEngine,
+    inputs,
+    generators,
+    renderers,
+    exporters,
+  } from '@hashlips-lab/art-engine';
+  import pinata from '@pinata/sdk';
+
+  export const config = { runtime: 'nodejs' };
+
+  async function generateEdition(editionId: number) {
+    const ae = new ArtEngine({
+      cachePath: `/tmp/cache`,
+      outputPath: `/tmp/output`,
+      useCache: false,
+      inputs: {
+        traits: new inputs.ImageLayersInput({
+          assetsBasePath: process.env.ART_LAYERS_PATH!,
+        }),
+      },
+      generators: [
+        new generators.ImageLayersAttributesGenerator({
+          dataSet: 'traits',
+          startIndex: editionId,
+          endIndex: editionId,
+        }),
+      ],
+      renderers: [
+        new renderers.ImageLayersRenderer({ width: 2048, height: 2048 }),
+        new renderers.ItemAttributesRenderer(),
+      ],
+      exporters: [
+        new exporters.ImagesExporter(),
+        new exporters.Erc721MetadataExporter(),
+      ],
+    });
+    await ae.run();
+    return {
+      imagePath: `/tmp/output/images/${editionId}.png`,
+      metadataPath: `/tmp/output/json/${editionId}.json`,
+    };
+  }
+  ```
+
+- [ ] **Pinata Integration**
+
+  1. Install SDK: `pnpm add @pinata/sdk`.
+  2. Add env vars: `PINATA_JWT`, `PINATA_GATEWAY_URL`.
+  3. In the same route handler:
+     - Upload the PNG → receive `imageCID`.
+     - Patch `image` field inside metadata JSON with `ipfs://$imageCID/${editionId}.png`.
+     - Upload patched JSON → receive `metaCID`.
+     - Return `{ imageCID, metaCID }` in the HTTP response.
+
+- [ ] **Concurrency Safeguards**
+
+  1. Use `@upstash/redis` KV to store & increment `nextTokenId` atomically (`INCR`).
+  2. Store `dnaHash => tokenId` to prevent duplicates.
+
+- [ ] **Security & Access Control**
+
+  - Protect the endpoint with an HMAC header or Vercel Cron invocation token; only backend services should hit it.
+
+- [ ] **Testing**
+
+  1. Write a Vitest that mocks Pinata, hits the route 10×, and verifies:
+     - Unique DNA hashes.
+     - Valid IPFS CIDs returned.
+  2. Snapshot the metadata schema with `expect(metadata).toMatchSnapshot()`.
+
+- [ ] **Deployment Notes**
+
+  1. Vercel limits: 1024 MB RAM, 50 MB bundled code; `@napi-rs/canvas` keeps us under the cap.
+  2. Cold start ~2 s; acceptable for ≤5 mints/day.
+  3. No persistent disk; rely on `/tmp` only.
 
 ## 4. Frontend UI Development
 

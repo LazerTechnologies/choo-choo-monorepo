@@ -158,7 +158,6 @@ export function useChooChoo() {
     useTokenURI,
     useSymbol,
     useName,
-    // expose contract address and abi
     address: CHOOCHOO_TRAIN_ADDRESS,
     abi: ChooChooAbi,
   };
