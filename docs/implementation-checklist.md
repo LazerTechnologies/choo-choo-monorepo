@@ -43,23 +43,74 @@ The backend is the core of the application, orchestrating the train's movement, 
 - [x] **Implement Orchestration API Route (`/api/send-train`):**
   - **Goal:** Create the main entry point for the train's movement, orchestrating NFT generation and contract interaction.
   - **Status:** Done. This route now handles winner selection, calls the `generator` package, uploads to Pinata, and triggers the internal `nextStop` call.
-- [x] **Update Internal API Route (`/api/internal/next-stop`):**
-  - **Goal:** Provide a secure interface for contract interactions and `totalSupply` queries.
-  - **Status:** Done. Added `GET` for `totalSupply` and `POST` for `nextStop` transaction.
+- [x] **Update Internal API Routes (`/api/internal/next-stop/read` and `/api/internal/next-stop/execute`):**
+  - **Goal:** Provide secure interfaces for contract interactions and `totalSupply` queries using distinct endpoints.
+  - **Status:** Done. Created separate `/read` endpoint for `totalSupply` queries and `/execute` endpoint for `nextStop` transactions.
+
+## 2.5. Security and Reliability for `/api/send-train`
+
+This section addresses critical security and reliability concerns for the main orchestration API route to ensure production readiness.
+
+- [ ] **Authentication and Authorization:**
+
+  - **Goal:** Restrict access to authorized backend users only to prevent unauthorized train movements.
+  - **How:**
+    1. **API Key Authentication:** Implement API key validation using environment variables (e.g., `INTERNAL_API_KEY`).
+    2. **Request Validation:** Validate all incoming requests with proper input sanitization and type checking.
+    3. **Rate Limiting:** Implement per-IP rate limiting to prevent abuse and DoS attacks.
+    4. **CORS Configuration:** Restrict CORS to only allow requests from trusted domains.
+
+- [ ] **Idempotency Implementation:**
+
+  - **Goal:** Prevent duplicate processing on retries to avoid ghost tickets and double gas charges.
+  - **How:**
+    1. **Idempotency Keys:** Require a unique `idempotency-key` header in all requests.
+    2. **KV Store Tracking:** Use Vercel KV to store processed idempotency keys with TTL (e.g., 24 hours).
+    3. **Duplicate Detection:** Check for existing idempotency keys before processing and return cached results if found.
+    4. **Request Deduplication:** Implement proper request deduplication logic to handle concurrent requests.
+
+- [ ] **Retry and Rollback Mechanisms:**
+
+  - **Goal:** Handle failures gracefully from Pinata uploads or contract calls without leaving the system in an inconsistent state.
+  - **How:**
+    1. **Transaction State Tracking:** Use Vercel KV to track the state of each train movement (pending, processing, completed, failed).
+    2. **Pinata Upload Retry:** Implement exponential backoff retry logic for Pinata uploads with proper error handling.
+    3. **Contract Call Retry:** Implement retry logic for blockchain transactions with nonce management.
+    4. **Rollback Strategy:** If contract call fails after successful Pinata upload, implement cleanup logic to prevent orphaned metadata.
+    5. **Dead Letter Queue:** For permanently failed operations, log detailed error information for manual intervention.
+
+- [ ] **Error Handling and Logging:**
+
+  - **Goal:** Provide comprehensive error tracking and debugging capabilities.
+  - **How:**
+    1. **Structured Logging:** Implement structured logging with correlation IDs for each request.
+    2. **Error Classification:** Categorize errors (network, validation, contract, external service) for appropriate handling.
+    3. **Alerting:** Set up alerts for critical failures (contract call failures, Pinata upload failures).
+    4. **Audit Trail:** Log all train movements with timestamps, user info, and transaction hashes.
+
+- [ ] **Circuit Breaker Pattern:**
+  - **Goal:** Prevent cascading failures when external services are down.
+  - **How:**
+    1. **Pinata Circuit Breaker:** Implement circuit breaker for Pinata API calls to fail fast when service is unavailable.
+    2. **Blockchain Circuit Breaker:** Implement circuit breaker for RPC calls to prevent timeouts.
+    3. **Fallback Mechanisms:** Provide graceful degradation when external services are unavailable.
 
 ## 3. NFT Image and Metadata Generation
 
 This section covers the on-demand creation of NFT images and metadata using a dedicated `generator` package. This approach is optimized for a serverless environment like Vercel.
 
 - [x] **Create a dedicated `generator` package:**
+
   - **Goal:** Isolate all image and metadata generation logic from the Next.js frontend application.
   - **Status:** Done. A new `generator` package has been created in the monorepo root.
 
 - [x] **Add Artwork and Configure Git LFS:**
+
   - **Goal:** Store all raw art layers in the repository without bloating the Git history.
   - **Status:** Done. All artwork has been added to `generator/layers/`. Git LFS has been configured to track all `.png` and `.jpg` files, and the `.gitattributes` file is committed.
 
 - [x] **Implement Rarity and Trait Management:**
+
   - **Goal:** Create a flexible system for defining trait rarities that can be easily updated.
   - **Status:** Done. A `generator/rarities.json` file has been created to map each trait to a numerical weight. The composition logic reads this file directly.
 
@@ -123,6 +174,7 @@ This section outlines tasks to ensure the application is robust and maintainable
 This section outlines the key considerations for deploying the entire monorepo to Vercel.
 
 - [ ] **Vercel Project Configuration:**
+
   - **Goal:** Set up the Vercel project to correctly build and deploy the Next.js application from the monorepo.
   - **How:**
     1. Connect your GitHub repository to a new Vercel project.
@@ -130,6 +182,7 @@ This section outlines the key considerations for deploying the entire monorepo t
     3. Vercel should automatically detect that you are using pnpm and a workspace.
 
 - [ ] **Environment Variables:**
+
   - **Goal:** Securely provide all necessary API keys and secrets to the Vercel environment.
   - **How:**
     - In the Vercel project settings, add all required environment variables. This includes, but is not limited to:
@@ -140,6 +193,7 @@ This section outlines the key considerations for deploying the entire monorepo t
       - `SPONSOR_WALLET_PRIVATE_KEY`: The private key for your paymaster sponsor wallet.
 
 - [ ] **Handling Git LFS:**
+
   - **Goal:** Ensure the large image assets stored in Git LFS are available during the build and at runtime.
   - **How:**
     - No extra configuration is needed. Vercel has native support for Git LFS.

@@ -1,7 +1,6 @@
-/** INTERNAL ENDPOINT — Only callable by backend jobs/services. Never expose to frontend or users. */
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createPublicClient, http, isAddress, Address, type Abi, getContract, createWalletClient } from 'viem';
+import { http, isAddress, Address, type Abi, getContract, createWalletClient } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { base, baseSepolia } from 'wagmi/chains';
 import ChooChooTrainAbiJson from '@/abi/ChooChooTrain.abi.json';
@@ -9,6 +8,7 @@ import ChooChooTrainAbiJson from '@/abi/ChooChooTrain.abi.json';
 const ChooChooTrainAbi = ChooChooTrainAbiJson as Abi;
 
 const CHOOCHOO_TRAIN_ADDRESS = process.env.CHOOCHOO_TRAIN_ADDRESS as Address;
+/** @todo: remove admin private key in favor of paymaster */
 const ADMIN_PRIVATE_KEY = process.env.ADMIN_PRIVATE_KEY as `0x${string}`;
 const RPC_URL = process.env.RPC_URL as string;
 const useMainnet = process.env.USE_MAINNET === 'true';
@@ -36,40 +36,7 @@ const validateEnvironment = () => {
 };
 
 /**
- * GET /api/internal/next-stop
- * Internal-only endpoint to get the current total supply from the contract.
- */
-export async function GET(request: Request) {
-  try {
-    const secret = request.headers.get('x-internal-secret');
-    if (!INTERNAL_SECRET || secret !== INTERNAL_SECRET) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    validateEnvironment();
-
-    const chain = useMainnet ? base : baseSepolia;
-
-    const publicClient = createPublicClient({
-      chain,
-      transport: http(RPC_URL),
-    });
-
-    const totalSupply = await publicClient.readContract({
-      address: CHOOCHOO_TRAIN_ADDRESS,
-      abi: ChooChooTrainAbi,
-      functionName: 'totalSupply',
-    });
-
-    return NextResponse.json({ totalSupply: Number(totalSupply) });
-  } catch (error) {
-    console.error('Failed to get total supply:', error);
-    return NextResponse.json({ error: 'Failed to get total supply.' }, { status: 500 });
-  }
-}
-
-/**
- * POST /api/internal/next-stop
+ * POST /api/internal/next-stop/execute
  * Internal-only endpoint to call nextStop on the contract using the admin key.
  */
 export async function POST(request: Request) {
