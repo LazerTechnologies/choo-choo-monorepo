@@ -200,5 +200,3 @@ With the backend in place, you can now build out the user interface.
   - **How:**
     - Use the Vercel CLI to deploy your Next.js application.
     - Ensure all environment variables are set up correctly in your Vercel project.
-
-This checklist should provide a clear path forward. Good luck, and have fun building!
