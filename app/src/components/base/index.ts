@@ -9,5 +9,6 @@ export * from './Image';
 export * from './Input';
 export * from './Sonner';
 export * from './Spinner';
+export * from './Table';
 export * from './Text';
 export * from './Tooltip';
