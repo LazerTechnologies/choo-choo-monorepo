@@ -2,5 +2,10 @@
 build/
 dist/
 
+# Test output
+test-out/
+
 # Local development
 .env
+.env.*
+!.env.example

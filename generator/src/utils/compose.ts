@@ -1,7 +1,7 @@
 import { createCanvas, loadImage } from 'canvas';
 import fs from 'fs/promises';
 import path from 'path';
-import { baseDir, imageDimensions, layerOrder } from '../config';
+import { baseDir, imageDimensions, layerOrder, LayerName } from '../config';
 
 type RarityData = {
   [layerName: string]: {
@@ -18,12 +18,18 @@ export type NftAttribute = {
  * Selects a random trait for a given layer based on rarity weights.
  * @param layerName - The name of the layer to select a trait for.
  * @param rarities - The rarity data object.
- * @returns The filename of the selected trait.
+ * @returns An object containing the original filename and formatted name of the selected trait.
  */
-const selectTrait = (layerName: string, rarities: RarityData): string => {
+const selectTrait = (
+  layerName: LayerName,
+  rarities: RarityData
+): { originalName: string; formattedName: string } => {
   const traits = rarities[layerName];
   if (!traits) {
     throw new Error(`Layer ${layerName} not found in rarity data.`);
+  }
+  if (Object.keys(traits).length === 0) {
+    throw new Error(`Layer ${layerName} has no traits defined.`);
   }
 
   const totalWeight = Object.values(traits).reduce(
@@ -34,13 +40,24 @@ const selectTrait = (layerName: string, rarities: RarityData): string => {
 
   for (const [trait, weight] of Object.entries(traits)) {
     if (random < weight) {
-      return trait;
+      const formattedName = trait
+        .split('.')[0]
+        .replace(/[_-]/g, ' ')
+        .replace(/\b\w/g, (l) => l.toUpperCase());
+      return { originalName: trait, formattedName };
     }
     random -= weight;
   }
 
-  // Fallback in case of rounding errors
-  return Object.keys(traits)[0];
+  // fallback for rounding errors
+  const traitNames = Object.keys(traits);
+  const selectedTrait =
+    traitNames[Math.floor(Math.random() * traitNames.length)];
+  const formattedName = selectedTrait
+    .split('.')[0]
+    .replace(/[_-]/g, ' ')
+    .replace(/\b\w/g, (l) => l.toUpperCase());
+  return { originalName: selectedTrait, formattedName };
 };
 
 /**
@@ -53,31 +70,94 @@ export const composeImage = async (): Promise<{
   attributes: NftAttribute[];
 }> => {
   const rarityDataPath = path.join(baseDir, 'rarities.json');
-  const rarities: RarityData = JSON.parse(
-    await fs.readFile(rarityDataPath, 'utf-8')
-  );
+
+  let rarities: RarityData;
+
+  try {
+    const fileContent = await fs.readFile(rarityDataPath, 'utf-8');
+    rarities = JSON.parse(fileContent);
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw new Error(`Invalid JSON in rarities.json: ${error.message}`);
+    }
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      throw new Error(`rarities.json not found at ${rarityDataPath}`);
+    }
+    throw new Error(
+      `Failed to read rarities.json: ${
+        error instanceof Error ? error.message : 'Unknown error'
+      }`
+    );
+  }
+
+  // Validate rarity data structure
+  if (!rarities || typeof rarities !== 'object') {
+    throw new Error('rarities.json must contain a valid object');
+  }
+
+  // Validate that all required layers exist in rarity data
+  for (const layer of layerOrder) {
+    if (!(layer in rarities)) {
+      throw new Error(`Layer "${layer}" is missing from rarities.json`);
+    }
+
+    const layerTraits = rarities[layer];
+    if (!layerTraits || typeof layerTraits !== 'object') {
+      throw new Error(
+        `Layer "${layer}" in rarities.json must contain a valid object`
+      );
+    }
+
+    if (Object.keys(layerTraits).length === 0) {
+      throw new Error(
+        `Layer "${layer}" in rarities.json has no traits defined`
+      );
+    }
+
+    // Validate that all trait weights are numbers
+    for (const [traitName, weight] of Object.entries(layerTraits)) {
+      if (typeof weight !== 'number' || weight < 0) {
+        throw new Error(
+          `Invalid weight for trait "${traitName}" in layer "${layer}": must be a non-negative number`
+        );
+      }
+    }
+  }
 
   const canvas = createCanvas(imageDimensions.width, imageDimensions.height);
   const ctx = canvas.getContext('2d');
 
   const attributes: NftAttribute[] = [];
-  const selectedTraits: { layer: string; trait: string }[] = [];
+  const selectedTraits: {
+    layer: LayerName;
+    originalName: string;
+    formattedName: string;
+  }[] = [];
 
   // Select a trait for each layer based on the defined order and rarity
   for (const layer of layerOrder) {
-    const trait = selectTrait(layer.name, rarities);
-    selectedTraits.push({ layer: layer.name, trait });
+    const traitData = selectTrait(layer, rarities);
+    selectedTraits.push({ layer, ...traitData });
     attributes.push({
-      trait_type: layer.name,
-      value: trait.split('.')[0].replace(/_/g, ' '), // Format trait name for metadata
+      trait_type: layer,
+      value: traitData.formattedName, // Use formatted name for metadata
     });
   }
 
   // Draw each selected trait onto the canvas in the correct order
-  for (const { layer, trait } of selectedTraits) {
-    const imagePath = path.join(baseDir, 'layers', layer, trait);
-    const image = await loadImage(imagePath);
-    ctx.drawImage(image, 0, 0, imageDimensions.width, imageDimensions.height);
+  for (const { layer, originalName, formattedName } of selectedTraits) {
+    const imagePath = path.join(baseDir, 'layers', layer, originalName);
+
+    try {
+      const image = await loadImage(imagePath);
+      ctx.drawImage(image, 0, 0, imageDimensions.width, imageDimensions.height);
+    } catch (error) {
+      throw new Error(
+        `Failed to load image for layer "${layer}", trait "${formattedName}" at ${imagePath}: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`
+      );
+    }
   }
 
   const imageBuffer = canvas.toBuffer('image/png');

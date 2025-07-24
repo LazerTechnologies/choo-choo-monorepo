@@ -37,7 +37,7 @@
     "tsc": {
       "outputs": []
     },
-    "generate:test": {
+    "generate:demo": {
       "outputs": ["generator/out/**"],
       "inputs": ["generator/layers/**", "generator/rarities.json"],
       "dependsOn": ["generator#build"]

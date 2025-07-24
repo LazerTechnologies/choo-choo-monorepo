@@ -1,4 +1,21 @@
 {
   "buildCommand": "next build",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "functions": {
+    "app/api/send-train/route.ts": {
+      "maxDuration": 60,
+      "memory": 3008,
+      "regions": ["iad1"]
+    },
+    "app/api/internal/next-stop/read/route.ts": {
+      "maxDuration": 30,
+      "memory": 3008,
+      "regions": ["iad1"]
+    },
+    "app/api/internal/next-stop/execute/route.ts": {
+      "maxDuration": 30,
+      "memory": 3008,
+      "regions": ["iad1"]
+    }
+  }
 }

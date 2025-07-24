@@ -94,7 +94,7 @@ async function fetchRepliesAndReactions(
  * - Filters for replies with a valid primary wallet address.
  * - Selects the reply with the most reactions as the winner.
  * - Generates a unique NFT image and metadata using the `generator` package.
- * - Uploads assets to Pinata and calls /api/internal/next-stop with the winner's address and tokenURI.
+ * - Uploads assets to Pinata and calls /api/internal/next-stop/execute with the winner's address and tokenURI.
  *
  * @param request - The HTTP request object (expects JSON body with castHash).
  * @returns 200 with { success: true, winner } on success, or 400/500 with error message.
@@ -132,7 +132,8 @@ export async function POST(request: Request) {
     }
 
     // 3. Get the next token ID from our contract
-    const totalSupplyRes = await fetch(`${APP_URL}/api/internal/next-stop`, {
+    // @todo: Add KV store-based fetching to prevent unlikely race conditions and avoid RPC misuse
+    const totalSupplyRes = await fetch(`${APP_URL}/api/internal/next-stop/read`, {
       headers: {
         'x-internal-secret': INTERNAL_SECRET,
       },
@@ -154,7 +155,7 @@ export async function POST(request: Request) {
     const tokenURI = `ipfs://${metadataCid}`;
 
     // 7. Call the internal endpoint to execute the on-chain transaction
-    const nextStopRes = await fetch(`${APP_URL}/api/internal/next-stop`, {
+    const nextStopRes = await fetch(`${APP_URL}/api/internal/next-stop/execute`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -165,7 +166,7 @@ export async function POST(request: Request) {
 
     if (!nextStopRes.ok) {
       const data = await nextStopRes.json().catch(() => ({}));
-      throw new Error(data.error || 'Failed to call internal/next-stop');
+      throw new Error(data.error || 'Failed to call internal/next-stop/execute');
     }
 
     return NextResponse.json({ success: true, winner: winnerAddress, tokenURI });
