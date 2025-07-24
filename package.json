@@ -13,7 +13,8 @@
     "clean": "turbo clean",
     "anvil": "turbo anvil",
     "extract-abi": "turbo run extract-abi",
-    "tsc": "turbo run tsc"
+    "tsc": "turbo run tsc",
+    "generate:test": "pnpm --filter generator generate-test-nfts"
   },
   "keywords": [
     "farcaster",

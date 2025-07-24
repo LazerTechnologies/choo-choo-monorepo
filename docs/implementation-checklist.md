@@ -40,132 +40,35 @@ The backend is the core of the application, orchestrating the train's movement, 
     2. **API Routes:**
     - Create a `POST` route (e.g., `/api/internal/set-cast-hash`) to store the cast hash.
     - Create a `GET` route (e.g., `/api/get-cast-hash`) to retrieve the cast hash.
-- [ ] **Implement Remaining API Routes:**
-  - **Goal:** Build out the remaining API routes as defined in the documentation.
-  - **How:**
-    - `/api/trigger-next-stop`: This will be the main entry point for the user to trigger the train's movement. It should authenticate the user, verify they are the current holder, and then trigger the backend orchestration.
-    - `/api/pinata/mint`: This route will handle the image and metadata uploads to Pinata.
-    - `/api/next-stop`: This internal route will call the contract's `nextStop` function.
+- [x] **Implement Orchestration API Route (`/api/send-train`):**
+  - **Goal:** Create the main entry point for the train's movement, orchestrating NFT generation and contract interaction.
+  - **Status:** Done. This route now handles winner selection, calls the `generator` package, uploads to Pinata, and triggers the internal `nextStop` call.
+- [x] **Update Internal API Route (`/api/internal/next-stop`):**
+  - **Goal:** Provide a secure interface for contract interactions and `totalSupply` queries.
+  - **Status:** Done. Added `GET` for `totalSupply` and `POST` for `nextStop` transaction.
 
-## 3. NFT Image and Metadata
+## 3. NFT Image and Metadata Generation
 
-This section focuses on creating the visual assets for the NFTs and uploading them to IPFS.
+This section covers the on-demand creation of NFT images and metadata using a dedicated `generator` package. This approach is optimized for a serverless environment like Vercel.
 
-- [ ] **Image Composition:**
-  - **Goal:** Combine trait images to create the final NFT image.
-  - **How:**
-    1. **Image Library:** Use a library like `sharp` or `canvas` in a Node.js environment to composite the images.
-    2. **API Route:** Create an API route (e.g., `/api/internal/compose-image`) that takes the traits as input and returns the composed image.
-- [ ] **IPFS Upload:**
-  - **Goal:** Upload the composed image and metadata to IPFS.
-  - **How:**
-    1. **Pinata SDK:** Use the Pinata SDK to upload the image and metadata JSON.
-    2. **API Integration:** Integrate the IPFS upload logic into your `/api/pinata/mint` route.
+- [x] **Create a dedicated `generator` package:**
+  - **Goal:** Isolate all image and metadata generation logic from the Next.js frontend application.
+  - **Status:** Done. A new `generator` package has been created in the monorepo root.
 
-### 3.1 On-Demand Generation with HashLips Art Engine (Vercel-friendly)
+- [x] **Add Artwork and Configure Git LFS:**
+  - **Goal:** Store all raw art layers in the repository without bloating the Git history.
+  - **Status:** Done. All artwork has been added to `generator/layers/`. Git LFS has been configured to track all `.png` and `.jpg` files, and the `.gitattributes` file is committed.
 
-assuming <5 mints/day - Vercel backgrond function
+- [x] **Implement Rarity and Trait Management:**
+  - **Goal:** Create a flexible system for defining trait rarities that can be easily updated.
+  - **Status:** Done. A `generator/rarities.json` file has been created to map each trait to a numerical weight. The composition logic reads this file directly.
 
-- [ ] **Project Structure & Assets**
-
-  1. **Add `/art/layers`** folder at the repo root; store trait PNGs here.
-  2. **Git Hygiene:**
-     - Commit only _low-res_ or placeholder layers.
-     - Add `art/output` and large binaries to `.gitignore` or Git LFS.
-  3. **Environment Variable:** `ART_LAYERS_PATH` → defaults to `process.cwd()/art/layers` for flexibility across local & CI.
-
-- [ ] **Install HashLips Art Engine**
-
-  ```bash
-  pnpm add -D @hashlips-lab/art-engine @napi-rs/canvas
-  ```
-
-  (`@napi-rs/canvas` bundles pre-built binaries → smaller Vercel uploads.)
-
-- [ ] **Create a Vercel Background Function**
-      Path: `app/api/internal/generate-art/route.ts`
-
-  - Exports a `POST` handler; body: `{ tokenId: number }`.
-  - Sets `runtime = "edge"` _false_ → forces Node (needed for native modules).
-  - Uses the snippet below to generate **one** edition:
-
-  ```ts
-  import {
-    ArtEngine,
-    inputs,
-    generators,
-    renderers,
-    exporters,
-  } from '@hashlips-lab/art-engine';
-  import pinata from '@pinata/sdk';
-
-  export const config = { runtime: 'nodejs' };
-
-  async function generateEdition(editionId: number) {
-    const ae = new ArtEngine({
-      cachePath: `/tmp/cache`,
-      outputPath: `/tmp/output`,
-      useCache: false,
-      inputs: {
-        traits: new inputs.ImageLayersInput({
-          assetsBasePath: process.env.ART_LAYERS_PATH!,
-        }),
-      },
-      generators: [
-        new generators.ImageLayersAttributesGenerator({
-          dataSet: 'traits',
-          startIndex: editionId,
-          endIndex: editionId,
-        }),
-      ],
-      renderers: [
-        new renderers.ImageLayersRenderer({ width: 2048, height: 2048 }),
-        new renderers.ItemAttributesRenderer(),
-      ],
-      exporters: [
-        new exporters.ImagesExporter(),
-        new exporters.Erc721MetadataExporter(),
-      ],
-    });
-    await ae.run();
-    return {
-      imagePath: `/tmp/output/images/${editionId}.png`,
-      metadataPath: `/tmp/output/json/${editionId}.json`,
-    };
-  }
-  ```
-
-- [ ] **Pinata Integration**
-
-  1. Install SDK: `pnpm add @pinata/sdk`.
-  2. Add env vars: `PINATA_JWT`, `PINATA_GATEWAY_URL`.
-  3. In the same route handler:
-     - Upload the PNG → receive `imageCID`.
-     - Patch `image` field inside metadata JSON with `ipfs://$imageCID/${editionId}.png`.
-     - Upload patched JSON → receive `metaCID`.
-     - Return `{ imageCID, metaCID }` in the HTTP response.
-
-- [ ] **Concurrency Safeguards**
-
-  1. Use `@upstash/redis` KV to store & increment `nextTokenId` atomically (`INCR`).
-  2. Store `dnaHash => tokenId` to prevent duplicates.
-
-- [ ] **Security & Access Control**
-
-  - Protect the endpoint with an HMAC header or Vercel Cron invocation token; only backend services should hit it.
-
-- [ ] **Testing**
-
-  1. Write a Vitest that mocks Pinata, hits the route 10×, and verifies:
-     - Unique DNA hashes.
-     - Valid IPFS CIDs returned.
-  2. Snapshot the metadata schema with `expect(metadata).toMatchSnapshot()`.
-
-- [ ] **Deployment Notes**
-
-  1. Vercel limits: 1024 MB RAM, 50 MB bundled code; `@napi-rs/canvas` keeps us under the cap.
-  2. Cold start ~2 s; acceptable for ≤5 mints/day.
-  3. No persistent disk; rely on `/tmp` only.
+- [x] **Implement Core Generation Logic in TypeScript:**
+  - **Goal:** Write clean, well-typed, and maintainable code for composing images and uploading them to IPFS.
+  - **Status:** Done. The following files have been implemented:
+    - `src/config.ts`: Defines layer order, image dimensions, and collection metadata.
+    - `src/utils/compose.ts`: Contains the logic to select traits based on rarity and compose the final image using `canvas`.
+    - `src/utils/pinata.ts`: Contains helper functions to upload image buffers and metadata JSON to Pinata.
 
 ## 4. Frontend UI Development
 
@@ -200,3 +103,50 @@ With the backend in place, you can now build out the user interface.
   - **How:**
     - Use the Vercel CLI to deploy your Next.js application.
     - Ensure all environment variables are set up correctly in your Vercel project.
+
+## 6. Operational Readiness
+
+This section outlines tasks to ensure the application is robust and maintainable in a production environment.
+
+- [ ] **Robust Error Handling & Logging:**
+  - **Goal:** Implement comprehensive error handling and structured logging across all backend services.
+  - **How:** Ensure all API routes and the `generator` package log errors effectively, potentially integrating with a centralized logging service.
+- [ ] **Monitoring & Alerting:**
+  - **Goal:** Set up systems to proactively monitor application health and alert on issues.
+  - **How:** Implement monitoring for API response times, error rates, and successful external service interactions (Pinata, Neynar, blockchain).
+- [ ] **Rate Limiting:**
+  - **Goal:** Protect public API endpoints from abuse and ensure fair usage.
+  - **How:** Implement rate limiting on public-facing API routes (e.g., `/api/send-train`) to prevent excessive requests.
+
+## 7. Deployment on Vercel
+
+This section outlines the key considerations for deploying the entire monorepo to Vercel.
+
+- [ ] **Vercel Project Configuration:**
+  - **Goal:** Set up the Vercel project to correctly build and deploy the Next.js application from the monorepo.
+  - **How:**
+    1. Connect your GitHub repository to a new Vercel project.
+    2. In the project settings, set the "Root Directory" to `app`. This tells Vercel to run the build from within your Next.js app directory.
+    3. Vercel should automatically detect that you are using pnpm and a workspace.
+
+- [ ] **Environment Variables:**
+  - **Goal:** Securely provide all necessary API keys and secrets to the Vercel environment.
+  - **How:**
+    - In the Vercel project settings, add all required environment variables. This includes, but is not limited to:
+      - `PINATA_JWT`: For authenticating with the Pinata IPFS service.
+      - `NEYNAR_API_KEY`: For Farcaster interactions.
+      - `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`: For Vercel KV.
+      - `YOUR_RPC_URL`: An RPC endpoint for your chosen blockchain.
+      - `SPONSOR_WALLET_PRIVATE_KEY`: The private key for your paymaster sponsor wallet.
+
+- [ ] **Handling Git LFS:**
+  - **Goal:** Ensure the large image assets stored in Git LFS are available during the build and at runtime.
+  - **How:**
+    - No extra configuration is needed. Vercel has native support for Git LFS.
+    - As long as your `.gitattributes` file is committed to the repository, Vercel's build process will automatically detect it, download the LFS objects, and make the full-resolution images in `generator/layers` available to your serverless functions.
+
+- [ ] **Verify Serverless Function Operation:**
+  - **Goal:** Confirm that the API routes, especially the new `/api/generate-nft` route, are functioning correctly in the deployed environment.
+  - **How:**
+    - After deployment, use the Vercel dashboard logs to monitor the execution of your serverless functions.
+    - Trigger the `generate-nft` flow and check the logs for any errors related to file access, canvas operations, or API calls to Pinata.

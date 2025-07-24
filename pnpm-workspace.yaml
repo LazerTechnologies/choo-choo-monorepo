@@ -1,4 +1,7 @@
 packages:
-  - 'app'
-  - 'contracts'
-  - 'generator'
+  - app
+  - contracts
+  - generator
+
+onlyBuiltDependencies:
+  - canvas

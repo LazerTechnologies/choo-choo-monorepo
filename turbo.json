@@ -36,6 +36,11 @@
     },
     "tsc": {
       "outputs": []
+    },
+    "generate:test": {
+      "outputs": ["generator/out/**"],
+      "inputs": ["generator/layers/**", "generator/rarities.json"],
+      "dependsOn": ["generator#build"]
     }
   }
 }

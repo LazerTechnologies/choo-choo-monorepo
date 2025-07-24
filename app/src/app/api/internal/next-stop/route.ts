@@ -1,7 +1,7 @@
 /** INTERNAL ENDPOINT — Only callable by backend jobs/services. Never expose to frontend or users. */
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createWalletClient, http, isAddress, Address, type Abi, getContract } from 'viem';
+import { createPublicClient, http, isAddress, Address, type Abi, getContract, createWalletClient } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { base, baseSepolia } from 'wagmi/chains';
 import ChooChooTrainAbiJson from '@/abi/ChooChooTrain.abi.json';
@@ -28,7 +28,6 @@ const bodySchema = z.object({
 const validateEnvironment = () => {
   const missing = [];
   if (!CHOOCHOO_TRAIN_ADDRESS) missing.push('CHOOCHOO_TRAIN_ADDRESS');
-  if (!ADMIN_PRIVATE_KEY) missing.push('ADMIN_PRIVATE_KEY');
   if (!RPC_URL) missing.push('RPC_URL');
 
   if (missing.length > 0) {
@@ -37,13 +36,44 @@ const validateEnvironment = () => {
 };
 
 /**
- * Internal-only endpoint to call nextStop on the contract using the admin key.
- * Only callable by backend jobs/services with the correct INTERNAL_SECRET header.
+ * GET /api/internal/next-stop
+ * Internal-only endpoint to get the current total supply from the contract.
  */
-// @todo security: allowlist, rate limiting, logging
+export async function GET(request: Request) {
+  try {
+    const secret = request.headers.get('x-internal-secret');
+    if (!INTERNAL_SECRET || secret !== INTERNAL_SECRET) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    validateEnvironment();
+
+    const chain = useMainnet ? base : baseSepolia;
+
+    const publicClient = createPublicClient({
+      chain,
+      transport: http(RPC_URL),
+    });
+
+    const totalSupply = await publicClient.readContract({
+      address: CHOOCHOO_TRAIN_ADDRESS,
+      abi: ChooChooTrainAbi,
+      functionName: 'totalSupply',
+    });
+
+    return NextResponse.json({ totalSupply: Number(totalSupply) });
+  } catch (error) {
+    console.error('Failed to get total supply:', error);
+    return NextResponse.json({ error: 'Failed to get total supply.' }, { status: 500 });
+  }
+}
+
+/**
+ * POST /api/internal/next-stop
+ * Internal-only endpoint to call nextStop on the contract using the admin key.
+ */
 export async function POST(request: Request) {
   try {
-    // Internal secret check
     const secret = request.headers.get('x-internal-secret');
     if (!INTERNAL_SECRET || secret !== INTERNAL_SECRET) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -57,10 +87,10 @@ export async function POST(request: Request) {
     const { recipient, tokenURI } = parsed.data as { recipient: Address; tokenURI: string };
 
     validateEnvironment();
+    if (!ADMIN_PRIVATE_KEY) throw new Error('Missing ADMIN_PRIVATE_KEY');
 
     const chain = useMainnet ? base : baseSepolia;
 
-    // set up the wallet client
     const account = privateKeyToAccount(ADMIN_PRIVATE_KEY);
     const client = createWalletClient({
       account,
@@ -68,18 +98,13 @@ export async function POST(request: Request) {
       transport: http(RPC_URL),
     });
 
-    // set up contract instance
     const contract = getContract({
       address: CHOOCHOO_TRAIN_ADDRESS,
       abi: ChooChooTrainAbi,
       client,
     });
 
-    // call nextStop
     const hash = await contract.write.nextStop([recipient, tokenURI]);
-
-    // @todo: pass this along with token data to db for train journey tracking
-    // @todo: add logging, monitoring, and error alerting
 
     return NextResponse.json({ success: true, txHash: hash });
   } catch (error) {
