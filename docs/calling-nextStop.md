@@ -110,6 +110,6 @@ function pickRandom<T>(arr: T[]): T {
 
 #### 5. Call `nextStop` from the Backend
 
-See [backend orchestration overview](/docs/nextStop-backend-orchestration.md) for more details.
+See [ChooChoo Journey: System Docs](./nextStop-flow.md) for more details on the backend orchestration.
 
 ---

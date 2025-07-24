@@ -9,7 +9,7 @@ Choo-Choo is more than a train, Choo-Choo is a social experiment on Base and Far
 This project is an homage to [The Worm](https://theworm.wtf). Some say they can hear the ghost of The Worm as Choo-Choo puffs along the tracks.
 
 - Art by: [@yonfrula](https://warpcast.com/yonfrula)
-- Contracts by: [@jonbray.eth](https://warpcast.com/jonbray.eth)
+- Code by: [@jonbray.eth](https://warpcast.com/jonbray.eth)
 
 ## Getting Started
 
@@ -40,22 +40,23 @@ The root `package.json` contains scripts for orchestrating common tasks and ABI 
 
 ```t
 choo-choo-monorepo/
-├── app/                # Farcaster mini-app
-│   ├── abi/            # Contract ABIs
-│   ├── environments/   # Environment configs (testnet, mainnet)
-│   ├── public/
+├── app/                # Farcaster mini-app (Next.js)
+│   ├── abi/
 │   ├── src/
 │   ├── ...
 ├── contracts/          # Foundry smart contracts
-│   ├── src/            # Solidity contracts
-│   ├── script/         # Deployment/interaction scripts
-│   ├── test/           # Contract tests
-│   ├── out/            # Foundry build output
+│   ├── src/
+│   ├── script/
+│   ├── test/
+│   ├── ...
+├── generator/          # NFT Image & Metadata Generator
+│   ├── layers/         # Raw PNG art layers
+│   ├── src/            # Image composition & IPFS upload logic
 │   ├── ...
 ├── scripts/            # Cross-project scripts
-├── package.json        # Root package.json (pnpm workspaces, turbo scripts)
-├── pnpm-workspace.yaml # pnpm workspace config
-├── turbo.json          # Turborepo config
+├── package.json
+├── pnpm-workspace.yaml
+├── turbo.json
 ```
 
 ---
@@ -64,65 +65,62 @@ choo-choo-monorepo/
 
 ```mermaid
 flowchart LR
+  %% User
+  User["User"] -->|"'Choo Choo!'"| FE
+
   %% Frontend
   subgraph Frontend
     FE["Mini-app"]
-    UIUX["User Interface"]
-    FE -->|"Fetch cast hash"| KV["KV Store"]
-    FE --> UIUX
-    FE -->|"Trigger next stop"| BE["Backend API"]
   end
 
   %% Backend
-  subgraph Backend
-    BE["Backend API"]
-    WIN["Winner Selection Logic"]
-    META["Metadata/Image Generator"]
-    BE -->|"Fetch cast hash"| KV
-    BE -->|"Fetch replies & reactions"| Neynar[Neynar API]
-    BE --> WIN
-    WIN --> META
-    META -->|"Upload metadata/image"| Pinata["IPFS/Pinata"]
-    META -->|"Store tokenURI"| Contract["ChooChooTrain Contract"]
-    BE -->|"Call nextStop on contract"| Contract
-    BE -->|"Post update cast"| Farcaster["Farcaster Client/Signer"]
+  subgraph "Backend (Vercel Serverless)"
+    Orchestrator["/api/send-train"]
+    Generator["Generator Package"]
+    InternalNextStop["/api/internal/next-stop"]
   end
 
-  %% Infra
-  subgraph Infra
-    KV["Vercel KV Store"]
-    Pinata["IPFS/Pinata"]
-    Contract["ChooChooTrain Contract"]
-    Farcaster["Farcaster Client/Signer"]
+  %% External Services
+  subgraph "External Services"
     Neynar["Neynar API"]
+    Pinata["IPFS"]
+    Farcaster["Farcaster Client"]
   end
+
+  %% BASE Network
+  subgraph "BASE"
+    Contract["ChooChooTrain.sol"]
+    Paymaster["Paymaster"]
+  end
+
+  %% Main flow connections
+  FE -->|initiate| Orchestrator
+  Orchestrator -->|determine winner| Neynar
+  Orchestrator -->|get next tokenId| InternalNextStop
+  Orchestrator -->|compose image| Generator
+  Generator -->|upload| Pinata
+  InternalNextStop --> Contract
+  Orchestrator -->|create cast| Farcaster
+
+  %% Gas sponsorship
+  Paymaster -.->|pay gas| Contract
 
   %% View-only flows
-  FE -.->|"View only"| Pinata
-  FE -.->|"View only"| Contract
-  FE -.->|"View only"| Farcaster
-  FE -.->|"View only"| Neynar
-
-  %% Comments for clarity
-  %% Frontend fetches cast hash from KV, triggers backend
-  %% Backend orchestrates: fetches cast hash, gets replies from Neynar, selects winner, generates metadata, uploads to Pinata, calls contract, posts to Farcaster
-  %% Users can view journey/tickets from Pinata, Contract, Farcaster
+  FE -.->|read| Contract
 ```
 
 **Flow Description:**
 
-- The user who currently holds ChooChoo sends a cast via the **frontend**, and the cast hash is stored in **Vercel KV**.
-- The **frontend** fetches the current cast hash from the **KV store** to know which cast to use for reply eligibility.
-- When a user clicks "Next Stop", the **frontend** calls the **backend API**.
-- The **backend**:
-  - Fetches the current cast hash from the **KV Store**.
-  - Fetches replies and reactions from **Neynar**.
-  - Selects the winner (most reactions, valid wallet).
-  - Generates NFT metadata and image.
-  - Uploads metadata/image to **IPFS/Pinata**.
-  - Calls the **ChooChooTrain Contract** to move the train and mint the ticket.
-  - Posts an update cast to Farcaster using the **Farcaster Client/Signer** (e.g., ChooChoo account).
-- The **Frontend** and users can view the journey, tickets, and contract state by reading from **IPFS/Pinata**, the **Contract**, and **Farcaster**.
+- The user who currently holds ChooChoo clicks the "Send Train" button in the **frontend mini-app**.
+- The frontend calls the `/api/send-train` **backend API endpoint**.
+- The `/api/send-train` endpoint orchestrates the entire flow:
+  1.  Fetches replies and reactions from **Neynar** to determine the winning user.
+  2.  Calls the internal `/api/internal/next-stop` endpoint to get the current `totalSupply` for the next `tokenId`.
+  3.  Invokes the **`generator` package** to compose a unique NFT image from the art layers.
+  4.  The **`generator` package** uploads the new image and the final metadata to **IPFS/Pinata**.
+  5.  The orchestrator calls the internal `/api/internal/next-stop` endpoint again, this time with the winner's address and the new `tokenURI`.
+  6.  The internal endpoint executes the transaction on the **ChooChooTrain Contract** to move the train and mint the ticket.
+  7.  (Optional) Posts an update cast to Farcaster via the **Farcaster Client/Signer**.
 
 ---
 
@@ -147,7 +145,7 @@ If the train gets stuck, previous passengers can "yoink" the train after a certa
 
 ### Traits & Image Generation
 
-The app generates the full metadata for each ticket, including traits, image, and other fields, as a JSON object. This JSON is uploaded to IPFS, and the resulting IPFS hash/URL is written to the contract as the ticket's metadata (`tokenURI`).
+The app's `generator` package generates the full metadata for each ticket, including traits, image, and other fields, as a JSON object. This JSON is uploaded to IPFS, and the resulting IPFS hash/URL is written to the contract as the ticket's metadata (`tokenURI`).
 
 ```json
 {
@@ -176,30 +174,18 @@ These convenience fields allow offchain apps to access the image or traits direc
 
 ### Trait Display
 
-NFT marketplaces (OpenSea, Blur, etc.) call the `tokenURI(tokenId)` function for each token and receive the IPFS URL for the metadata JSON. The JSON is fetched and used to display the image, name, and traits (from the `attributes` array) in their UI.
+NFT marketplaces (OpenSea, Blur, etc.) call the `tokenURI(tokenId)` function for each token and receive the IPFS CID for the metadata JSON. The JSON is fetched and used to display the image, name, and traits (from the `attributes` array) in their UI.
 
 ### Minting Tickets with Custom Metadata
 
-To mint a ticket with custom metadata, generate the full metadata JSON (including traits), upload it to IPFS, and call relevant contract functions using the resulting IPFS URL.
+To mint a ticket with custom metadata, generate the full metadata JSON (including traits), upload it to IPFS, and call relevant contract functions using the resulting IPFS CID.
 
-> Unlike The Worm, the contract does **not** perform any on-chain encoding or JSON assembly—all metadata is prepared off-chain and referenced by IPFS URL.
+> Unlike The Worm, the contract does **not** perform any on-chain encoding or JSON assembly—all metadata is prepared off-chain and referenced by IPFS CID.
 
 ---
 
 ## Route Authentication
 
-The `/api/next-stop` route is protected by Farcaster session-based authentication using NextAuth. Only users who are signed in with their Farcaster account (via the mini-app) can call this route.
+The `/api/send-train` route is the primary endpoint for orchestrating the train's movement. It can be called by any user to initiate the process.
 
-Example:
-
-```http
-POST /api/next-stop
-Content-Type: application/json
-
-{
-  "recipient": "0x...",
-  "tokenURI": "ipfs://..."
-}
-```
-
-If the user is not authenticated, the request will be rejected with a 401 error.
+The `/api/internal/next-stop` route is a protected, internal-only endpoint that handles direct interaction with the smart contract. It can only be called by other backend services that provide the correct `INTERNAL_SECRET`. This prevents unauthorized users from directly minting tokens or moving the train.

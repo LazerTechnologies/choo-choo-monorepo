@@ -4,7 +4,8 @@
   "description": "NFT image generator",
   "main": "src/index.ts",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "generate-test-nfts": "ts-node src/generate-test-nfts.ts"
   },
   "keywords": [],
   "author": "Jon Bray <me@jonbray.dev>",
@@ -12,5 +13,9 @@
   "dependencies": {
     "@pinata/sdk": "^2.1.0",
     "canvas": "^3.1.2"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.0"
   }
 }

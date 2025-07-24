@@ -1,0 +1,53 @@
+{
+  "background": {
+    "background.jpg": 10
+  },
+  "sky": {
+    "afternoon.png": 10,
+    "midnight.png": 10,
+    "space.png": 10,
+    "sunrise.png": 10,
+    "sunset.png": 10
+  },
+  "smoke": {
+    "smoke.png": 10
+  },
+  "train": {
+    "based_blue.png": 10,
+    "bubblegum_pink.png": 10,
+    "golden_yellow.png": 10,
+    "money_green.png": 10,
+    "nounish_red.png": 10
+  },
+  "mouth": {
+    "funny_guy.png": 10,
+    "gdupi.png": 10,
+    "golden_teeth.png": 10,
+    "little_star.png": 10,
+    "nerdy.png": 10,
+    "nirvana.png": 10,
+    "smile.png": 10
+  },
+  "eyes": {
+    "cartoon.png": 10,
+    "flower.png": 10,
+    "gdupi.png": 10,
+    "lover.png": 10,
+    "melted.png": 10,
+    "mogger.png": 10,
+    "nervous.png": 10,
+    "nounish.png": 10,
+    "patched.png": 10,
+    "relaxed.png": 10,
+    "smol.png": 10,
+    "squiggle_vr.png": 10,
+    "sunglasses.png": 10,
+    "tripping.png": 10
+  },
+  "nose": {
+    "nose.png": 10
+  },
+  "arch": {
+    "arch.png": 10
+  }
+}

@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { isAddress } from 'viem';
+import { composeImage, uploadImageToPinata, uploadMetadataToPinata } from 'generator';
 
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
+const APP_URL = process.env.APP_URL;
+const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
 /**
  * Fetches replies to a given cast from Neynar, along with each reply author's primary wallet address and total reactions.
@@ -90,14 +93,21 @@ async function fetchRepliesAndReactions(
  * - For each reply, fetches the author's primary wallet address and sums reactions (likes + recasts).
  * - Filters for replies with a valid primary wallet address.
  * - Selects the reply with the most reactions as the winner.
- * - Generates placeholder NFT metadata.
- * - Uploads metadata to Pinata and calls /api/internal/next-stop with the winner's address and tokenURI.
+ * - Generates a unique NFT image and metadata using the `generator` package.
+ * - Uploads assets to Pinata and calls /api/internal/next-stop with the winner's address and tokenURI.
  *
  * @param request - The HTTP request object (expects JSON body with castHash).
  * @returns 200 with { success: true, winner } on success, or 400/500 with error message.
  */
 export async function POST(request: Request) {
   try {
+    if (!APP_URL) {
+      throw new Error('APP_URL environment variable is not set');
+    }
+    if (!INTERNAL_SECRET) {
+      throw new Error('INTERNAL_SECRET is not set in the environment');
+    }
+
     // 0. Parse body for castHash
     const body = await request.json();
     const castHash = body.castHash;
@@ -121,43 +131,44 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Winner address is invalid' }, { status: 400 });
     }
 
-    // 3. Generate NFT metadata and image (placeholder)
-    const metadata = {
-      name: 'ChooChoo Ticket', // @todo: add tokenId or unique name to each stop
-      description: 'Thank you for riding ChooChoo!',
-      attributes: [{ trait_type: 'Reactions', value: winner.reactions.toString() }], // @todo: add actual traits, and include the castId and FID of the user who receives the ticket
-    };
-
-    // 4. Upload to Pinata
-    const pinataRes = await fetch(`${process.env.APP_URL}/api/internal/pinata/mint`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(metadata),
+    // 3. Get the next token ID from our contract
+    const totalSupplyRes = await fetch(`${APP_URL}/api/internal/next-stop`, {
+      headers: {
+        'x-internal-secret': INTERNAL_SECRET,
+      },
     });
-    if (!pinataRes.ok) {
-      const data = await pinataRes.json().catch(() => ({}));
-      throw new Error(data.error || 'Failed to upload to Pinata');
+    if (!totalSupplyRes.ok) {
+      throw new Error('Failed to fetch total supply from internal API');
     }
-    const { tokenURI } = await pinataRes.json();
+    const { totalSupply } = await totalSupplyRes.json();
+    const tokenId = totalSupply + 1;
 
-    // 5. Call /api/internal/next-stop
-    if (!process.env.INTERNAL_SECRET) {
-      throw new Error('INTERNAL_SECRET is not set in the environment');
-    }
-    const nextStopRes = await fetch(`${process.env.APP_URL}/api/internal/next-stop`, {
+    // 4. Generate the unique NFT image and attributes
+    const { imageBuffer, attributes } = await composeImage();
+
+    // 5. Upload the image to Pinata
+    const imageCid = await uploadImageToPinata(imageBuffer, `ChooChooTrain #${tokenId}.png`);
+
+    // 6. Upload the final metadata to Pinata
+    const metadataCid = await uploadMetadataToPinata(tokenId, imageCid, attributes);
+    const tokenURI = `ipfs://${metadataCid}`;
+
+    // 7. Call the internal endpoint to execute the on-chain transaction
+    const nextStopRes = await fetch(`${APP_URL}/api/internal/next-stop`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-internal-secret': process.env.INTERNAL_SECRET,
+        'x-internal-secret': INTERNAL_SECRET,
       },
       body: JSON.stringify({ recipient: winnerAddress, tokenURI }),
     });
+
     if (!nextStopRes.ok) {
       const data = await nextStopRes.json().catch(() => ({}));
       throw new Error(data.error || 'Failed to call internal/next-stop');
     }
 
-    return NextResponse.json({ success: true, winner: winnerAddress });
+    return NextResponse.json({ success: true, winner: winnerAddress, tokenURI });
   } catch (error) {
     console.error('Failed to trigger next stop:', error);
     return NextResponse.json({ error: 'Failed to trigger next stop.' }, { status: 500 });
