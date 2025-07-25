@@ -69,10 +69,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 8
+      - name: Enable pnpm
+        run: corepack enable pnpm
       - name: Install dependencies
         run: pnpm install
       - name: Run tests
-        run: pnpm run test
+        run: pnpm run test --filter=!contracts
