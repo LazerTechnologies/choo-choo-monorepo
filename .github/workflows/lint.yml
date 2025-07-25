@@ -12,10 +12,7 @@ env:
   FOUNDRY_PROFILE: ci
 
 jobs:
-  check:
-    strategy:
-      fail-fast: true
-
+  contracts-lint:
     name: ChooChoo Contracts
     runs-on: ubuntu-latest
     steps:
@@ -41,10 +38,6 @@ jobs:
   node-lint:
     name: Lint App and Generator
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package: [generator, app]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -56,19 +49,7 @@ jobs:
       - uses: pnpm/action-setup@v2
         with:
           version: 8
-          run_install: false
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-      - uses: actions/cache@v3
-        name: Setup pnpm cache
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
       - name: Run lint
-        run: pnpm --filter "${{ matrix.package }}" run lint
+        run: pnpm run lint
