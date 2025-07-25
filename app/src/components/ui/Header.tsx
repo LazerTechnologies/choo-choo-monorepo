@@ -34,7 +34,7 @@ export function Header({ neynarUser }: HeaderProps) {
                 alt="Profile"
                 width={40}
                 height={40}
-                className="w-10 h-10 rounded-full border-2 border-purple-500"
+                className="rounded-full border-2 border-purple-500"
               />
             )}
           </div>

@@ -4,7 +4,7 @@ import React, { ButtonHTMLAttributes } from 'react';
 import { Spinner } from './Spinner';
 
 const buttonVariants = cva(
-  'font-head transition-all outline-hidden cursor-pointer duration-200 font-medium flex items-center justify-center',
+  'font-head transition-all outline-none cursor-pointer duration-200 font-medium flex items-center justify-center',
   {
     variants: {
       variant: {
@@ -47,16 +47,34 @@ export const Button = React.forwardRef<HTMLButtonElement, IButtonProps>(
       ...props
     }: IButtonProps,
     forwardedRef
-  ) => (
-    <button
-      ref={forwardedRef}
-      className={cn(buttonVariants({ variant, size }), className)}
-      disabled={isLoading || props.disabled}
-      {...props}
-    >
-      {isLoading ? <Spinner size="sm" /> : children}
-    </button>
-  )
+  ) => {
+    const isLoadingState = isLoading;
+    const buttonClass = cn(
+      buttonVariants({ variant, size: isLoadingState ? 'icon' : size }),
+      className
+    );
+    return (
+      <button
+        ref={forwardedRef}
+        className={buttonClass}
+        disabled={isLoadingState || props.disabled}
+        aria-busy={isLoadingState}
+        aria-disabled={isLoadingState || props.disabled}
+        {...props}
+      >
+        {isLoadingState ? (
+          <>
+            <span className="inline-flex items-center mr-2">
+              <Spinner size="sm" />
+            </span>
+            <span>{children}</span>
+          </>
+        ) : (
+          children
+        )}
+      </button>
+    );
+  }
 );
 
 Button.displayName = 'Button';

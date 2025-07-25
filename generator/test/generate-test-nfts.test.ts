@@ -1,16 +1,22 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { composeImage } from "../src/utils/compose";
-import { collectionName, collectionDescription } from "../src/config";
-import fs from "fs/promises";
-import path from "path";
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { composeImage } from '../src/utils/compose';
+import { collectionName, collectionDescription } from '../src/config';
+import fs from 'fs/promises';
+import path from 'path';
+import os from 'os';
 
-describe("Generate Test NFTs", () => {
-  const testOutputDir = path.join(__dirname, "../test-out");
-  const testImagesDir = path.join(testOutputDir, "images");
-  const testMetadataDir = path.join(testOutputDir, "metadata");
+describe('Generate Test NFTs', () => {
+  let testOutputDir: string;
+  let testImagesDir: string;
+  let testMetadataDir: string;
 
   beforeEach(async () => {
-    // Clean up any existing test output
+    const uniqueId = `nft-test-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+    testOutputDir = path.join(os.tmpdir(), uniqueId);
+    testImagesDir = path.join(testOutputDir, 'images');
+    testMetadataDir = path.join(testOutputDir, 'metadata');
+
+    // Clean up any existing test output (shouldn't exist, but just in case)
     try {
       await fs.rm(testOutputDir, { recursive: true, force: true });
     } catch (error) {
@@ -27,16 +33,16 @@ describe("Generate Test NFTs", () => {
     }
   });
 
-  it("should export required functions and constants", () => {
+  it('should export required functions and constants', () => {
     expect(composeImage).toBeDefined();
-    expect(typeof composeImage).toBe("function");
+    expect(typeof composeImage).toBe('function');
     expect(collectionName).toBeDefined();
-    expect(typeof collectionName).toBe("string");
+    expect(typeof collectionName).toBe('string');
     expect(collectionDescription).toBeDefined();
-    expect(typeof collectionDescription).toBe("string");
+    expect(typeof collectionDescription).toBe('string');
   });
 
-  it("should generate a single NFT with valid image buffer and attributes", async () => {
+  it('should generate a single NFT with valid image buffer and attributes', async () => {
     const result = await composeImage();
 
     expect(result).toBeDefined();
@@ -50,14 +56,14 @@ describe("Generate Test NFTs", () => {
 
     // Verify attributes structure
     result.attributes.forEach((attr) => {
-      expect(attr).toHaveProperty("trait_type");
-      expect(attr).toHaveProperty("value");
-      expect(typeof attr.trait_type).toBe("string");
-      expect(typeof attr.value).toBe("string");
+      expect(attr).toHaveProperty('trait_type');
+      expect(attr).toHaveProperty('value');
+      expect(typeof attr.trait_type).toBe('string');
+      expect(typeof attr.value).toBe('string');
     });
   });
 
-  it("should create directories and generate test NFTs successfully", async () => {
+  it('should create directories and generate test NFTs successfully', async () => {
     const numTestNfts = 2; // Generate fewer for testing speed
 
     // Ensure output directories exist
@@ -92,9 +98,12 @@ describe("Generate Test NFTs", () => {
       expect(metadataStats.size).toBeGreaterThan(0);
 
       // Verify metadata content
-      const savedMetadata = JSON.parse(
-        await fs.readFile(metadataPath, "utf-8"),
-      );
+      const savedMetadata = JSON.parse(await fs.readFile(metadataPath, 'utf-8')) as {
+        name: string;
+        description: string;
+        image: string;
+        attributes: unknown[];
+      };
       expect(savedMetadata.name).toBe(`${collectionName} #${i}`);
       expect(savedMetadata.description).toBe(collectionDescription);
       expect(savedMetadata.image).toBe(`./images/${imageName}`);
@@ -109,7 +118,7 @@ describe("Generate Test NFTs", () => {
     expect(metadataFiles).toHaveLength(numTestNfts);
   });
 
-  it("should handle errors gracefully during generation", async () => {
+  it('should handle errors gracefully during generation', async () => {
     // This is a basic smoke test - the actual error handling is in the generate-test-nfts.ts file
     // We just ensure the core composeImage function doesn't throw unexpectedly
     await expect(composeImage()).resolves.toBeDefined();

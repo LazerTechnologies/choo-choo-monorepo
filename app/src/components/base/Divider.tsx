@@ -1,8 +1,12 @@
 import { cn } from '@/lib/utils';
-import { HTMLAttributes } from 'react';
+import React, { ComponentPropsWithoutRef } from 'react';
 
-type DividerProps = HTMLAttributes<HTMLHRElement>;
+type DividerProps = ComponentPropsWithoutRef<'hr'>;
 
-export const Divider = ({ className, ...props }: DividerProps) => {
-  return <hr className={cn('border-dashed border-border', className)} {...props} />;
-};
+export const Divider = React.forwardRef<HTMLHRElement, DividerProps>(
+  ({ className, ...props }, ref) => {
+    return <hr ref={ref} className={cn('border-dashed border-border', className)} {...props} />;
+  }
+);
+
+Divider.displayName = 'Divider';

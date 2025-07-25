@@ -107,9 +107,14 @@ This is the required set of atomic components needed from the `retroUi` library 
   - **Props:** `variant` (`primary`, `secondary`), `disabled`, `isLoading`.
   - **Appearance:** Pixelated borders, solid background color. Should have clear `:hover` and `:active` states.
   - [x] When `isLoading` is true, it should show a `Spinner` inside.
-- [x] **`Text.tsx`**: A single component to handle all text rendering.
-  - **Props:** `variant` (`h1`, `h2`, `body`, `caption`), `as` (to render as `h1`, `p`, `span`, etc.).
-  - This ensures font consistency.
+  - [x] **Loading State Requirements:**
+    - Spinner must be 16x16 px and placed on the left side of the button label.
+    - When `isLoading`, button should use the same style as the `icon` variant, but with a spinner instead of an icon.
+    - `aria-busy="true"` and any other relevant accessibility attributes must be set when `isLoading` is true.
+- [x] **`Typography.tsx`**: A single component to handle all text rendering.
+  - **Props:** `variant` (`h1`, `h2`, `h3`, `h4`, `h5`, `h6`, `body`, `caption`, `label`, `small`, `p`, `li`, `a`), `as` (to render as `h1`, `p`, `span`, etc.).
+  - Maps variants to appropriate semantic HTML tags for SEO and backend flexibility.
+  - This ensures font consistency and future extensibility.
 - [x] **`Avatar.tsx`**: Renders a user's profile picture.
   - **Props:** `src`, `size` (`sm`, `md`, `lg`).
   - **Appearance:** Should have a pixelated border or be rendered in a circle/square with a border.

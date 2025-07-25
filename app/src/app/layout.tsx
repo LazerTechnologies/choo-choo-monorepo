@@ -7,10 +7,10 @@ import { Providers } from '@/app/providers';
 import { APP_NAME, APP_DESCRIPTION } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
-const fontSans = IBM_Plex_Mono({
+const fontMono = IBM_Plex_Mono({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-sans',
+  variable: '--font-mono',
   weight: '400',
 });
 
@@ -34,7 +34,7 @@ export default async function RootLayout({
   const session = await getSession();
 
   return (
-    <html lang="en" className={cn(fontSans.variable, fontHeading.variable, 'font-sans')}>
+    <html lang="en" className={cn(fontMono.variable, fontHeading.variable, 'font-mono')}>
       <body>
         <Providers session={session}>{children}</Providers>
       </body>
