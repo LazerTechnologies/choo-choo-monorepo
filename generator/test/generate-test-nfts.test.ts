@@ -19,7 +19,7 @@ describe('Generate Test NFTs', () => {
     // Clean up any existing test output (shouldn't exist, but just in case)
     try {
       await fs.rm(testOutputDir, { recursive: true, force: true });
-    } catch (_error) {
+    } catch {
       // Ignore if directory doesn't exist
     }
   });
@@ -28,7 +28,7 @@ describe('Generate Test NFTs', () => {
     // Clean up test output
     try {
       await fs.rm(testOutputDir, { recursive: true, force: true });
-    } catch (_error) {
+    } catch {
       // Ignore if directory doesn't exist
     }
   });

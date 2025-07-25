@@ -1,5 +1,4 @@
-# @todo: add mini-app tests
-name: Run Tests
+name: Test
 
 on:
   push:
@@ -16,7 +15,7 @@ permissions:
 
 jobs:
   contracts-test:
-    name: Foundry project
+    name: Test Contracts
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -59,7 +58,7 @@ jobs:
         working-directory: contracts
 
   node-tests:
-    name: Tests App and Generator
+    name: Test App and Generator
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
