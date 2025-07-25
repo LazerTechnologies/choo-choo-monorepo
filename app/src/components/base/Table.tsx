@@ -4,13 +4,9 @@ import { cn } from '@/lib/utils';
 
 const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableElement>>(
   ({ className, ...props }, ref) => (
-    //   <div className="relative w-full overflow-auto border-2 shadow-lg">
-    <table
-      ref={ref}
-      className={cn('w-full caption-bottom text-sm border-2 shadow-lg', className)}
-      {...props}
-    />
-    //   </div>
+    <div className="relative w-full overflow-auto border-2 shadow-lg">
+      <table ref={ref} className={cn('w-full caption-bottom text-sm', className)} {...props} />
+    </div>
   )
 );
 Table.displayName = 'Table';
@@ -66,6 +62,7 @@ const TableHead = React.forwardRef<
   React.ThHTMLAttributes<HTMLTableCellElement>
 >(({ className, ...props }, ref) => (
   <th
+    scope="col"
     ref={ref}
     className={cn(
       'h-12 px-4 text-left align-middle font-medium text-primary-foreground [&:has([role=checkbox])]:pr-0',
@@ -96,7 +93,22 @@ const TableCaption = React.forwardRef<
 ));
 TableCaption.displayName = 'TableCaption';
 
-const TableObj = Object.assign(Table, {
+interface TableSubComponents {
+  Header: typeof TableHeader;
+  Body: typeof TableBody;
+  Footer: typeof TableFooter;
+  Row: typeof TableRow;
+  Head: typeof TableHead;
+  Cell: typeof TableCell;
+  Caption: typeof TableCaption;
+}
+
+export type TableComponent = React.ForwardRefExoticComponent<
+  React.HTMLAttributes<HTMLTableElement>
+> &
+  TableSubComponents;
+
+const TableObj: TableComponent = Object.assign(Table, {
   Header: TableHeader,
   Body: TableBody,
   Footer: TableFooter,

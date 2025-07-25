@@ -30,10 +30,10 @@ const overlayVariants = cva(
   }
 );
 
-type IDialogBackgroupProps = HTMLAttributes<HTMLDivElement> & VariantProps<typeof overlayVariants>;
+type IDialogBackdropProps = HTMLAttributes<HTMLDivElement> & VariantProps<typeof overlayVariants>;
 
-const DialogBackdrop = React.forwardRef<HTMLDivElement, IDialogBackgroupProps>(
-  function DialogBackdrop(inputProps: IDialogBackgroupProps, forwardedRef) {
+const DialogBackdrop = React.forwardRef<HTMLDivElement, IDialogBackdropProps>(
+  function DialogBackdrop(inputProps: IDialogBackdropProps, forwardedRef) {
     const { variant = 'default', className, ...props } = inputProps;
 
     return (
@@ -84,14 +84,16 @@ const dialogVariants = cva(
 interface IDialogContentProps
   extends HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof dialogVariants> {
-  overlay?: IDialogBackgroupProps;
+  overlay?: IDialogBackdropProps;
+  title?: string;
+  description?: string;
 }
 
 const DialogContent = React.forwardRef<HTMLDivElement, IDialogContentProps>(function DialogContent(
   inputProps: IDialogContentProps,
   forwardedRef
 ) {
-  const { children, size = 'auto', className, overlay, ...props } = inputProps;
+  const { children, size = 'auto', className, overlay, title, description, ...props } = inputProps;
 
   return (
     <ReactDialog.Portal>
@@ -99,11 +101,19 @@ const DialogContent = React.forwardRef<HTMLDivElement, IDialogContentProps>(func
       <ReactDialog.Content
         className={cn(dialogVariants({ size }), className)}
         ref={forwardedRef}
+        aria-modal="true"
+        aria-labelledby="dialog-title"
+        aria-describedby={description ? 'dialog-description' : undefined}
         {...props}
       >
-        <VisuallyHidden>
-          <ReactDialog.Title />
-        </VisuallyHidden>
+        <ReactDialog.Title id="dialog-title">
+          <VisuallyHidden>{title || 'Dialog'}</VisuallyHidden>
+        </ReactDialog.Title>
+        {description && (
+          <ReactDialog.Description id="dialog-description">
+            <VisuallyHidden>{description}</VisuallyHidden>
+          </ReactDialog.Description>
+        )}
         <div className="flex flex-col relative">{children}</div>
       </ReactDialog.Content>
     </ReactDialog.Portal>
@@ -169,9 +179,9 @@ const DialogHeaderDefaultLayout = ({ children }: { children: ReactNode }) => {
   return (
     <>
       {children}
-      <DialogTrigger title="Close pop-up" className="cursor-pointer" asChild>
+      <ReactDialog.Close title="Close pop-up" className="cursor-pointer" asChild>
         <X />
-      </DialogTrigger>
+      </ReactDialog.Close>
     </>
   );
 };

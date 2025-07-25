@@ -1,7 +1,7 @@
-import { createCanvas, loadImage } from "canvas";
-import fs from "fs/promises";
-import path from "path";
-import { baseDir, imageDimensions, layerOrder, LayerName } from "../config";
+import { createCanvas, loadImage } from 'canvas';
+import fs from 'fs/promises';
+import path from 'path';
+import { baseDir, imageDimensions, layerOrder, LayerName } from '../config';
 
 type RarityData = {
   [layerName: string]: {
@@ -22,7 +22,7 @@ export type NftAttribute = {
  */
 const selectTrait = (
   layerName: LayerName,
-  rarities: RarityData,
+  rarities: RarityData
 ): { originalName: string; formattedName: string } => {
   const traits = rarities[layerName];
   if (!traits) {
@@ -32,17 +32,14 @@ const selectTrait = (
     throw new Error(`Layer ${layerName} has no traits defined.`);
   }
 
-  const totalWeight = Object.values(traits).reduce(
-    (sum, weight) => sum + weight,
-    0,
-  );
+  const totalWeight = Object.values(traits).reduce((sum, weight) => sum + weight, 0);
   let random = Math.random() * totalWeight;
 
   for (const [trait, weight] of Object.entries(traits)) {
     if (random < weight) {
       const formattedName = trait
-        .split(".")[0]
-        .replace(/[_-]/g, " ")
+        .split('.')[0]
+        .replace(/[_-]/g, ' ')
         .replace(/\b\w/g, (l) => l.toUpperCase());
       return { originalName: trait, formattedName };
     }
@@ -51,11 +48,10 @@ const selectTrait = (
 
   // fallback for rounding errors
   const traitNames = Object.keys(traits);
-  const selectedTrait =
-    traitNames[Math.floor(Math.random() * traitNames.length)];
+  const selectedTrait = traitNames[Math.floor(Math.random() * traitNames.length)];
   const formattedName = selectedTrait
-    .split(".")[0]
-    .replace(/[_-]/g, " ")
+    .split('.')[0]
+    .replace(/[_-]/g, ' ')
     .replace(/\b\w/g, (l) => l.toUpperCase());
   return { originalName: selectedTrait, formattedName };
 };
@@ -69,30 +65,28 @@ export const composeImage = async (): Promise<{
   imageBuffer: Buffer;
   attributes: NftAttribute[];
 }> => {
-  const rarityDataPath = path.join(baseDir, "rarities.json");
+  const rarityDataPath = path.join(baseDir, 'rarities.json');
 
   let rarities: RarityData;
 
   try {
-    const fileContent = await fs.readFile(rarityDataPath, "utf-8");
-    rarities = JSON.parse(fileContent);
-  } catch (error) {
+    const fileContent = await fs.readFile(rarityDataPath, 'utf-8');
+    rarities = JSON.parse(fileContent) as RarityData;
+  } catch (error: unknown) {
     if (error instanceof SyntaxError) {
       throw new Error(`Invalid JSON in rarities.json: ${error.message}`);
     }
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
       throw new Error(`rarities.json not found at ${rarityDataPath}`);
     }
     throw new Error(
-      `Failed to read rarities.json: ${
-        error instanceof Error ? error.message : "Unknown error"
-      }`,
+      `Failed to read rarities.json: ${error instanceof Error ? error.message : 'Unknown error'}`
     );
   }
 
   // Validate rarity data structure
-  if (!rarities || typeof rarities !== "object") {
-    throw new Error("rarities.json must contain a valid object");
+  if (!rarities || typeof rarities !== 'object') {
+    throw new Error('rarities.json must contain a valid object');
   }
 
   // Validate that all required layers exist in rarity data
@@ -102,30 +96,26 @@ export const composeImage = async (): Promise<{
     }
 
     const layerTraits = rarities[layer];
-    if (!layerTraits || typeof layerTraits !== "object") {
-      throw new Error(
-        `Layer "${layer}" in rarities.json must contain a valid object`,
-      );
+    if (!layerTraits || typeof layerTraits !== 'object') {
+      throw new Error(`Layer "${layer}" in rarities.json must contain a valid object`);
     }
 
     if (Object.keys(layerTraits).length === 0) {
-      throw new Error(
-        `Layer "${layer}" in rarities.json has no traits defined`,
-      );
+      throw new Error(`Layer "${layer}" in rarities.json has no traits defined`);
     }
 
     // Validate that all trait weights are numbers
     for (const [traitName, weight] of Object.entries(layerTraits)) {
-      if (typeof weight !== "number" || weight < 0) {
+      if (typeof weight !== 'number' || weight < 0) {
         throw new Error(
-          `Invalid weight for trait "${traitName}" in layer "${layer}": must be a non-negative number`,
+          `Invalid weight for trait "${traitName}" in layer "${layer}": must be a non-negative number`
         );
       }
     }
   }
 
   const canvas = createCanvas(imageDimensions.width, imageDimensions.height);
-  const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext('2d');
 
   const attributes: NftAttribute[] = [];
   const selectedTraits: {
@@ -146,7 +136,7 @@ export const composeImage = async (): Promise<{
 
   // Draw each selected trait onto the canvas in the correct order
   for (const { layer, originalName, formattedName } of selectedTraits) {
-    const imagePath = path.join(baseDir, "layers", layer, originalName);
+    const imagePath = path.join(baseDir, 'layers', layer, originalName);
 
     try {
       const image = await loadImage(imagePath);
@@ -154,13 +144,13 @@ export const composeImage = async (): Promise<{
     } catch (error) {
       throw new Error(
         `Failed to load image for layer "${layer}", trait "${formattedName}" at ${imagePath}: ${
-          error instanceof Error ? error.message : "Unknown error"
-        }`,
+          error instanceof Error ? error.message : 'Unknown error'
+        }`
       );
     }
   }
 
-  const imageBuffer = canvas.toBuffer("image/png");
+  const imageBuffer = canvas.toBuffer('image/png');
 
   return { imageBuffer, attributes };
 };

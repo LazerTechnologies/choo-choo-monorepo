@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 const Accordion = AccordionPrimitive.Root;
 
 const AccordionItem = React.forwardRef<
-  React.ComponentRef<typeof AccordionPrimitive.Item>,
+  HTMLDivElement,
   React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Item>
 >(({ className, ...props }, ref) => (
   <AccordionPrimitive.Item
@@ -24,14 +24,14 @@ const AccordionItem = React.forwardRef<
 AccordionItem.displayName = AccordionPrimitive.Item.displayName;
 
 const AccordionHeader = React.forwardRef<
-  React.ComponentRef<typeof AccordionPrimitive.Trigger>,
+  HTMLButtonElement,
   React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
 >(({ className, children, ...props }, ref) => (
   <AccordionPrimitive.Header className="flex">
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(
-        'flex flex-1 items-start justify-between px-4 py-2 font-head cursor-pointer focus:outline-hidden [&[data-state=open]>svg]:rotate-180',
+        'flex flex-1 items-start justify-between px-4 py-2 font-head cursor-pointer focus:outline-none [&[data-state=open]>svg]:rotate-180',
         className
       )}
       {...props}
@@ -44,7 +44,7 @@ const AccordionHeader = React.forwardRef<
 AccordionHeader.displayName = AccordionPrimitive.Header.displayName;
 
 const AccordionContent = React.forwardRef<
-  React.ComponentRef<typeof AccordionPrimitive.Content>,
+  HTMLDivElement,
   React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
   <AccordionPrimitive.Content

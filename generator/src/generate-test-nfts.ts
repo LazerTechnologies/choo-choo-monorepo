@@ -1,11 +1,11 @@
-import { composeImage, collectionName, collectionDescription } from "./index";
-import fs from "fs/promises";
-import path from "path";
+import { composeImage, collectionName, collectionDescription } from './index';
+import fs from 'fs/promises';
+import path from 'path';
 
 const NUM_NFTS_TO_GENERATE = 10;
-const OUTPUT_DIR = path.join(__dirname, "../out");
-const IMAGES_DIR = path.join(OUTPUT_DIR, "images");
-const METADATA_DIR = path.join(OUTPUT_DIR, "metadata");
+const OUTPUT_DIR = path.join(__dirname, '../out');
+const IMAGES_DIR = path.join(OUTPUT_DIR, 'images');
+const METADATA_DIR = path.join(OUTPUT_DIR, 'metadata');
 
 async function generateTestNfts() {
   console.log(`Generating ${NUM_NFTS_TO_GENERATE} test NFTs...`);
@@ -40,7 +40,7 @@ async function generateTestNfts() {
       console.error(`Error generating NFT #${i}:`, error);
     }
   }
-  console.log("Test NFT generation complete.");
+  console.log('Test NFT generation complete.');
 }
 
 generateTestNfts().catch(console.error);

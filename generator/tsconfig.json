@@ -3,13 +3,12 @@
     "target": "es2016",
     "module": "commonjs",
     "moduleResolution": "node",
-    "rootDir": "src",
     "outDir": "dist",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "test/**/*", "vitest.config.ts"],
   "exclude": ["node_modules", "dist"]
 }

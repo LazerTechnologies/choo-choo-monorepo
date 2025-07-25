@@ -58,8 +58,8 @@ export default {
         sm: 'calc(var(--radius) - 4px)',
       },
       fontFamily: {
-        sans: ['var(--font-sans)', 'Comic Sans MS'],
         mono: ['var(--font-mono)'],
+        sans: ['Comic Sans MS'],
         heading: ['var(--font-heading)'],
       },
       keyframes: {
