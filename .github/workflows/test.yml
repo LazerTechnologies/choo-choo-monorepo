@@ -60,3 +60,27 @@ jobs:
           FOUNDRY_DISABLE_NIGHTLY_WARNING=1 FOUNDRY_PROFILE=CI forge test -vvv
         id: test
         working-directory: contracts
+
+  node-tests:
+    name: Tests App and Generator
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [generator, app]
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.head_ref }}
+          submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run tests
+        run: pnpm --filter "${{ matrix.package }}" run test
