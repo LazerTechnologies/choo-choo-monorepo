@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState, useEffect } from 'react';
-import { Button } from './Button';
+import { Button } from '@/components/base/Button';
 import { useMiniApp } from '@neynar/react';
 import { type ComposeCast } from '@farcaster/frame-sdk';
 
