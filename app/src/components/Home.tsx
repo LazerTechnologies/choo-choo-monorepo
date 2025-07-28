@@ -15,13 +15,7 @@ import {
   useSwitchChain,
   useChainId,
 } from 'wagmi';
-import {
-  useConnection as useSolanaConnection,
-  useWallet as useSolanaWallet,
-} from '@solana/wallet-adapter-react';
-import { useHasSolanaProvider } from './providers/SafeFarcasterSolanaProvider';
 import { ShareButton } from './ui/Share';
-
 import { config } from '@/components/providers/WagmiProvider';
 import { Button } from '@/components/base/Button';
 import { truncateAddress } from '@/lib/truncateAddress';
@@ -29,7 +23,6 @@ import { base, degen, mainnet, optimism, unichain } from 'wagmi/chains';
 import { BaseError, UserRejectedRequestError } from 'viem';
 import { useSession } from 'next-auth/react';
 import { useMiniApp } from '@neynar/react';
-import { PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
 import { Header } from '@/components/ui/Header';
 import { Footer } from '@/components/ui/Footer';
 import { USE_WALLET, APP_NAME } from '@/lib/constants';
@@ -63,9 +56,6 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
 
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-  const hasSolanaProvider = useHasSolanaProvider();
-  const solanaWallet = useSolanaWallet();
-  const { publicKey: solanaPublicKey } = solanaWallet;
 
   // Set initial tab to home on page load
   useEffect(() => {
@@ -423,135 +413,6 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
         <Footer activeTab={currentTab as Tab} setActiveTab={setActiveTab} showWallet={USE_WALLET} />
       </div>
     </div>
-  );
-}
-
-// Solana functions inspired by farcaster demo
-// https://github.com/farcasterxyz/frames-v2-demo/blob/main/src/components/Home.tsx
-function SignSolanaMessage({
-  signMessage,
-}: {
-  signMessage?: (message: Uint8Array) => Promise<Uint8Array>;
-}) {
-  const [signature, setSignature] = useState<string | undefined>();
-  const [signError, setSignError] = useState<Error | undefined>();
-  const [signPending, setSignPending] = useState(false);
-
-  const handleSignMessage = useCallback(async () => {
-    setSignPending(true);
-    try {
-      if (!signMessage) {
-        throw new Error('no Solana signMessage');
-      }
-      const input = new TextEncoder().encode('Hello from Solana!');
-      const signatureBytes = await signMessage(input);
-      const signature = btoa(String.fromCharCode(...signatureBytes));
-      setSignature(signature);
-      setSignError(undefined);
-    } catch (e) {
-      if (e instanceof Error) {
-        setSignError(e);
-      }
-    } finally {
-      setSignPending(false);
-    }
-  }, [signMessage]);
-
-  return (
-    <>
-      <Button
-        onClick={handleSignMessage}
-        disabled={signPending}
-        isLoading={signPending}
-        className="mb-4"
-      >
-        Sign Message
-      </Button>
-      {signError && renderError(signError)}
-      {signature && (
-        <div className="mt-2 text-xs">
-          <div>Signature: {signature}</div>
-        </div>
-      )}
-    </>
-  );
-}
-
-function SendSolana() {
-  const [state, setState] = useState<
-    | { status: 'none' }
-    | { status: 'pending' }
-    | { status: 'error'; error: Error }
-    | { status: 'success'; signature: string }
-  >({ status: 'none' });
-
-  const { connection: solanaConnection } = useSolanaConnection();
-  const { sendTransaction, publicKey } = useSolanaWallet();
-
-  // This should be replaced but including it from the original demo
-  // https://github.com/farcasterxyz/frames-v2-demo/blob/main/src/components/Home.tsx#L718
-  const ashoatsPhantomSolanaWallet = 'Ao3gLNZAsbrmnusWVqQCPMrcqNi6jdYgu8T6NCoXXQu1';
-
-  const handleSend = useCallback(async () => {
-    setState({ status: 'pending' });
-    try {
-      if (!publicKey) {
-        throw new Error('no Solana publicKey');
-      }
-
-      const { blockhash } = await solanaConnection.getLatestBlockhash();
-      if (!blockhash) {
-        throw new Error('failed to fetch latest Solana blockhash');
-      }
-
-      const fromPubkeyStr = publicKey.toBase58();
-      const toPubkeyStr = ashoatsPhantomSolanaWallet;
-      const transaction = new Transaction();
-      transaction.add(
-        SystemProgram.transfer({
-          fromPubkey: new PublicKey(fromPubkeyStr),
-          toPubkey: new PublicKey(toPubkeyStr),
-          lamports: 0n,
-        })
-      );
-      transaction.recentBlockhash = blockhash;
-      transaction.feePayer = new PublicKey(fromPubkeyStr);
-
-      const simulation = await solanaConnection.simulateTransaction(transaction);
-      if (simulation.value.err) {
-        // Gather logs and error details for debugging
-        const logs = simulation.value.logs?.join('\n') ?? 'No logs';
-        const errDetail = JSON.stringify(simulation.value.err);
-        throw new Error(`Simulation failed: ${errDetail}\nLogs:\n${logs}`);
-      }
-      const signature = await sendTransaction(transaction, solanaConnection);
-      setState({ status: 'success', signature });
-    } catch (e) {
-      if (e instanceof Error) {
-        setState({ status: 'error', error: e });
-      } else {
-        setState({ status: 'none' });
-      }
-    }
-  }, [sendTransaction, publicKey, solanaConnection]);
-
-  return (
-    <>
-      <Button
-        onClick={handleSend}
-        disabled={state.status === 'pending'}
-        isLoading={state.status === 'pending'}
-        className="mb-4"
-      >
-        Send Transaction (sol)
-      </Button>
-      {state.status === 'error' && renderError(state.error)}
-      {state.status === 'success' && (
-        <div className="mt-2 text-xs">
-          <div>Hash: {truncateAddress(state.signature)}</div>
-        </div>
-      )}
-    </>
   );
 }
 
