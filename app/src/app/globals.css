@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --background: #fdf6e3;
+    --background: #a855f7;
     --foreground: #555555;
 
     --card: #ffffff;
@@ -28,7 +28,7 @@
     --destructive: #d9534f;
     --destructive-foreground: #ffffff;
 
-    --border: #dddddd;
+    --border: #1f2937;
     --input: #dddddd;
     --ring: #333333;
 

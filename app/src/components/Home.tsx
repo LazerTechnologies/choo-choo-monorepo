@@ -33,6 +33,7 @@ import { PublicKey, SystemProgram, Transaction } from '@solana/web3.js';
 import { Header } from '@/components/ui/Header';
 import { Footer } from '@/components/ui/Footer';
 import { USE_WALLET, APP_NAME } from '@/lib/constants';
+import Image from 'next/image';
 
 export type Tab = 'home' | 'actions' | 'context' | 'wallet';
 
@@ -41,7 +42,7 @@ interface NeynarUser {
   score: number;
 }
 
-export default function Demo({ title }: { title?: string } = { title: 'Neynar Starter Kit' }) {
+export default function Home({ title }: { title?: string } = { title: 'Choo Choo on Base' }) {
   const {
     isSDKLoaded,
     context,
@@ -221,6 +222,7 @@ export default function Demo({ title }: { title?: string } = { title: 'Neynar St
   return (
     <div
       style={{
+        background: 'var(--background)',
         paddingTop: context?.client.safeAreaInsets?.top ?? 0,
         paddingBottom: context?.client.safeAreaInsets?.bottom ?? 0,
         paddingLeft: context?.client.safeAreaInsets?.left ?? 0,
@@ -233,11 +235,18 @@ export default function Demo({ title }: { title?: string } = { title: 'Neynar St
         <h1 className="text-2xl font-bold text-center mb-4">{title}</h1>
 
         {currentTab === 'home' && (
-          <div className="flex items-center justify-center h-[calc(100vh-200px)] px-6">
-            <div className="text-center w-full max-w-md mx-auto">
-              <p className="text-lg mb-2">Put your content here!</p>
-              <p className="text-sm text-gray-500">Powered by Neynar 🪐</p>
-            </div>
+          <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] px-6">
+            <h2 className="text-2xl font-bold mb-4">{title}</h2>
+            <Image
+              src="/ChooChoo.webp"
+              alt="ChooChoo App Logo"
+              width={320}
+              height={320}
+              priority
+              className="rounded-lg shadow-lg border-4"
+              style={{ borderColor: 'var(--border)' }}
+            />
+            <p className="text-sm text-gray-500 mt-4">Powered by Neynar 🪐</p>
           </div>
         )}
 
@@ -418,7 +427,7 @@ export default function Demo({ title }: { title?: string } = { title: 'Neynar St
 }
 
 // Solana functions inspired by farcaster demo
-// https://github.com/farcasterxyz/frames-v2-demo/blob/main/src/components/Demo.tsx
+// https://github.com/farcasterxyz/frames-v2-demo/blob/main/src/components/Home.tsx
 function SignSolanaMessage({
   signMessage,
 }: {
@@ -480,7 +489,7 @@ function SendSolana() {
   const { sendTransaction, publicKey } = useSolanaWallet();
 
   // This should be replaced but including it from the original demo
-  // https://github.com/farcasterxyz/frames-v2-demo/blob/main/src/components/Demo.tsx#L718
+  // https://github.com/farcasterxyz/frames-v2-demo/blob/main/src/components/Home.tsx#L718
   const ashoatsPhantomSolanaWallet = 'Ao3gLNZAsbrmnusWVqQCPMrcqNi6jdYgu8T6NCoXXQu1';
 
   const handleSend = useCallback(async () => {
