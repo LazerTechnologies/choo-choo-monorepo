@@ -51,7 +51,7 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
   } = useMiniApp();
   const [isContextOpen, setIsContextOpen] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
-  const [sendNotificationResult, setSendNotificationResult] = useState('');
+
   const [copied, setCopied] = useState(false);
   const [neynarUser, setNeynarUser] = useState<NeynarUser | null>(null);
   const [hapticIntensity, setHapticIntensity] = useState<Haptics.ImpactOccurredType>('medium');
@@ -193,38 +193,6 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
     setIsYoinkDialogOpen(true);
   }, []);
 
-  const sendNotification = useCallback(async () => {
-    setSendNotificationResult('');
-    if (!notificationDetails || !context) {
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/send-notification', {
-        method: 'POST',
-        mode: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fid: context.user.fid,
-          notificationDetails,
-        }),
-      });
-
-      if (response.status === 200) {
-        setSendNotificationResult('Success');
-        return;
-      } else if (response.status === 429) {
-        setSendNotificationResult('Rate limited');
-        return;
-      }
-
-      const data = await response.text();
-      setSendNotificationResult(`Error: ${data}`);
-    } catch (error) {
-      setSendNotificationResult(`Error: ${error}`);
-    }
-  }, [context, notificationDetails]);
-
   const sendTx = useCallback(() => {
     sendTransaction(
       {
@@ -233,7 +201,7 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
         data: '0x9846cd9efc000023c0',
       },
       {
-        onSuccess: (hash) => {
+        onSuccess: (hash: string) => {
           setTxHash(hash);
         },
       }
@@ -382,15 +350,6 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
 
             <Button onClick={actions.addMiniApp} disabled={added} className="w-full">
               Add Mini App to Client
-            </Button>
-
-            {sendNotificationResult && (
-              <div className="text-sm w-full">
-                Send notification result: {sendNotificationResult}
-              </div>
-            )}
-            <Button onClick={sendNotification} disabled={!notificationDetails} className="w-full">
-              Send notification
             </Button>
 
             <Button
