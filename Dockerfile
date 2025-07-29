@@ -11,14 +11,13 @@ RUN npm config set registry https://registry.npmjs.org/
 # Install pnpm
 RUN npm install -g pnpm@10.12.1
 
-# Copy package.json and pnpm files
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+# Copy package.json and pnpm files first
+COPY package.json pnpm-workspace.yaml turbo.json ./
 COPY app/package.json ./app/
 COPY generator/package.json ./generator/
-COPY turbo.json ./
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install dependencies without frozen lockfile to avoid Railway issues
+RUN pnpm install
 
 # Rebuild the source code only when needed
 FROM base AS builder
