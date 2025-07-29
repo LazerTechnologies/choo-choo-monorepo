@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server';
 import { isAddress } from 'viem';
 import { composeImage, uploadImageToPinata, uploadMetadataToPinata } from 'generator';
+import { getContractService } from '@/lib/services/contract';
 
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
-const APP_URL = process.env.APP_URL;
-const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
 /**
  * Fetches replies to a given cast from Neynar, along with each reply author's primary wallet address and total reactions.
@@ -101,13 +100,6 @@ async function fetchRepliesAndReactions(
  */
 export async function POST(request: Request) {
   try {
-    if (!APP_URL) {
-      throw new Error('APP_URL environment variable is not set');
-    }
-    if (!INTERNAL_SECRET) {
-      throw new Error('INTERNAL_SECRET is not set in the environment');
-    }
-
     // 0. Parse body for castHash
     const body = await request.json();
     const castHash = body.castHash;
@@ -132,16 +124,8 @@ export async function POST(request: Request) {
     }
 
     // 3. Get the next token ID from our contract
-    // @todo: Add KV store-based fetching to prevent unlikely race conditions and avoid RPC misuse
-    const totalSupplyRes = await fetch(`${APP_URL}/api/internal/next-stop/read`, {
-      headers: {
-        'x-internal-secret': INTERNAL_SECRET,
-      },
-    });
-    if (!totalSupplyRes.ok) {
-      throw new Error('Failed to fetch total supply from internal API');
-    }
-    const { totalSupply } = await totalSupplyRes.json();
+    const contractService = getContractService();
+    const totalSupply = await contractService.getTotalSupply();
     const tokenId = totalSupply + 1;
 
     // 4. Generate the unique NFT image and attributes
@@ -154,22 +138,16 @@ export async function POST(request: Request) {
     const metadataCid = await uploadMetadataToPinata(tokenId, imageCid, attributes);
     const tokenURI = `ipfs://${metadataCid}`;
 
-    // 7. Call the internal endpoint to execute the on-chain transaction
-    const nextStopRes = await fetch(`${APP_URL}/api/internal/next-stop/execute`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-internal-secret': INTERNAL_SECRET,
-      },
-      body: JSON.stringify({ recipient: winnerAddress, tokenURI }),
+    // 7. Execute the on-chain transaction
+    const txHash = await contractService.executeNextStop(winnerAddress, tokenURI);
+
+    return NextResponse.json({
+      success: true,
+      winner: winnerAddress,
+      tokenURI,
+      txHash,
+      tokenId,
     });
-
-    if (!nextStopRes.ok) {
-      const data = await nextStopRes.json().catch(() => ({}));
-      throw new Error(data.error || 'Failed to call internal/next-stop/execute');
-    }
-
-    return NextResponse.json({ success: true, winner: winnerAddress, tokenURI });
   } catch (error) {
     console.error('Failed to trigger next stop:', error);
     return NextResponse.json({ error: 'Failed to trigger next stop.' }, { status: 500 });
