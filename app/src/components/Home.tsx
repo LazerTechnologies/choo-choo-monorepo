@@ -25,6 +25,8 @@ import { useSession } from 'next-auth/react';
 import { useMiniApp } from '@neynar/react';
 import { Header } from '@/components/ui/Header';
 import { Footer } from '@/components/ui/Footer';
+import { YoinkDialog } from '@/components/ui/dialogs/YoinkDialog';
+import { JourneyTimeline } from '@/components/ui/timeline';
 import { USE_WALLET, APP_NAME } from '@/lib/constants';
 import Image from 'next/image';
 
@@ -53,6 +55,56 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
   const [copied, setCopied] = useState(false);
   const [neynarUser, setNeynarUser] = useState<NeynarUser | null>(null);
   const [hapticIntensity, setHapticIntensity] = useState<Haptics.ImpactOccurredType>('medium');
+  const [isYoinkDialogOpen, setIsYoinkDialogOpen] = useState(false);
+
+  // @todo: Replace with real data from the contract
+  const dummyJourneyData = [
+    {
+      username: 'alice.eth',
+      address: '0x1234567890123456789012345678901234567890',
+      nftImage: '/ChooChoo.webp',
+      ticketNumber: 5,
+      date: 'Dec 15, 2024',
+      duration: '2h 30m',
+      avatarSrc: undefined,
+    },
+    {
+      username: 'bob_crypto',
+      address: '0x2345678901234567890123456789012345678901',
+      nftImage: '/ChooChoo.webp',
+      ticketNumber: 4,
+      date: 'Dec 14, 2024',
+      duration: '1d 5h',
+      avatarSrc: undefined,
+    },
+    {
+      username: 'charlie',
+      address: '0x3456789012345678901234567890123456789012',
+      nftImage: '/ChooChoo.webp',
+      ticketNumber: 3,
+      date: 'Dec 13, 2024',
+      duration: '45m',
+      avatarSrc: undefined,
+    },
+    {
+      username: 'diana.base',
+      address: '0x4567890123456789012345678901234567890123',
+      nftImage: '/ChooChoo.webp',
+      ticketNumber: 2,
+      date: 'Dec 12, 2024',
+      duration: '3h 15m',
+      avatarSrc: undefined,
+    },
+    {
+      username: 'eve_onchain',
+      address: '0x5678901234567890123456789012345678901234',
+      nftImage: '/ChooChoo.webp',
+      ticketNumber: 1,
+      date: 'Dec 11, 2024',
+      duration: '6h 20m',
+      avatarSrc: undefined,
+    },
+  ];
 
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
@@ -137,6 +189,10 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
     switchChain({ chainId: nextChain.id });
   }, [switchChain, nextChain.id]);
 
+  const handleYoinkClick = useCallback(() => {
+    setIsYoinkDialogOpen(true);
+  }, []);
+
   const sendNotification = useCallback(async () => {
     setSendNotificationResult('');
     if (!notificationDetails || !context) {
@@ -205,6 +261,14 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
     setIsContextOpen((prev) => !prev);
   }, []);
 
+  // play train whistle when SDK loads on home tab
+  useEffect(() => {
+    if (isSDKLoaded && currentTab === 'home') {
+      const audio = new Audio('/sounds/choochoo.mp3');
+      audio.play();
+    }
+  }, [isSDKLoaded, currentTab]);
+
   if (!isSDKLoaded) {
     return <div>Loading...</div>;
   }
@@ -225,18 +289,24 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
         <h1 className="text-2xl font-bold text-center mb-4">{title}</h1>
 
         {currentTab === 'home' && (
-          <div className="flex flex-col items-center justify-center h-[calc(100vh-200px)] px-6">
-            <h2 className="text-2xl font-bold mb-4">{title}</h2>
-            <Image
-              src="/ChooChoo.webp"
-              alt="ChooChoo App Logo"
-              width={320}
-              height={320}
-              priority
-              className="rounded-lg shadow-lg border-4"
-              style={{ borderColor: 'var(--border)' }}
-            />
-            <p className="text-sm text-gray-500 mt-4">Powered by Neynar 🪐</p>
+          <div className="overflow-y-auto h-[calc(100vh-200px)] px-6">
+            <div className="flex flex-col items-center justify-center py-8">
+              <h2 className="text-2xl font-bold mb-4">{title}</h2>
+              <Image
+                src="/ChooChoo.webp"
+                alt="ChooChoo App Logo"
+                width={320}
+                height={320}
+                priority
+                className="rounded-lg shadow-lg border-4"
+                style={{ borderColor: 'var(--border)' }}
+              />
+              <p className="text-sm text-gray-500 mt-4 mb-8">Powered by Neynar 🪐</p>
+            </div>
+
+            <div className="pb-8">
+              <JourneyTimeline items={dummyJourneyData} />
+            </div>
           </div>
         )}
 
@@ -410,8 +480,15 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
           </div>
         )}
 
-        <Footer activeTab={currentTab as Tab} setActiveTab={setActiveTab} showWallet={USE_WALLET} />
+        <Footer
+          activeTab={currentTab as Tab}
+          setActiveTab={setActiveTab}
+          showWallet={USE_WALLET}
+          onYoinkClick={handleYoinkClick}
+        />
       </div>
+
+      <YoinkDialog isOpen={isYoinkDialogOpen} onClose={() => setIsYoinkDialogOpen(false)} />
     </div>
   );
 }
