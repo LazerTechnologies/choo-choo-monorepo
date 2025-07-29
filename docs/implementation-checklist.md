@@ -1,5 +1,121 @@
 # ChooChoo Train Implementation Checklist
 
+## IMMEDIATE PRIORITY: Fix Canvas/Native Dependencies Issue
+
+The `/api/send-train` endpoint is currently crashing due to the `canvas` package's native binaries not being compatible with Next.js serverless functions. Here's the step-by-step solution:
+
+### Phase 1: Canvas Issue Resolution (CRITICAL - Do This First)
+
+- [ ] **Option A: Switch to Canvas-Free Image Generation (RECOMMENDED)**
+
+  - **Goal:** Replace `canvas` with a serverless-friendly image generation solution
+  - **How:**
+    1. **Install `@vercel/og` or similar:** Replace canvas with a serverless-compatible image generation library
+    2. **Update generator package:** Rewrite `generator/src/utils/compose.ts` to use SVG/HTML-based composition instead of canvas
+    3. **Alternative:** Use `sharp` + pre-rendered layer PNGs for server-side composition
+    4. **Benefit:** Works in Vercel serverless functions without native dependencies
+
+- [ ] **Option B: External Image Generation Service (IF Option A fails)**
+
+  - **Goal:** Move image generation outside the Next.js app
+  - **How:**
+    1. **Create separate service:** Deploy generator as a standalone Node.js service (Railway, Render, etc.)
+    2. **API endpoint:** Create `/generate` endpoint that accepts trait parameters
+    3. **Update send-train:** Call external service instead of local generator
+    4. **Benefit:** Keeps canvas but adds complexity
+
+- [ ] **Option C: Next.js Webpack Configuration (LAST RESORT)**
+  - **Goal:** Configure Next.js to handle native dependencies
+  - **How:**
+    1. **Update `next.config.ts`:** Add webpack externals for canvas
+    2. **Add serverless compatibility:** Configure for serverless functions
+    3. **Risk:** May not work in Vercel deployment, complex setup
+
+### Phase 2: Complete Backend Orchestration Implementation
+
+Once canvas issue is resolved, implement the full backend flow:
+
+- [ ] **Environment Setup & Configuration:**
+
+  - [ ] **Vercel KV Store Setup:**
+    - Create Vercel KV instance in dashboard
+    - Add `KV_REST_API_URL` and `KV_REST_API_TOKEN` to environment variables
+    - Install `@upstash/redis` in app package
+  - [ ] **Required Environment Variables:**
+    ```
+    NEYNAR_API_KEY=your_neynar_key
+    PINATA_JWT=your_pinata_jwt
+    CHOOCHOO_TRAIN_ADDRESS=contract_address
+    ADMIN_PRIVATE_KEY=private_key
+    RPC_URL=base_rpc_url
+    INTERNAL_SECRET=random_secret_string
+    APP_URL=http://localhost:3000 (dev) / https://yourdomain.com (prod)
+    USE_MAINNET=false (dev) / true (prod)
+    KV_REST_API_URL=your_vercel_kv_url
+    KV_REST_API_TOKEN=your_vercel_kv_token
+    ```
+
+- [ ] **KV Store Integration:**
+
+  - [ ] **Create KV utilities:**
+    - `app/src/lib/kv.ts` - Helper functions for KV operations
+    - Functions: `setCastHash()`, `getCastHash()`, `setTokenMetadata()`, `getTokenMetadata()`
+  - [ ] **Cast hash management:**
+    - Store active cast hash for reply tracking
+    - Update when new casts are posted
+  - [ ] **Transaction state tracking:**
+    - Store processing states: pending, processing, completed, failed
+    - Implement idempotency for retry protection
+
+- [ ] **Pinata Integration Setup:**
+
+  - [ ] **Verify Pinata configuration:**
+    - Test JWT token in environment
+    - Verify upload permissions
+  - [ ] **Error handling:**
+    - Implement retry logic for failed uploads
+    - Add proper error messages and logging
+
+- [ ] **Contract Integration Completion:**
+
+  - [ ] **Test contract calls:**
+    - Verify `nextStop` function works with admin private key
+    - Test `totalSupply` reading
+  - [ ] **Add transaction monitoring:**
+    - Wait for transaction confirmation
+    - Return transaction hash in response
+  - [ ] **Gas optimization:**
+    - Implement proper gas estimation
+    - Add error handling for failed transactions
+
+- [ ] **Security & Reliability Implementation:**
+
+  - [ ] **Request validation:**
+    - Validate cast hash format
+    - Sanitize all inputs
+    - Add rate limiting (use Vercel's rate limiting or upstash)
+  - [ ] **Idempotency:**
+    - Require `idempotency-key` header
+    - Store processed keys in KV with TTL
+    - Return cached results for duplicate requests
+  - [ ] **Error handling & rollback:**
+    - Implement transaction state machine
+    - Rollback Pinata uploads on contract failures
+    - Add comprehensive logging
+
+- [ ] **API Route Completion:**
+  - [ ] **Update `/api/send-train`:**
+    - Fix missing `try` keyword (line 103)
+    - Add comprehensive error handling
+    - Implement all security measures
+    - Add proper logging
+  - [ ] **Complete missing functions:**
+    - `fetchRepliesAndReactions()` - may need implementation
+    - Verify all imports are working
+  - [ ] **Add health check endpoint:**
+    - `/api/health` - Test all external services
+    - Verify contract connectivity, Pinata, Neynar, KV store
+
 ## 1. Smart Contract Modifications
 
 - [x] **Integrate OpenZeppelin `ERC2771Context`:**
@@ -33,76 +149,22 @@ The backend is the core of the application, orchestrating the train's movement, 
     1. **Neynar Signer:** Use the Neynar API to create a signer for your app's Farcaster account. This will give you an `signer_uuid` that you can use to post casts.
     2. **API Route:** Create a new API route (e.g., `/api/internal/post-cast`) that uses the Neynar SDK and the `signer_uuid` to post a cast.
     3. **Security:** Ensure this route is protected and can only be called by your backend services.
-- [ ] **Vercel KV Store Integration:**
-  - **Goal:** Store the current cast hash to track which cast is active for replies.
-  - **How:**
-    1. **Connection:** Use the `@upstash/redis` package to connect to your Vercel KV store.
-    2. **API Routes:**
-    - Create a `POST` route (e.g., `/api/internal/set-cast-hash`) to store the cast hash.
-    - Create a `GET` route (e.g., `/api/get-cast-hash`) to retrieve the cast hash.
+- [x] **Vercel KV Store Integration:** _(Updated above in Phase 2)_
 - [x] **Implement Orchestration API Route (`/api/send-train`):**
   - **Goal:** Create the main entry point for the train's movement, orchestrating NFT generation and contract interaction.
-  - **Status:** Done. This route now handles winner selection, calls the `generator` package, uploads to Pinata, and triggers the internal `nextStop` call.
+  - **Status:** Partially implemented but needs canvas fix and completion per Phase 2 above.
 - [x] **Update Internal API Routes (`/api/internal/next-stop/read` and `/api/internal/next-stop/execute`):**
   - **Goal:** Provide secure interfaces for contract interactions and `totalSupply` queries using distinct endpoints.
   - **Status:** Done. Created separate `/read` endpoint for `totalSupply` queries and `/execute` endpoint for `nextStop` transactions.
 
 ## 2.5. Security and Reliability for `/api/send-train`
 
-This section addresses critical security and reliability concerns for the main orchestration API route to ensure production readiness.
-
-- [ ] **Authentication and Authorization:**
-
-  - **Goal:** Restrict access to authorized backend users only to prevent unauthorized train movements.
-  - **How:**
-    1. **API Key Authentication:** Implement API key validation using environment variables (e.g., `INTERNAL_API_KEY`).
-    2. **Request Validation:** Validate all incoming requests with proper input sanitization and type checking.
-    3. **Rate Limiting:** Implement per-IP rate limiting to prevent abuse and DoS attacks.
-    4. **CORS Configuration:** Restrict CORS to only allow requests from trusted domains.
-
-- [ ] **Idempotency Implementation:**
-
-  - **Goal:** Prevent duplicate processing on retries to avoid ghost tickets and double gas charges.
-  - **How:**
-    1. **Idempotency Keys:** Require a unique `idempotency-key` header in all requests.
-    2. **KV Store Tracking:** Use Vercel KV to store processed idempotency keys with TTL (e.g., 24 hours).
-    3. **Duplicate Detection:** Check for existing idempotency keys before processing and return cached results if found.
-    4. **Request Deduplication:** Implement proper request deduplication logic to handle concurrent requests.
-
-- [ ] **Retry and Rollback Mechanisms:**
-
-  - **Goal:** Handle failures gracefully from Pinata uploads or contract calls without leaving the system in an inconsistent state.
-  - **How:**
-    1. **Transaction State Tracking:** Use Vercel KV to track the state of each train movement (pending, processing, completed, failed).
-    2. **Pinata Upload Retry:** Implement exponential backoff retry logic for Pinata uploads with proper error handling.
-    3. **Contract Call Retry:** Implement retry logic for blockchain transactions with nonce management.
-    4. **Rollback Strategy:** If contract call fails after successful Pinata upload, implement cleanup logic to prevent orphaned metadata.
-    5. **Dead Letter Queue:** For permanently failed operations, log detailed error information for manual intervention.
-
-- [ ] **Error Handling and Logging:**
-
-  - **Goal:** Provide comprehensive error tracking and debugging capabilities.
-  - **How:**
-    1. **Structured Logging:** Implement structured logging with correlation IDs for each request.
-    2. **Error Classification:** Categorize errors (network, validation, contract, external service) for appropriate handling.
-    3. **Alerting:** Set up alerts for critical failures (contract call failures, Pinata upload failures).
-    4. **Audit Trail:** Log all train movements with timestamps, user info, and transaction hashes.
-
-- [ ] **Circuit Breaker Pattern:**
-  - **Goal:** Prevent cascading failures when external services are down.
-  - **How:**
-    1. **Pinata Circuit Breaker:** Implement circuit breaker for Pinata API calls to fail fast when service is unavailable.
-    2. **Blockchain Circuit Breaker:** Implement circuit breaker for RPC calls to prevent timeouts.
-    3. **Fallback Mechanisms:** Provide graceful degradation when external services are unavailable.
-
-## 3. NFT Image and Metadata Generation
-
-This section covers the on-demand creation of NFT images and metadata using a dedicated `generator` package. This approach is optimized for a serverless environment like Vercel.
+_(Updated and expanded above in Phase 2)_
 
 - [x] **Create a dedicated `generator` package:**
 
   - **Goal:** Isolate all image and metadata generation logic from the Next.js frontend application.
-  - **Status:** Done. A new `generator` package has been created in the monorepo root.
+  - **Status:** Done but needs canvas fix per Phase 1 above.
 
 - [x] **Add Artwork and Configure Git LFS:**
 
@@ -116,21 +178,22 @@ This section covers the on-demand creation of NFT images and metadata using a de
 
 - [x] **Implement Core Generation Logic in TypeScript:**
   - **Goal:** Write clean, well-typed, and maintainable code for composing images and uploading them to IPFS.
-  - **Status:** Done. The following files have been implemented:
+  - **Status:** Done but needs canvas replacement per Phase 1 above.
     - `src/config.ts`: Defines layer order, image dimensions, and collection metadata.
-    - `src/utils/compose.ts`: Contains the logic to select traits based on rarity and compose the final image using `canvas`.
+    - `src/utils/compose.ts`: Contains the logic to select traits based on rarity and compose the final image using `canvas`. **NEEDS CANVAS REPLACEMENT**
     - `src/utils/pinata.ts`: Contains helper functions to upload image buffers and metadata JSON to Pinata.
 
 ## 4. Frontend UI Development
 
 With the backend in place, you can now build out the user interface.
 
-- [ ] **Component Implementation:**
+- [x] **Component Implementation:**
   - **Goal:** Create the React components outlined in the documentation.
-  - **How:**
-    - `NFTDisplay.tsx`: Display the NFT image and metadata.
-    - `TrainJourney.tsx`: Show the history of the train's journey.
-    - `SendTrainButton.tsx`: The button for the current holder to trigger the `nextStop` flow.
+  - **Status:** Basic components implemented, needs expansion:
+    - ✅ `NextStopTrigger` component added to Home.tsx
+    - [ ] `NFTDisplay.tsx`: Display the NFT image and metadata.
+    - [ ] `TrainJourney.tsx`: Show the history of the train's journey.
+    - [ ] `SendTrainButton.tsx`: Enhanced version of current trigger.
 - [ ] **Wagmi and Viem Integration:**
   - **Goal:** Connect the frontend to the blockchain.
   - **How:**
@@ -200,7 +263,7 @@ This section outlines the key considerations for deploying the entire monorepo t
     - As long as your `.gitattributes` file is committed to the repository, Vercel's build process will automatically detect it, download the LFS objects, and make the full-resolution images in `generator/layers` available to your serverless functions.
 
 - [ ] **Verify Serverless Function Operation:**
-  - **Goal:** Confirm that the API routes, especially the new `/api/generate-nft` route, are functioning correctly in the deployed environment.
+  - **Goal:** Confirm that the API routes, especially the new `/api/send-train` route, are functioning correctly in the deployed environment.
   - **How:**
     - After deployment, use the Vercel dashboard logs to monitor the execution of your serverless functions.
-    - Trigger the `generate-nft` flow and check the logs for any errors related to file access, canvas operations, or API calls to Pinata.
+    - Trigger the `send-train` flow and check the logs for any errors related to file access, canvas operations, or API calls to Pinata.

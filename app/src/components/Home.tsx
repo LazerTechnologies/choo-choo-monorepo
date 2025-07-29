@@ -301,11 +301,60 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
                 className="rounded-lg shadow-lg border-4"
                 style={{ borderColor: 'var(--border)' }}
               />
-              <p className="text-sm text-gray-500 mt-4 mb-8">Powered by Neynar 🪐</p>
+            </div>
+
+            {/* App Description */}
+            <div className="pb-6 text-center px-4">
+              <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
+                ChooChoo is a train trying to visit every wallet on Base! The community decides each
+                stop on the journey. When ChooChoo visits a new wallet, he sends out a cast. Replies
+                to that cast compete for the most reactions, and the winner receives ChooChoo next.
+                All aboard!
+              </p>
+            </div>
+
+            {/* Next Stop Trigger */}
+            <div className="pb-8 px-4">
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6 space-y-4">
+                <h3 className="text-lg font-semibold text-center">Trigger Next Stop</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
+                  Select the next stop winner from the latest cast and mint their NFT ticket
+                </p>
+                <NextStopTrigger />
+              </div>
             </div>
 
             <div className="pb-8">
               <JourneyTimeline items={dummyJourneyData} />
+            </div>
+
+            {/* Credits Section */}
+            <div className="pb-8 border-t border-gray-200 dark:border-gray-700 pt-6 mt-8">
+              <div className="text-center space-y-2">
+                <p className="text-sm text-white dark:text-white">
+                  Artwork by{' '}
+                  <a
+                    href="https://farcaster.xyz/yonfrula"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-purple-600 dark:text-purple-400 hover:underline font-medium"
+                  >
+                    @yonfrula
+                  </a>
+                </p>
+                <p className="text-sm text-white dark:text-white">
+                  Built by{' '}
+                  <a
+                    href="https://farcaster.xyz/jonbray.eth"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-purple-600 dark:text-purple-400 hover:underline font-medium"
+                  >
+                    @jonbray.eth
+                  </a>
+                </p>
+                <p className="text-sm text-white dark:text-white">Powered by Base 🔵</p>
+              </div>
             </div>
           </div>
         )}
@@ -489,6 +538,60 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
       </div>
 
       <YoinkDialog isOpen={isYoinkDialogOpen} onClose={() => setIsYoinkDialogOpen(false)} />
+    </div>
+  );
+}
+
+function NextStopTrigger() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+
+  const handleSubmit = useCallback(async () => {
+    // @todo: pull `lastCastHash` from KV store
+    const castHash = '0x09cb24bb'; // Hardcoded for testing
+
+    setIsLoading(true);
+    setResult(null);
+
+    try {
+      const response = await fetch('/api/send-train', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ castHash }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setResult(`Success! Winner: ${data.winner}`);
+      } else {
+        setResult(`Error: ${data.error || 'Failed to trigger next stop'}`);
+      }
+    } catch (error) {
+      setResult(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  return (
+    <div className="space-y-3">
+      <Button onClick={handleSubmit} disabled={isLoading} isLoading={isLoading} className="w-full">
+        Trigger Next Stop
+      </Button>
+      {result && (
+        <div
+          className={`text-xs p-2 rounded ${
+            result.startsWith('Success')
+              ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+              : 'bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200'
+          }`}
+        >
+          {result}
+        </div>
+      )}
     </div>
   );
 }
