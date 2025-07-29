@@ -5,8 +5,8 @@ export const baseDir = process.cwd();
 export const layersDir = path.join(baseDir, 'layers');
 
 export const imageDimensions = {
-  width: 1080 as const,
-  height: 1080 as const,
+  width: 2048 as const,
+  height: 2048 as const,
 };
 
 // @todo: finalize collection metadata

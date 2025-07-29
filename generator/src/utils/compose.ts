@@ -1,4 +1,4 @@
-import { createCanvas, loadImage } from 'canvas';
+import sharp from 'sharp';
 import fs from 'fs/promises';
 import path from 'path';
 import { baseDir, imageDimensions, layerOrder, LayerName } from '../config';
@@ -114,9 +114,6 @@ export const composeImage = async (): Promise<{
     }
   }
 
-  const canvas = createCanvas(imageDimensions.width, imageDimensions.height);
-  const ctx = canvas.getContext('2d');
-
   const attributes: NftAttribute[] = [];
   const selectedTraits: {
     layer: LayerName;
@@ -134,13 +131,22 @@ export const composeImage = async (): Promise<{
     });
   }
 
-  // Draw each selected trait onto the canvas in the correct order
+  // Prepare composite layers for Sharp
+  const compositeLayers: { input: Buffer; top: number; left: number }[] = [];
+
+  // Load each layer as a buffer for compositing
   for (const { layer, originalName, formattedName } of selectedTraits) {
     const imagePath = path.join(baseDir, 'layers', layer, originalName);
 
     try {
-      const image = await loadImage(imagePath);
-      ctx.drawImage(image, 0, 0, imageDimensions.width, imageDimensions.height);
+      // Load image as buffer to preserve exact dimensions and transparency
+      const imageBuffer = await fs.readFile(imagePath);
+
+      compositeLayers.push({
+        input: imageBuffer,
+        top: 0,
+        left: 0,
+      });
     } catch (error) {
       throw new Error(
         `Failed to load image for layer "${layer}", trait "${formattedName}" at ${imagePath}: ${
@@ -150,7 +156,24 @@ export const composeImage = async (): Promise<{
     }
   }
 
-  const imageBuffer = canvas.toBuffer('image/png');
+  // Create base image and composite all layers
+  try {
+    const imageBuffer = await sharp({
+      create: {
+        width: imageDimensions.width,
+        height: imageDimensions.height,
+        channels: 4,
+        background: { r: 0, g: 0, b: 0, alpha: 0 }, // Transparent background
+      },
+    })
+      .composite(compositeLayers)
+      .png()
+      .toBuffer();
 
-  return { imageBuffer, attributes };
+    return { imageBuffer, attributes };
+  } catch (error) {
+    throw new Error(
+      `Failed to composite final image: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
 };

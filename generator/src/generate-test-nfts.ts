@@ -1,4 +1,5 @@
-import { composeImage, collectionName, collectionDescription } from './index';
+import { composeImage } from './utils/compose';
+import { collectionName, collectionDescription } from './config';
 import fs from 'fs/promises';
 import path from 'path';
 
