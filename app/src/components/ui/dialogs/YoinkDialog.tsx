@@ -1,14 +1,28 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Dialog } from '@/components/base/Dialog';
 import { Button } from '@/components/base/Button';
+import { getYoinkCountdownState } from '@/utils/countdown';
 
 interface YoinkDialogProps {
   isOpen: boolean;
   onClose: () => void;
 }
+
 // @todo: add a yoink timer
 export function YoinkDialog({ isOpen, onClose }: YoinkDialogProps) {
+  const [countdownState, setCountdownState] = useState(() => getYoinkCountdownState());
+
+  // Update countdown every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCountdownState(getYoinkCountdownState());
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   const handleYoink = () => {
     // TODO: Implement yoink logic
     console.log('Yoink initiated!');
@@ -24,46 +38,39 @@ export function YoinkDialog({ isOpen, onClose }: YoinkDialogProps) {
         className="rounded-lg p-0 bg-background"
         style={{ background: 'var(--background)' }}
       >
-        <Dialog.Header className="bg-red-500 text-white">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🚩</span>
-            <h2 className="text-lg font-bold">Yoink Choo-Choo!</h2>
-          </div>
+        <Dialog.Header className="text-white">
+          <div className="flex items-center gap-2"></div>
         </Dialog.Header>
 
         <div className="p-6 space-y-4">
+          {/* Countdown Display */}
+          <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center">
+            <p className="text-lg font-medium text-gray-900 dark:text-gray-100">
+              {countdownState.isAvailable
+                ? '🚂 Choo-Choo can be yoinked now!'
+                : `🚂 Choo-Choo can be yoinked in: ${countdownState.shortFormat}`}
+            </p>
+          </div>
+
           <div className="space-y-3">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
               What if Choo-Choo goes to a dead wallet?
             </h3>
 
             <p className="text-gray-700 dark:text-gray-300">
-              {/* @todo: add specific times */}
-              If the train gets stuck, previous passengers can &quot;yoink&quot; the train after a
-              certain time:
+              If the train gets stuck, anyone can &quot;yoink&quot; the train after 2 days of no
+              movement:
             </p>
 
-            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg p-4 space-y-2">
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-4 space-y-2">
               <div className="flex items-center gap-2">
                 <span className="text-lg">⏰</span>
-                <span className="font-medium text-yellow-800 dark:text-yellow-200">
+                <span className="font-medium text-green-800 dark:text-green-200">
                   After 2 days of no movement
                 </span>
               </div>
-              <p className="text-sm text-yellow-700 dark:text-yellow-300 ml-7">
-                The immediate previous passenger can yoink the train
-              </p>
-            </div>
-
-            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-4 space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">⏰</span>
-                <span className="font-medium text-orange-800 dark:text-orange-200">
-                  After 3 days of no movement
-                </span>
-              </div>
-              <p className="text-sm text-orange-700 dark:text-orange-300 ml-7">
-                Any previous passenger can yoink the train
+              <p className="text-sm text-green-700 dark:text-green-300 ml-7">
+                Anyone can yoink the train to their wallet
               </p>
             </div>
 
@@ -75,8 +82,8 @@ export function YoinkDialog({ isOpen, onClose }: YoinkDialogProps) {
                 </span>
               </div>
               <p className="text-sm text-blue-700 dark:text-blue-300">
-                You&apos;ll rescue Choo-Choo and become the new conductor! The train will move to
-                your wallet, and you&apos;ll be able to send it on its next adventure.
+                You&apos;ll rescue Choo-Choo and it will move directly to your wallet! You&apos;ll
+                become the new conductor and be able to send it on its next adventure.
               </p>
             </div>
           </div>
@@ -86,8 +93,19 @@ export function YoinkDialog({ isOpen, onClose }: YoinkDialogProps) {
           <Button onClick={onClose} variant="outline" className="mr-2">
             Cancel
           </Button>
-          <Button onClick={handleYoink} className="bg-red-500 hover:bg-red-600 text-white">
-            🚩 Yoink the Train!
+          <Button
+            onClick={handleYoink}
+            disabled={!countdownState.isAvailable}
+            className={`${
+              countdownState.isAvailable
+                ? 'bg-red-500 hover:bg-red-600 text-white'
+                : 'bg-gray-400 cursor-not-allowed text-gray-600'
+            }`}
+          >
+            {countdownState.isAvailable ? '🏁' : '🕑'}{' '}
+            {countdownState.isAvailable
+              ? 'Yoink the Train!'
+              : `Available in ${countdownState.shortFormat}`}
           </Button>
         </Dialog.Footer>
       </Dialog.Content>
