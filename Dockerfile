@@ -37,7 +37,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED 1
 
 # Set required environment variables for build
-ENV NEXT_PUBLIC_MINI_APP_NAME="ChooChoo NFT Minter"
+ENV NEXT_PUBLIC_MINI_APP_NAME="ChooChoo on Base"
 ENV NEXT_PUBLIC_MINI_APP_BUTTON_TEXT="Launch Mini App"
 ENV NEXT_PUBLIC_URL="https://placeholder.railway.app"
 ENV NEXTAUTH_SECRET="railway-build-secret-placeholder"
