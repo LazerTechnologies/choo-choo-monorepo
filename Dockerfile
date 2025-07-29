@@ -42,6 +42,9 @@ ENV NEXT_PUBLIC_MINI_APP_BUTTON_TEXT="Launch Mini App"
 ENV NEXT_PUBLIC_URL="https://placeholder.railway.app"
 ENV NEXTAUTH_SECRET="railway-build-secret-placeholder"
 ENV NEXTAUTH_URL="https://placeholder.railway.app"
+ENV NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS="0x0000000000000000000000000000000000000001"
+ENV KV_REST_API_URL="https://placeholder-redis.upstash.io"
+ENV KV_REST_API_TOKEN="placeholder-token"
 
 # First build generator package
 RUN pnpm --filter generator build
