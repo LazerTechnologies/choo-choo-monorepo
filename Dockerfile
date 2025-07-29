@@ -53,8 +53,8 @@ RUN adduser --system --uid 1001 nextjs
 
 # Copy built application
 COPY --from=builder /app/app/.next/standalone ./
-COPY --from=builder /app/app/.next/static ./app/.next/static
-COPY --from=builder /app/app/public ./app/public
+COPY --from=builder /app/app/.next/static ./.next/static
+COPY --from=builder /app/app/public ./public
 
 # Copy necessary files for the generator package
 COPY --from=builder /app/generator/dist ./generator/dist
@@ -67,4 +67,4 @@ EXPOSE 3000
 ENV PORT 3000
 ENV HOSTNAME "0.0.0.0"
 
-CMD ["node", "app/server.js"] 
+CMD ["node", "server.js"]
