@@ -1,9 +1,12 @@
-FROM node:18-alpine AS base
+FROM node:18.19-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
+
+# Set npm registry to reduce network issues
+RUN npm config set registry https://registry.npmjs.org/
 
 # Install pnpm
 RUN npm install -g pnpm@10.12.1
