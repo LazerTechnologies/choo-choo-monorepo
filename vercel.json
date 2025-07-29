@@ -1,0 +1,46 @@
+{
+  "buildCommand": "pnpm --filter=generator build && pnpm --filter=app build",
+  "rootDirectory": "app",
+  "functions": {
+    "app/api/send-train/route": {
+      "maxDuration": 60,
+      "memory": 2048
+    },
+    "app/api/most-liked-reply/route": {
+      "maxDuration": 30,
+      "memory": 1024
+    },
+    "app/api/check-eligible-replies/route": {
+      "maxDuration": 30,
+      "memory": 1024
+    },
+    "app/api/opengraph-image/route": {
+      "maxDuration": 30,
+      "memory": 1024
+    },
+    "app/api/contract/route": {
+      "maxDuration": 15,
+      "memory": 128
+    },
+    "app/api/best-friends/route": {
+      "maxDuration": 10,
+      "memory": 128
+    },
+    "app/api/users/route": {
+      "maxDuration": 10,
+      "memory": 128
+    },
+    "app/api/send-notification/route": {
+      "maxDuration": 10,
+      "memory": 128
+    },
+    "app/api/webhook/route": {
+      "maxDuration": 10,
+      "memory": 128
+    },
+    "app/api/auth/[...nextauth]/route": {
+      "maxDuration": 10,
+      "memory": 128
+    }
+  }
+}
