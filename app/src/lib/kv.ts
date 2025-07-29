@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Redis } from '@upstash/redis';
 import { Address } from 'viem';
+import { FrameNotificationDetails } from '@farcaster/frame-sdk';
 
 // Initialize Redis client with environment variables
 const redis = new Redis({
@@ -42,7 +43,7 @@ export interface IdempotencyRecord {
 
 export interface UserNotificationDetails {
   fid: number;
-  notificationDetails: any; // Farcaster notification details object
+  notificationDetails: FrameNotificationDetails; // Farcaster notification details object
   updatedAt: number;
 }
 
@@ -280,28 +281,17 @@ export async function healthCheck(): Promise<{
 }
 
 // User Notification Details Management
-export async function setUserNotificationDetails(
-  fid: number,
-  notificationDetails: any
-): Promise<void> {
-  const userNotificationData: UserNotificationDetails = {
-    fid,
-    notificationDetails,
-    updatedAt: Date.now(),
-  };
-
-  await redis.setex(
-    KEYS.USER_NOTIFICATIONS(fid),
-    TTL.USER_NOTIFICATIONS,
-    JSON.stringify(userNotificationData)
-  );
-}
-
 export async function getUserNotificationDetails(
   fid: number
-): Promise<UserNotificationDetails | null> {
-  const data = await redis.get(KEYS.USER_NOTIFICATIONS(fid));
-  return data ? JSON.parse(data as string) : null;
+): Promise<FrameNotificationDetails | null> {
+  return await redis.get(KEYS.USER_NOTIFICATIONS(fid));
+}
+
+export async function setUserNotificationDetails(
+  fid: number,
+  notificationDetails: FrameNotificationDetails
+): Promise<void> {
+  await redis.setex(KEYS.USER_NOTIFICATIONS(fid), TTL.USER_NOTIFICATIONS, notificationDetails);
 }
 
 export async function deleteUserNotificationDetails(fid: number): Promise<void> {
