@@ -4,4 +4,4 @@ packages:
   - generator
 
 onlyBuiltDependencies:
-  - canvas
+  - sharp
