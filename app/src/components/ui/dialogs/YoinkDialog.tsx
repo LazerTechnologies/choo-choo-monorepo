@@ -90,7 +90,7 @@ export function YoinkDialog({ isOpen, onClose }: YoinkDialogProps) {
         </div>
 
         <Dialog.Footer>
-          <Button onClick={onClose} variant="outline" className="mr-2">
+          <Button onClick={onClose} variant="default" className="mr-2">
             Cancel
           </Button>
           <Button
