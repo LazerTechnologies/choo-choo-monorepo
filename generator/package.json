@@ -2,7 +2,8 @@
   "name": "generator",
   "version": "1.0.0",
   "description": "NFT image generator",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
+  "types": "dist/src/index.d.ts",
   "scripts": {
     "test": "vitest run",
     "build": "tsc",
