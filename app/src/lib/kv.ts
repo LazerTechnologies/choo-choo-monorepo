@@ -40,6 +40,12 @@ export interface IdempotencyRecord {
   status: 'success' | 'error';
 }
 
+export interface UserNotificationDetails {
+  fid: number;
+  notificationDetails: any; // Farcaster notification details object
+  updatedAt: number;
+}
+
 // KV Store Keys
 const KEYS = {
   // Active cast hash for determining next stop winner
@@ -65,6 +71,9 @@ const KEYS = {
 
   // General stats
   STATS: 'choochoo:stats',
+
+  // User notification details
+  USER_NOTIFICATIONS: (fid: number) => `choochoo:notifications:${fid}`,
 } as const;
 
 // TTL values (in seconds)
@@ -72,6 +81,7 @@ const TTL = {
   IDEMPOTENCY: 24 * 60 * 60, // 24 hours
   PROCESSING_STATE: 7 * 24 * 60 * 60, // 7 days
   TOKEN_METADATA: 30 * 24 * 60 * 60, // 30 days
+  USER_NOTIFICATIONS: 90 * 24 * 60 * 60, // 90 days
 } as const;
 
 // Cast Hash Management
@@ -267,6 +277,35 @@ export async function healthCheck(): Promise<{
       error: error instanceof Error ? error.message : 'Unknown error',
     };
   }
+}
+
+// User Notification Details Management
+export async function setUserNotificationDetails(
+  fid: number,
+  notificationDetails: any
+): Promise<void> {
+  const userNotificationData: UserNotificationDetails = {
+    fid,
+    notificationDetails,
+    updatedAt: Date.now(),
+  };
+
+  await redis.setex(
+    KEYS.USER_NOTIFICATIONS(fid),
+    TTL.USER_NOTIFICATIONS,
+    JSON.stringify(userNotificationData)
+  );
+}
+
+export async function getUserNotificationDetails(
+  fid: number
+): Promise<UserNotificationDetails | null> {
+  const data = await redis.get(KEYS.USER_NOTIFICATIONS(fid));
+  return data ? JSON.parse(data as string) : null;
+}
+
+export async function deleteUserNotificationDetails(fid: number): Promise<void> {
+  await redis.del(KEYS.USER_NOTIFICATIONS(fid));
 }
 
 // Initialize function to set up any required data structures
