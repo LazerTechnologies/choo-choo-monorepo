@@ -1,6 +1,5 @@
 {
   "buildCommand": "pnpm --filter=generator build && pnpm --filter=app build",
-  "rootDirectory": "app",
   "functions": {
     "app/api/send-train/route": {
       "maxDuration": 60,
