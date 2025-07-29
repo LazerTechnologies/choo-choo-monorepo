@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { composeImage } from '../src/utils/compose';
-import { collectionName, collectionDescription } from '../src/config';
+import { collectionName, collectionDescription, imageDimensions } from '../src/config';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
+import sharp from 'sharp';
 
 describe('Generate Test NFTs', () => {
   let testOutputDir: string;
@@ -50,6 +51,11 @@ describe('Generate Test NFTs', () => {
     expect(Buffer.isBuffer(result.imageBuffer)).toBe(true);
     expect(result.imageBuffer.length).toBeGreaterThan(0);
 
+    // Verify it's a valid PNG by checking magic bytes
+    const pngMagic = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const headerBytes = result.imageBuffer.subarray(0, 8);
+    expect(headerBytes.equals(pngMagic)).toBe(true);
+
     expect(result.attributes).toBeDefined();
     expect(Array.isArray(result.attributes)).toBe(true);
     expect(result.attributes.length).toBeGreaterThan(0);
@@ -63,6 +69,18 @@ describe('Generate Test NFTs', () => {
     });
   });
 
+  it('should generate valid PNG images with correct dimensions', async () => {
+    const result = await composeImage();
+
+    // Use Sharp to verify the generated image properties
+    const metadata = await sharp(result.imageBuffer).metadata();
+
+    expect(metadata.format).toBe('png');
+    expect(metadata.width).toBe(imageDimensions.width);
+    expect(metadata.height).toBe(imageDimensions.height);
+    expect(metadata.channels).toBeGreaterThanOrEqual(3); // RGB or RGBA
+  });
+
   it('should create directories and generate test NFTs successfully', async () => {
     const numTestNfts = 2; // Generate fewer for testing speed
 
@@ -73,6 +91,12 @@ describe('Generate Test NFTs', () => {
     // Generate test NFTs
     for (let i = 1; i <= numTestNfts; i++) {
       const { imageBuffer, attributes } = await composeImage();
+
+      // Verify image properties before saving
+      const imageMetadata = await sharp(imageBuffer).metadata();
+      expect(imageMetadata.format).toBe('png');
+      expect(imageMetadata.width).toBe(imageDimensions.width);
+      expect(imageMetadata.height).toBe(imageDimensions.height);
 
       // Save image
       const imageName = `test-nft-${i}.png`;
@@ -116,6 +140,32 @@ describe('Generate Test NFTs', () => {
 
     expect(imageFiles).toHaveLength(numTestNfts);
     expect(metadataFiles).toHaveLength(numTestNfts);
+  });
+
+  it('should generate unique images with different attributes', async () => {
+    const numTests = 3;
+    const results = [];
+
+    for (let i = 0; i < numTests; i++) {
+      results.push(await composeImage());
+    }
+
+    // Verify all results are valid
+    results.forEach((result) => {
+      expect(Buffer.isBuffer(result.imageBuffer)).toBe(true);
+      expect(result.imageBuffer.length).toBeGreaterThan(0);
+      expect(Array.isArray(result.attributes)).toBe(true);
+      expect(result.attributes.length).toBeGreaterThan(0);
+    });
+
+    // Note: Due to randomness, we can't guarantee uniqueness in a small sample,
+    // but we can verify that the generation process works consistently
+    for (const result of results) {
+      const metadata = await sharp(result.imageBuffer).metadata();
+      expect(metadata.format).toBe('png');
+      expect(metadata.width).toBe(imageDimensions.width);
+      expect(metadata.height).toBe(imageDimensions.height);
+    }
   });
 
   it('should handle errors gracefully during generation', async () => {

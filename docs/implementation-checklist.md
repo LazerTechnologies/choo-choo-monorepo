@@ -4,9 +4,9 @@
 
 The `/api/send-train` endpoint is currently crashing due to the `canvas` package's native binaries not being compatible with Next.js serverless functions. Here's the step-by-step solution:
 
-### Phase 1: Canvas Issue Resolution (CRITICAL - Do This First)
+### Phase 1: Canvas Issue Resolution
 
-- [ ] **Option A: Switch to Canvas-Free Image Generation (RECOMMENDED)**
+- [ ] **Option A: Switch to Canvas-Free Image Generat**
 
   - **Goal:** Replace `canvas` with a serverless-friendly image generation solution
   - **How:**
@@ -14,22 +14,6 @@ The `/api/send-train` endpoint is currently crashing due to the `canvas` package
     2. **Update generator package:** Rewrite `generator/src/utils/compose.ts` to use SVG/HTML-based composition instead of canvas
     3. **Alternative:** Use `sharp` + pre-rendered layer PNGs for server-side composition
     4. **Benefit:** Works in Vercel serverless functions without native dependencies
-
-- [ ] **Option B: External Image Generation Service (IF Option A fails)**
-
-  - **Goal:** Move image generation outside the Next.js app
-  - **How:**
-    1. **Create separate service:** Deploy generator as a standalone Node.js service (Railway, Render, etc.)
-    2. **API endpoint:** Create `/generate` endpoint that accepts trait parameters
-    3. **Update send-train:** Call external service instead of local generator
-    4. **Benefit:** Keeps canvas but adds complexity
-
-- [ ] **Option C: Next.js Webpack Configuration (LAST RESORT)**
-  - **Goal:** Configure Next.js to handle native dependencies
-  - **How:**
-    1. **Update `next.config.ts`:** Add webpack externals for canvas
-    2. **Add serverless compatibility:** Configure for serverless functions
-    3. **Risk:** May not work in Vercel deployment, complex setup
 
 ### Phase 2: Complete Backend Orchestration Implementation
 
