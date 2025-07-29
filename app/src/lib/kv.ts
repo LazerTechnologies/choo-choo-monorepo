@@ -8,6 +8,9 @@ const redis = new Redis({
   token: process.env.KV_REST_API_TOKEN!,
 });
 
+// Export redis instance for direct access
+export { redis };
+
 // Types for KV data structures
 export interface ChooChooHolder {
   farcasterUsername: string;
@@ -93,7 +96,7 @@ export async function addHolder(holder: ChooChooHolder): Promise<void> {
   // Add to sorted history (score = timestamp for chronological order)
   await redis.zadd(KEYS.HOLDERS_HISTORY, {
     score: holderData.timestamp,
-    member: JSON.stringify({ tokenId: holder.tokenId, ...holderData }),
+    member: JSON.stringify(holderData),
   });
 
   // Update current holder
@@ -113,7 +116,9 @@ export async function getHoldersHistory(
   offset: number = 0
 ): Promise<ChooChooHolder[]> {
   // Get holders in reverse chronological order (newest first)
-  const holders = await redis.zrevrange(KEYS.HOLDERS_HISTORY, offset, offset + limit - 1);
+  const holders = await redis.zrange(KEYS.HOLDERS_HISTORY, offset, offset + limit - 1, {
+    rev: true,
+  });
 
   return holders.map((holder) => JSON.parse(holder as string));
 }
@@ -273,8 +278,8 @@ export async function initializeKV(): Promise<void> {
       await updateStats({
         totalMints: 0,
         totalHolders: 0,
-        lastMintTimestamp: null,
-        lastCastHash: null,
+        lastMintTimestamp: undefined,
+        lastCastHash: undefined,
       });
     }
   } catch (error) {

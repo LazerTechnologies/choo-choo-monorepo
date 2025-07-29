@@ -1,7 +1,13 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  output: 'standalone',
+  experimental: {
+    serverComponentsExternalPackages: ['sharp'],
+  },
+  images: {
+    unoptimized: true, // Helpful for Docker deployments
+  },
 };
 
 export default nextConfig;
