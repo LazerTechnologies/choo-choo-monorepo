@@ -35,10 +35,18 @@ COPY . .
 
 # Build the application in the correct order
 ENV NEXT_TELEMETRY_DISABLED 1
+
+# Set required environment variables for build
+ENV NEXT_PUBLIC_MINI_APP_NAME="ChooChoo NFT Minter"
+ENV NEXT_PUBLIC_MINI_APP_BUTTON_TEXT="Launch Mini App"
+ENV NEXT_PUBLIC_URL="https://placeholder.railway.app"
+ENV NEXTAUTH_SECRET="railway-build-secret-placeholder"
+ENV NEXTAUTH_URL="https://placeholder.railway.app"
+
 # First build generator package
 RUN pnpm --filter generator build
-# Then build the app (which depends on generator)
-RUN pnpm --filter app build
+# Then build the app using Next.js directly (skip interactive script)
+RUN cd app && pnpm exec next build
 
 # Production image, copy all the files and run next
 FROM base AS runner
