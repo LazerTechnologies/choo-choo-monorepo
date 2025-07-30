@@ -99,7 +99,7 @@ const nextConfig = {
   output: 'standalone',
   experimental: {
     // Enable if you're using App Router
-    serverComponentsExternalPackages: ['sharp'],
+    serverComponentsExternalPackages: ['imagescript'],
   },
   // Add any other existing configurations
 };
