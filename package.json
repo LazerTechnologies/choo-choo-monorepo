@@ -25,6 +25,9 @@
   ],
   "author": "Jon Bray <me@jonbray.dev>",
   "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "packageManager": "pnpm@10.13.1",
   "devDependencies": {
     "turbo": "^2.5.5"
