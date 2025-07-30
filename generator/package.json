@@ -7,8 +7,6 @@
   "scripts": {
     "test": "vitest run",
     "build": "tsc",
-    "prepare": "npm run build",
-    "prepublishOnly": "npm run build",
     "generate-test-nfts": "ts-node src/generate-test-nfts.ts",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write .",

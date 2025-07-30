@@ -13,10 +13,12 @@
     "format": "turbo format",
     "format:check": "turbo format:check",
     "clean": "turbo clean",
-    "anvil": "turbo anvil",
-    "extract-abi": "turbo run extract-abi",
     "tsc": "turbo run tsc",
-    "generate:demo": "pnpm --filter generator generate-test-nfts"
+    "generate:demo": "pnpm --filter generator generate-test-nfts",
+    "app:dev": "pnpm --filter app dev",
+    "app:build": "pnpm --filter app build",
+    "contracts:anvil": "turbo anvil",
+    "contracts:extract-abi": "turbo run extract-abi"
   },
   "keywords": [
     "farcaster",

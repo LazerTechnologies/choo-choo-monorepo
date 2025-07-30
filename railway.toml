@@ -1,5 +1,5 @@
 [build]
-buildCommand = "pnpm build:production"
+buildCommand = "turbo build:production"
 
 [deploy]
 healthcheckPath = "/api/health" 
