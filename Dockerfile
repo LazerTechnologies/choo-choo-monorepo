@@ -1,38 +1,34 @@
-FROM node:20-slim AS base
+FROM node:20-alpine AS base
+RUN apk add --no-cache libc6-compat
 
 # Install dependencies only when needed
 FROM base AS deps
-RUN apt-get update && apt-get install -y \
-    python3 \
-    make \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache python3 make g++ git
 WORKDIR /app
 
-# Set npm registry to reduce network issues
-RUN npm config set registry https://registry.npmjs.org/
-
 # Install pnpm
-RUN npm install -g pnpm@10.13.1
+RUN corepack enable && corepack prepare pnpm@10.13.1 --activate
 
-# Copy package.json and pnpm files first
-COPY package.json pnpm-workspace.yaml turbo.json ./
+# Copy package files
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml turbo.json ./
 COPY app/package.json ./app/
 COPY generator/package.json ./generator/
+COPY contracts/package.json ./contracts/
 
-# Install dependencies without frozen lockfile to avoid Railway issues
-RUN pnpm install
+# Install dependencies with better error handling
+RUN pnpm install --frozen-lockfile
 
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
 
 # Install pnpm
-RUN npm install -g pnpm@10.13.1
+RUN corepack enable && corepack prepare pnpm@10.13.1 --activate
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/app/node_modules ./app/node_modules
 COPY --from=deps /app/generator/node_modules ./generator/node_modules
+COPY --from=deps /app/contracts/node_modules ./contracts/node_modules
 
 # Copy source code
 COPY . .
