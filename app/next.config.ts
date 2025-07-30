@@ -2,14 +2,19 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  experimental: {
-    serverComponentsExternalPackages: ['imagescript'],
-  },
+  serverExternalPackages: ['imagescript', 'generator'],
   webpack: (config, { isServer }) => {
     if (isServer) {
-      // Ensure ImageScript native binaries are not bundled by Webpack
-      config.externals.push({ imagescript: 'commonjs imagescript' });
+      config.externals.push('generator');
+      config.externals.push('imagescript');
     }
+
+    // Ignore .node files for both server and client
+    config.module.rules.push({
+      test: /\.node$/,
+      use: 'ignore-loader',
+    });
+
     return config;
   },
   images: {

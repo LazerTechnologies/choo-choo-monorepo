@@ -16,6 +16,7 @@
     "project": ["./tsconfig.json"]
   },
   "plugins": ["@typescript-eslint"],
+  "ignorePatterns": ["dist/**", "node_modules/**"],
   "rules": {
     "quotes": ["error", "single"],
     "semi": ["error", "always"],
