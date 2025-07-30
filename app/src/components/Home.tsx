@@ -127,6 +127,77 @@ function TestRedis() {
   );
 }
 
+function TestPinata() {
+  const [result, setResult] = useState<{
+    ipfsHash?: string;
+    ipfsUrl?: string;
+    message?: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleUploadToPinata() {
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const res = await fetch('/api/test-pinata', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setResult(data);
+      } else {
+        setError(data.error || 'Upload failed');
+      }
+    } catch (e) {
+      setError('Upload failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="my-8 p-4 border rounded-lg bg-gray-50 dark:bg-gray-900">
+      <h3 className="font-bold mb-2">Test Pinata</h3>
+      <div className="mb-2">
+        <button
+          className="px-4 py-2 rounded bg-purple-500 text-white hover:bg-purple-600 disabled:opacity-50"
+          onClick={handleUploadToPinata}
+          disabled={loading}
+        >
+          Upload to Pinata
+        </button>
+      </div>
+      {loading && <div className="text-xs text-gray-500">Uploading...</div>}
+      {error && <div className="text-xs text-red-500">{error}</div>}
+      {result && (
+        <div className="text-xs mt-2 space-y-1">
+          <div className="text-green-600 dark:text-green-400">{result.message}</div>
+          <div>
+            IPFS Hash: <span className="font-mono">{result.ipfsHash}</span>
+          </div>
+          {result.ipfsUrl && (
+            <div>
+              IPFS URL:{' '}
+              <a
+                href={result.ipfsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 dark:text-blue-400 hover:underline font-mono text-xs break-all"
+              >
+                {result.ipfsUrl}
+              </a>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Home({ title }: { title?: string } = { title: 'Choo Choo on Base' }) {
   const {
     isSDKLoaded,
@@ -361,6 +432,10 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
               />
             </div>
 
+            {/* Test Sections */}
+            <TestRedis />
+            <TestPinata />
+
             {/* App Description */}
             <div className="pb-6 text-center px-4">
               <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
@@ -587,7 +662,6 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
       </div>
 
       <YoinkDialog isOpen={isYoinkDialogOpen} onClose={() => setIsYoinkDialogOpen(false)} />
-      <TestRedis />
     </div>
   );
 }

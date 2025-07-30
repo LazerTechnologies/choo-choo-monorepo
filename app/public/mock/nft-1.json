@@ -1,0 +1,39 @@
+{
+  "name": "ChooChoo #1",
+  "description": "ChooChoo on Base",
+  "image": "./images/nft-1.png",
+  "attributes": [
+    {
+      "trait_type": "background",
+      "value": "Background"
+    },
+    {
+      "trait_type": "sky",
+      "value": "Sunrise"
+    },
+    {
+      "trait_type": "smoke",
+      "value": "Smoke"
+    },
+    {
+      "trait_type": "train",
+      "value": "Golden Yellow"
+    },
+    {
+      "trait_type": "mouth",
+      "value": "Little Star"
+    },
+    {
+      "trait_type": "eyes",
+      "value": "Mogger"
+    },
+    {
+      "trait_type": "nose",
+      "value": "Nose"
+    },
+    {
+      "trait_type": "arch",
+      "value": "Arch"
+    }
+  ]
+}
