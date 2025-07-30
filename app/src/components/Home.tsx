@@ -158,14 +158,17 @@ function TestPinata() {
 
   return (
     <div className="my-8 p-4 border rounded-lg bg-gray-50 dark:bg-gray-900">
-      <h3 className="font-bold mb-2">Test Pinata</h3>
+      <h3 className="font-bold mb-2">Test Pinata (Generator)</h3>
+      <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+        Generate a new NFT using the generator package and upload to Pinata
+      </p>
       <div className="mb-2">
         <button
           className="px-4 py-2 rounded bg-purple-500 text-white hover:bg-purple-600 disabled:opacity-50"
           onClick={handleUploadToPinata}
           disabled={loading}
         >
-          Upload to Pinata
+          Generate & Upload NFT
         </button>
       </div>
       {loading && <div className="text-xs text-gray-500">Uploading...</div>}

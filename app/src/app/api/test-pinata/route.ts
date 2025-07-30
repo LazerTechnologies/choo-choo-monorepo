@@ -1,68 +1,75 @@
 import { NextResponse } from 'next/server';
-import { readFile } from 'fs/promises';
-import { join } from 'path';
-import PinataClient from '@pinata/sdk';
-import { Readable } from 'stream';
 import { redis } from '@/lib/kv';
-import type {
-  NFTMetadata,
-  PinataFileResponse,
-  PinataJSONResponse,
-  PinataUploadResult,
-} from '@/types/nft';
-
-// @todo: remove this as the `generator` package will handle this
-// @todo: make sure the generator package uploads the metadata properly using patterns below
-const pinataJWT = process.env.PINATA_JWT;
-if (!pinataJWT) {
-  throw new Error('PINATA_JWT environment variable is required');
-}
-const pinata = new PinataClient({ pinataJWTKey: pinataJWT });
+import {
+  composeImage,
+  uploadImageToPinata,
+  uploadMetadataToPinata,
+  collectionName,
+} from 'generator';
+import type { PinataUploadResult } from '@/types/nft';
 
 export async function POST() {
   try {
-    // Read the nft-1.png file from public/mock directory
-    const imagePath = join(process.cwd(), 'public', 'mock', 'nft-1.png');
-    const imageBuffer = await readFile(imagePath);
+    // Use a test token ID
+    const testTokenId = 999;
 
-    // Read the nft-1.json metadata file
-    const metadataPath = join(process.cwd(), 'public', 'mock', 'nft-1.json');
-    const metadataContent = await readFile(metadataPath, 'utf-8');
-    const metadata: NFTMetadata = JSON.parse(metadataContent);
+    console.log('[test-pinata] Generating NFT image using generator package...');
 
-    // Upload image to Pinata
-    const imageStream = Readable.from(imageBuffer);
-    const imageResponse: PinataFileResponse = await pinata.pinFileToIPFS(imageStream, {
-      pinataMetadata: { name: 'test-nft-1.png' },
-    });
-
-    if (!imageResponse?.IpfsHash) {
-      throw new Error('Invalid response from Pinata API for image upload');
+    // 1. Generate the unique NFT image and attributes using the generator
+    let imageBuffer, attributes;
+    try {
+      const result = await composeImage();
+      imageBuffer = result.imageBuffer;
+      attributes = result.attributes;
+      console.log('[test-pinata] Successfully generated image with attributes:', attributes);
+    } catch (err) {
+      console.error('[test-pinata] Failed to compose NFT image:', err);
+      throw new Error(
+        `Failed to compose NFT image: ${err instanceof Error ? err.message : 'Unknown error'}`
+      );
     }
 
-    const imageHash = imageResponse.IpfsHash;
+    // 2. Upload the image to Pinata using generator functions
+    let imageHash;
+    try {
+      imageHash = await uploadImageToPinata(
+        imageBuffer,
+        `${collectionName}-Test-${testTokenId}.png`
+      );
+      console.log('[test-pinata] Successfully uploaded image to Pinata:', imageHash);
+    } catch (err) {
+      console.error('[test-pinata] Failed to upload image to Pinata:', err);
+      throw new Error(
+        `Failed to upload image to Pinata: ${err instanceof Error ? err.message : 'Unknown error'}`
+      );
+    }
+
+    // 3. Upload the metadata to Pinata using generator functions
+    let metadataHash;
+    try {
+      metadataHash = await uploadMetadataToPinata(testTokenId, imageHash, attributes);
+      console.log('[test-pinata] Successfully uploaded metadata to Pinata:', metadataHash);
+    } catch (err) {
+      console.error('[test-pinata] Failed to upload metadata to Pinata:', err);
+      throw new Error(
+        `Failed to upload metadata to Pinata: ${err instanceof Error ? err.message : 'Unknown error'}`
+      );
+    }
+
+    // 4. Create URLs and token URI
     const imageUrl = `https://gateway.pinata.cloud/ipfs/${imageHash}`;
-
-    // Update metadata to point to the uploaded image
-    const updatedMetadata: NFTMetadata = {
-      ...metadata,
-      image: `ipfs://${imageHash}`,
-    };
-
-    // Upload metadata to Pinata
-    const metadataResponse: PinataJSONResponse = await pinata.pinJSONToIPFS(updatedMetadata, {
-      pinataMetadata: { name: 'test-nft-1-metadata.json' },
-    });
-
-    if (!metadataResponse?.IpfsHash) {
-      throw new Error('Invalid response from Pinata API for metadata upload');
-    }
-
-    const metadataHash = metadataResponse.IpfsHash;
     const metadataUrl = `https://gateway.pinata.cloud/ipfs/${metadataHash}`;
     const tokenURI = `ipfs://${metadataHash}`;
 
-    // Store the IPFS hashes and URLs in Redis
+    // 5. Create the complete metadata object (for display purposes)
+    const completeMetadata = {
+      name: `${collectionName} #${testTokenId}`,
+      description: `Generated test NFT from ${collectionName}`,
+      image: `ipfs://${imageHash}`,
+      attributes,
+    };
+
+    // 6. Store the IPFS hashes and URLs in Redis
     await redis.set('test-pinata-image-hash', imageHash);
     await redis.set('test-pinata-image-url', imageUrl);
     await redis.set('test-pinata-metadata-hash', metadataHash);
@@ -75,16 +82,18 @@ export async function POST() {
       metadataHash,
       metadataUrl,
       tokenURI,
-      metadata: updatedMetadata,
+      metadata: completeMetadata,
     };
+
+    console.log('[test-pinata] Test completed successfully');
 
     return NextResponse.json({
       success: true,
       ...result,
-      message: 'Image and metadata uploaded to Pinata and stored in Redis',
+      message: 'Generated NFT image and metadata uploaded to Pinata using generator package',
     });
   } catch (error) {
-    console.error('Error uploading to Pinata:', error);
+    console.error('[test-pinata] Error in Pinata test:', error);
     return NextResponse.json(
       {
         error: 'Failed to upload to Pinata',
