@@ -47,6 +47,15 @@
     "tsc": {
       "outputs": []
     },
+    "verify:sepolia": {
+      "cache": false,
+      "persistent": false,
+      "passThroughEnv": [
+        "SEPOLIA_TRAIN_ADDRESS",
+        "BASE_SEPOLIA_RPC_URL",
+        "BASESCAN_API_KEY"
+      ]
+    },
     "generate:demo": {
       "outputs": ["generator/out/**"],
       "inputs": ["generator/layers/**", "generator/rarities.json"],
