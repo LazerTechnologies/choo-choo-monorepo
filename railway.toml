@@ -1,6 +1,5 @@
 [build]
-buildCommand = "pnpm install && pnpm --filter generator build && pnpm --filter app build"
-startCommand = "pnpm --filter app start"
+buildCommand = "pnpm --filter generator build && pnpm --filter app build"
 
 [deploy]
 healthcheckPath = "/api/health"
