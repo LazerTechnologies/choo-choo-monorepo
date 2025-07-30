@@ -1,5 +1,6 @@
 [build]
-builder = "dockerfile"
+buildCommand = "pnpm install && pnpm --filter generator build && pnpm --filter app build"
+startCommand = "pnpm --filter app start"
 
 [deploy]
 healthcheckPath = "/api/health"

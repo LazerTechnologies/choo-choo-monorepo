@@ -18,7 +18,7 @@ const nextConfig: NextConfig = {
     return config;
   },
   images: {
-    unoptimized: true, // Helpful for Docker deployments
+    unoptimized: true,
   },
 };
 
