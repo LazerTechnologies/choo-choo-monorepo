@@ -1,2 +1,5 @@
+[build]
+buildCommand = "pnpm build:production"
+
 [deploy]
 healthcheckPath = "/api/health" 
