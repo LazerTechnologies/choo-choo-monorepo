@@ -12,7 +12,7 @@
       ]
     },
     "build:production": {
-      "dependsOn": ["^build:production"],
+      "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "test": {
