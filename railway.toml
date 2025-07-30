@@ -1,10 +1,2 @@
-[build]
-buildCommand = "pnpm --filter generator build && pnpm --filter app build"
-
-[start]
-cmd = "cd app && echo \"Setting PORT to 3000\" && PORT=3000 HOSTNAME=0.0.0.0 node .next/standalone/app/server.js"
-
 [deploy]
-healthcheckPath = "/api/health"
-healthcheckTimeout = 300
-restartPolicyType = "always" 
+healthcheckPath = "/api/health" 
