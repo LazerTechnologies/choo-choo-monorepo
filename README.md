@@ -71,11 +71,12 @@ flowchart LR
   end
 
   %% Backend
-  subgraph "Backend (Vercel Serverless)"
+  subgraph "Backend (Railway)"
     Orchestrator["/api/send-train"]
     Generator["Generator Package"]
     InternalRead["/api/internal/next-stop/read"]
     InternalExecute["/api/internal/next-stop/execute"]
+    Redis["Redis Store"]
   end
 
   %% External Services
@@ -121,6 +122,67 @@ flowchart LR
   7.  (Optional) Posts an update cast to Farcaster via the **Farcaster Client/Signer**.
 
 @todo: add failure handling
+
+---
+
+## Deployment
+
+The application is deployed to [Railway](https://railway.app/) with Redis for caching and session management. The deployment uses a standalone Next.js server optimized for monorepo environments.
+
+### Production Build Flow
+
+1. `turbo build` (root) → builds both workspaces
+2. `pnpm --filter=generator build` → compiles Solidity <-> TypeScript code-gen
+3. `pnpm --filter=app build` → runs `next build` with standalone output
+4. `pnpm --filter=app postbuild` → copies static assets to standalone directory
+5. Railway launches `npm start` → executes `node .next/standalone/app/server.js`
+
+### Railway Configuration
+
+| Environment Variable | Value | Purpose |
+|---------------------|-------|---------|
+| `PORT` | `3000` (auto-injected) | Next.js standalone server port |
+| `HOSTNAME` | `0.0.0.0` | Ensures server binds on all interfaces |
+| `REDIS_PUBLIC_URL` | Railway Redis URL | Redis connection (uses IPv6) |
+
+Additional app-specific variables include Neynar API keys, contract addresses, and IPFS configuration.
+
+### Redis Integration
+
+The application uses Redis for:
+- Caching train state and winner determination
+- Session management for Farcaster authentication
+- Rate limiting and temporary data storage
+
+Railway's Redis instance is configured to use the public URL due to IPv6 networking requirements. The connection is managed through `ioredis` instead of the Upstash client used in development.
+
+### Monorepo Deployment Challenges
+
+Several modifications were required to deploy the monorepo successfully:
+
+- **Generator Package**: Added explicit build step to ensure image generation works in production
+- **External Dependencies**: Configured `imagescript` as external to webpack to avoid bundling native bindings
+- **Standalone Output**: Used Next.js standalone mode to create a self-contained server
+- **Asset Management**: Custom `postbuild` script copies static assets to the correct location
+- **Non-interactive Builds**: Modified Neynar SDK build process to avoid CI hanging on prompts
+
+### Health Monitoring
+
+The deployment includes a health check endpoint at `/api/health` that:
+- Returns 200 status when the application is running
+- Provides Redis connection status
+- Enables Railway's health monitoring
+
+### Build Commands
+
+```bash
+# Production deployment
+pnpm install --frozen-lockfile
+pnpm run build:production
+pnpm start  # Delegates to app's standalone server
+```
+
+For detailed deployment configuration and troubleshooting, see `docs/DEPLOYMENT_GUIDE.md`.
 
 ---
 
