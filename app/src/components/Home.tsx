@@ -29,6 +29,7 @@ import { YoinkDialog } from '@/components/ui/dialogs/YoinkDialog';
 import { JourneyTimeline } from '@/components/ui/timeline';
 import { USE_WALLET, APP_NAME } from '@/lib/constants';
 import Image from 'next/image';
+import type { PinataUploadResult } from '@/types/nft';
 
 export type Tab = 'home' | 'actions' | 'context' | 'wallet';
 
@@ -128,11 +129,7 @@ function TestRedis() {
 }
 
 function TestPinata() {
-  const [result, setResult] = useState<{
-    ipfsHash?: string;
-    ipfsUrl?: string;
-    message?: string;
-  } | null>(null);
+  const [result, setResult] = useState<(PinataUploadResult & { message?: string }) | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -174,22 +171,60 @@ function TestPinata() {
       {loading && <div className="text-xs text-gray-500">Uploading...</div>}
       {error && <div className="text-xs text-red-500">{error}</div>}
       {result && (
-        <div className="text-xs mt-2 space-y-1">
+        <div className="text-xs mt-2 space-y-2">
           <div className="text-green-600 dark:text-green-400">{result.message}</div>
-          <div>
-            IPFS Hash: <span className="font-mono">{result.ipfsHash}</span>
-          </div>
-          {result.ipfsUrl && (
+
+          <div className="border-t border-gray-300 dark:border-gray-600 pt-2">
+            <div className="font-semibold mb-1">Image:</div>
             <div>
-              IPFS URL:{' '}
-              <a
-                href={result.ipfsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 dark:text-blue-400 hover:underline font-mono text-xs break-all"
-              >
-                {result.ipfsUrl}
-              </a>
+              Hash: <span className="font-mono">{result.imageHash}</span>
+            </div>
+            {result.imageUrl && (
+              <div>
+                URL:{' '}
+                <a
+                  href={result.imageUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-blue-400 hover:underline font-mono text-xs break-all"
+                >
+                  {result.imageUrl}
+                </a>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-gray-300 dark:border-gray-600 pt-2">
+            <div className="font-semibold mb-1">Metadata:</div>
+            <div>
+              Hash: <span className="font-mono">{result.metadataHash}</span>
+            </div>
+            {result.metadataUrl && (
+              <div>
+                URL:{' '}
+                <a
+                  href={result.metadataUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 dark:text-blue-400 hover:underline font-mono text-xs break-all"
+                >
+                  {result.metadataUrl}
+                </a>
+              </div>
+            )}
+            {result.tokenURI && (
+              <div>
+                Token URI: <span className="font-mono">{result.tokenURI}</span>
+              </div>
+            )}
+          </div>
+
+          {result.metadata && (
+            <div className="border-t border-gray-300 dark:border-gray-600 pt-2">
+              <div className="font-semibold mb-1">Uploaded Metadata:</div>
+              <pre className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs overflow-x-auto">
+                {JSON.stringify(result.metadata, null, 2)}
+              </pre>
             </div>
           )}
         </div>

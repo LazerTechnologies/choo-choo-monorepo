@@ -4,8 +4,15 @@ import { join } from 'path';
 import PinataClient from '@pinata/sdk';
 import { Readable } from 'stream';
 import { redis } from '@/lib/kv';
+import type {
+  NFTMetadata,
+  PinataFileResponse,
+  PinataJSONResponse,
+  PinataUploadResult,
+} from '@/types/nft';
 
 // @todo: remove this as the `generator` package will handle this
+// @todo: make sure the generator package uploads the metadata properly using patterns below
 const pinataJWT = process.env.PINATA_JWT;
 if (!pinataJWT) {
   throw new Error('PINATA_JWT environment variable is required');
@@ -18,28 +25,63 @@ export async function POST() {
     const imagePath = join(process.cwd(), 'public', 'mock', 'nft-1.png');
     const imageBuffer = await readFile(imagePath);
 
-    // Upload to Pinata
-    const stream = Readable.from(imageBuffer);
-    const response = await pinata.pinFileToIPFS(stream, {
-      pinataMetadata: { name: 'nft-1.png test upload' },
+    // Read the nft-1.json metadata file
+    const metadataPath = join(process.cwd(), 'public', 'mock', 'nft-1.json');
+    const metadataContent = await readFile(metadataPath, 'utf-8');
+    const metadata: NFTMetadata = JSON.parse(metadataContent);
+
+    // Upload image to Pinata
+    const imageStream = Readable.from(imageBuffer);
+    const imageResponse: PinataFileResponse = await pinata.pinFileToIPFS(imageStream, {
+      pinataMetadata: { name: 'test-nft-1.png' },
     });
 
-    if (!response?.IpfsHash) {
-      throw new Error('Invalid response from Pinata API');
+    if (!imageResponse?.IpfsHash) {
+      throw new Error('Invalid response from Pinata API for image upload');
     }
 
-    const ipfsHash = response.IpfsHash;
-    const ipfsUrl = `https://gateway.pinata.cloud/ipfs/${ipfsHash}`;
+    const imageHash = imageResponse.IpfsHash;
+    const imageUrl = `https://gateway.pinata.cloud/ipfs/${imageHash}`;
 
-    // Store the IPFS hash in Redis
-    await redis.set('test-pinata-hash', ipfsHash);
-    await redis.set('test-pinata-url', ipfsUrl);
+    // Update metadata to point to the uploaded image
+    const updatedMetadata: NFTMetadata = {
+      ...metadata,
+      image: `ipfs://${imageHash}`,
+    };
+
+    // Upload metadata to Pinata
+    const metadataResponse: PinataJSONResponse = await pinata.pinJSONToIPFS(updatedMetadata, {
+      pinataMetadata: { name: 'test-nft-1-metadata.json' },
+    });
+
+    if (!metadataResponse?.IpfsHash) {
+      throw new Error('Invalid response from Pinata API for metadata upload');
+    }
+
+    const metadataHash = metadataResponse.IpfsHash;
+    const metadataUrl = `https://gateway.pinata.cloud/ipfs/${metadataHash}`;
+    const tokenURI = `ipfs://${metadataHash}`;
+
+    // Store the IPFS hashes and URLs in Redis
+    await redis.set('test-pinata-image-hash', imageHash);
+    await redis.set('test-pinata-image-url', imageUrl);
+    await redis.set('test-pinata-metadata-hash', metadataHash);
+    await redis.set('test-pinata-metadata-url', metadataUrl);
+    await redis.set('test-pinata-token-uri', tokenURI);
+
+    const result: PinataUploadResult = {
+      imageHash,
+      imageUrl,
+      metadataHash,
+      metadataUrl,
+      tokenURI,
+      metadata: updatedMetadata,
+    };
 
     return NextResponse.json({
       success: true,
-      ipfsHash,
-      ipfsUrl,
-      message: 'Image uploaded to Pinata and stored in Redis',
+      ...result,
+      message: 'Image and metadata uploaded to Pinata and stored in Redis',
     });
   } catch (error) {
     console.error('Error uploading to Pinata:', error);
