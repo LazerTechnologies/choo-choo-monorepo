@@ -1,6 +1,9 @@
 [build]
 buildCommand = "pnpm --filter generator build && pnpm --filter app build"
 
+[start]
+cmd = "cd app && node .next/standalone/app/server.js"
+
 [deploy]
 healthcheckPath = "/api/health"
 healthcheckTimeout = 300
