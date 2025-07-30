@@ -5,6 +5,7 @@
   "description": "Choo Choo on Base contracts and Farcaster mini-app",
   "scripts": {
     "build": "turbo build",
+    "build:production": "pnpm --filter generator build && pnpm --filter app build",
     "start": "pnpm --filter app start",
     "dev": "turbo dev",
     "test": "turbo test",
