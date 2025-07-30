@@ -88,24 +88,23 @@ export async function addHolder(holder: ChooChooHolder): Promise<void> {
   };
 
   // Store individual holder data
-  await redis.set(KEYS.HOLDER(holder.tokenId), holderData);
+  await redis.set(KEYS.HOLDER(holder.tokenId), JSON.stringify(holderData));
 
   // Add to sorted history (score = timestamp for chronological order)
-  await redis.zadd(KEYS.HOLDERS_HISTORY, {
-    score: holderData.timestamp,
-    member: JSON.stringify(holderData),
-  });
+  await redis.zadd(KEYS.HOLDERS_HISTORY, holderData.timestamp, JSON.stringify(holderData));
 
   // Update current holder
-  await redis.set(KEYS.CURRENT_HOLDER, holderData);
+  await redis.set(KEYS.CURRENT_HOLDER, JSON.stringify(holderData));
 }
 
 export async function getHolder(tokenId: number): Promise<ChooChooHolder | null> {
-  return await redis.get(KEYS.HOLDER(tokenId));
+  const holder = await redis.get(KEYS.HOLDER(tokenId));
+  return holder ? JSON.parse(holder as string) : null;
 }
 
 export async function getCurrentHolder(): Promise<ChooChooHolder | null> {
-  return await redis.get(KEYS.CURRENT_HOLDER);
+  const holder = await redis.get(KEYS.CURRENT_HOLDER);
+  return holder ? JSON.parse(holder as string) : null;
 }
 
 export async function getHoldersHistory(
@@ -113,9 +112,7 @@ export async function getHoldersHistory(
   offset: number = 0
 ): Promise<ChooChooHolder[]> {
   // Get holders in reverse chronological order (newest first)
-  const holders = await redis.zrange(KEYS.HOLDERS_HISTORY, offset, offset + limit - 1, {
-    rev: true,
-  });
+  const holders = await redis.zrevrange(KEYS.HOLDERS_HISTORY, offset, offset + limit - 1);
 
   return holders.map((holder) => JSON.parse(holder as string));
 }

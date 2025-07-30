@@ -20,7 +20,9 @@ The result is a single process listening on `$PORT` (injected by Railway) that s
 
 The Neynar SDK is highly opinionated and required a number of changes to properly build a farcaster app in a monorepo environment. The included build script is interactive and meant to walk devs through going from local dev to prod, but caused deployments to fail in a way that wasn't apparent at first
 
-while extremely helpful in showing how frames v2 (mini-apps) differ from v1 (it's a lot) and showing how to implement the various features Neynar provides, in the future I wouldn't start a mini-app with it as there's too much fluff
+additionally, Neynar's `app/src/lib/kv.ts` was integrated with Upstash, while Railway spins up a Redis instance for storage so that file had to be refactored to work with `ioredis` format
+
+while extremely helpful in showing how frames v2 (mini-apps) differ from v1 (it's a lot) and showing how to implement the various features Neynar provides, in the future I wouldn't start a mini-app with Neynar's package as it's a little too opinionated for me. next time I'll just use Neynar ad-hoc
 
 the following are the main changes required from my original structure (`foundry` + `canvas` + `neynar-sdk`) in order to get the app deployed
 
