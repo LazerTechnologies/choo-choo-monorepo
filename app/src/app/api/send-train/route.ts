@@ -101,45 +101,101 @@ async function fetchRepliesAndReactions(
 export async function POST(request: Request) {
   try {
     // 0. Parse body for castHash
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (err) {
+      console.error('[send-train] Failed to parse request body:', err);
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
     const castHash = body.castHash;
     if (!castHash || typeof castHash !== 'string') {
+      console.error('[send-train] Missing or invalid castHash:', castHash);
       return NextResponse.json({ error: 'Missing or invalid castHash' }, { status: 400 });
     }
 
     // 1. Fetch cast replies and reactions from Neynar
-    const replies = await fetchRepliesAndReactions(castHash);
+    let replies;
+    try {
+      replies = await fetchRepliesAndReactions(castHash);
+    } catch (err) {
+      console.error('[send-train] Failed to fetch replies and reactions:', err);
+      return NextResponse.json({ error: 'Failed to fetch replies from Neynar' }, { status: 500 });
+    }
     if (!replies.length) {
+      console.error('[send-train] No eligible replies found for castHash:', castHash);
       return NextResponse.json({ error: 'No eligible replies found' }, { status: 400 });
     }
 
     // 2. Select the winner (most reactions)
-    const winner = replies.reduce(
-      (max, curr) => (curr.reactions > max.reactions ? curr : max),
-      replies[0]
-    );
+    let winner;
+    try {
+      winner = replies.reduce(
+        (max, curr) => (curr.reactions > max.reactions ? curr : max),
+        replies[0]
+      );
+    } catch (err) {
+      console.error('[send-train] Failed to select winner:', err);
+      return NextResponse.json({ error: 'Failed to select winner' }, { status: 500 });
+    }
     const winnerAddress = winner.primaryWallet;
     if (!isAddress(winnerAddress)) {
+      console.error('[send-train] Winner address is invalid:', winnerAddress);
       return NextResponse.json({ error: 'Winner address is invalid' }, { status: 400 });
     }
 
     // 3. Get the next token ID from our contract
-    const contractService = getContractService();
-    const totalSupply = await contractService.getTotalSupply();
-    const tokenId = totalSupply + 1;
+    let contractService, totalSupply, tokenId;
+    try {
+      contractService = getContractService();
+      totalSupply = await contractService.getTotalSupply();
+      tokenId = totalSupply + 1;
+    } catch (err) {
+      console.error('[send-train] Failed to get contract service or total supply:', err);
+      return NextResponse.json({ error: 'Failed to get contract state' }, { status: 500 });
+    }
 
     // 4. Generate the unique NFT image and attributes
-    const { imageBuffer, attributes } = await composeImage();
+    let imageBuffer, attributes;
+    try {
+      const result = await composeImage();
+      imageBuffer = result.imageBuffer;
+      attributes = result.attributes;
+    } catch (err) {
+      console.error('[send-train] Failed to compose NFT image:', err);
+      return NextResponse.json({ error: 'Failed to compose NFT image' }, { status: 500 });
+    }
 
     // 5. Upload the image to Pinata
-    const imageCid = await uploadImageToPinata(imageBuffer, `ChooChooTrain #${tokenId}.png`);
+    let imageCid;
+    try {
+      imageCid = await uploadImageToPinata(imageBuffer, `ChooChooTrain #${tokenId}.png`);
+    } catch (err) {
+      console.error('[send-train] Failed to upload image to Pinata:', err);
+      return NextResponse.json({ error: 'Failed to upload image to Pinata' }, { status: 500 });
+    }
 
     // 6. Upload the final metadata to Pinata
-    const metadataCid = await uploadMetadataToPinata(tokenId, imageCid, attributes);
-    const tokenURI = `ipfs://${metadataCid}`;
+    let metadataCid, tokenURI;
+    try {
+      metadataCid = await uploadMetadataToPinata(tokenId, imageCid, attributes);
+      tokenURI = `ipfs://${metadataCid}`;
+    } catch (err) {
+      console.error('[send-train] Failed to upload metadata to Pinata:', err);
+      return NextResponse.json({ error: 'Failed to upload metadata to Pinata' }, { status: 500 });
+    }
 
     // 7. Execute the on-chain transaction
-    const txHash = await contractService.executeNextStop(winnerAddress, tokenURI);
+    let txHash;
+    try {
+      txHash = await contractService.executeNextStop(winnerAddress, tokenURI);
+    } catch (err) {
+      console.error('[send-train] Failed to execute on-chain transaction:', err);
+      return NextResponse.json(
+        { error: 'Failed to execute on-chain transaction' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -149,7 +205,10 @@ export async function POST(request: Request) {
       tokenId,
     });
   } catch (error) {
-    console.error('Failed to trigger next stop:', error);
+    console.error(
+      '[send-train] Uncaught error:',
+      error instanceof Error ? error.stack || error.message : error
+    );
     return NextResponse.json({ error: 'Failed to trigger next stop.' }, { status: 500 });
   }
 }

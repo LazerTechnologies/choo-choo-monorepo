@@ -13,7 +13,7 @@ export async function GET() {
 
   // Test Redis connection (don't fail health check if Redis is down)
   try {
-    if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
+    if (process.env.REDIS_URL) {
       await redis.ping();
       response.services.redis = 'connected';
     } else {

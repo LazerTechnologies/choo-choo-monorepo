@@ -1,12 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Redis } from '@upstash/redis';
+import Redis from 'ioredis';
 import { Address } from 'viem';
 
 // Initialize Redis client with environment variables
-const redis = new Redis({
-  url: process.env.KV_REST_API_URL!,
-  token: process.env.KV_REST_API_TOKEN!,
-});
+const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 
 // Export redis instance for direct access
 export { redis };
