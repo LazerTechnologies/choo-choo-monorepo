@@ -2,8 +2,12 @@
 import Redis from 'ioredis';
 import { Address } from 'viem';
 
-// Initialize Redis client with environment variables
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+// Initialize Redis client with environment variables and dual stack lookup
+// `family: 0` enables dual stack lookup (IPv4 and IPv6) for Railway compatibility
+// @see: https://docs.railway.com/reference/errors/enotfound-redis-railway-internal
+const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  family: 0,
+});
 
 // Export redis instance for direct access
 export { redis };
