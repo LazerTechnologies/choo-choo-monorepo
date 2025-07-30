@@ -2,7 +2,7 @@
 buildCommand = "pnpm --filter generator build && pnpm --filter app build"
 
 [start]
-cmd = "cd app && node .next/standalone/app/server.js"
+cmd = "cd app && echo \"Railway PORT: $PORT\" && echo \"All env vars:\" && env | grep -E \"(PORT|HOST)\" && PORT=$PORT node .next/standalone/app/server.js"
 
 [deploy]
 healthcheckPath = "/api/health"
