@@ -12,7 +12,7 @@ The `/api/send-train` endpoint is currently crashing due to the `canvas` package
   - **How:**
     1. **Install `@vercel/og` or similar:** Replace canvas with a serverless-compatible image generation library
     2. **Update generator package:** Rewrite `generator/src/utils/compose.ts` to use SVG/HTML-based composition instead of canvas
-    3. **Alternative:** Use `sharp` + pre-rendered layer PNGs for server-side composition
+    3. **Alternative:** Use `imagescript` for server-side composition (zero dependencies)
     4. **Benefit:** Works in Vercel serverless functions without native dependencies
 
 ### Phase 2: Complete Backend Orchestration Implementation

@@ -3,7 +3,6 @@ FROM node:20-slim AS base
 # Install dependencies only when needed
 FROM base AS deps
 RUN apt-get update && apt-get install -y \
-    libvips-dev \
     python3 \
     make \
     g++ \
