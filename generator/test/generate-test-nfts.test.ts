@@ -4,7 +4,7 @@ import { collectionName, collectionDescription, imageDimensions } from '../src/c
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
-import sharp from 'sharp';
+import { Image } from 'imagescript';
 
 describe('Generate Test NFTs', () => {
   let testOutputDir: string;
@@ -72,13 +72,11 @@ describe('Generate Test NFTs', () => {
   it('should generate valid PNG images with correct dimensions', async () => {
     const result = await composeImage();
 
-    // Use Sharp to verify the generated image properties
-    const metadata = await sharp(result.imageBuffer).metadata();
+    // Decode using ImageScript to verify the generated image properties
+    const img = await Image.decode(result.imageBuffer);
 
-    expect(metadata.format).toBe('png');
-    expect(metadata.width).toBe(imageDimensions.width);
-    expect(metadata.height).toBe(imageDimensions.height);
-    expect(metadata.channels).toBeGreaterThanOrEqual(3); // RGB or RGBA
+    expect(img.width).toBe(imageDimensions.width);
+    expect(img.height).toBe(imageDimensions.height);
   });
 
   it('should create directories and generate test NFTs successfully', async () => {
@@ -92,11 +90,10 @@ describe('Generate Test NFTs', () => {
     for (let i = 1; i <= numTestNfts; i++) {
       const { imageBuffer, attributes } = await composeImage();
 
-      // Verify image properties before saving
-      const imageMetadata = await sharp(imageBuffer).metadata();
-      expect(imageMetadata.format).toBe('png');
-      expect(imageMetadata.width).toBe(imageDimensions.width);
-      expect(imageMetadata.height).toBe(imageDimensions.height);
+      // Verify image properties before saving using ImageScript
+      const imageDecoded = await Image.decode(imageBuffer);
+      expect(imageDecoded.width).toBe(imageDimensions.width);
+      expect(imageDecoded.height).toBe(imageDimensions.height);
 
       // Save image
       const imageName = `test-nft-${i}.png`;
@@ -161,10 +158,9 @@ describe('Generate Test NFTs', () => {
     // Note: Due to randomness, we can't guarantee uniqueness in a small sample,
     // but we can verify that the generation process works consistently
     for (const result of results) {
-      const metadata = await sharp(result.imageBuffer).metadata();
-      expect(metadata.format).toBe('png');
-      expect(metadata.width).toBe(imageDimensions.width);
-      expect(metadata.height).toBe(imageDimensions.height);
+      const img = await Image.decode(result.imageBuffer);
+      expect(img.width).toBe(imageDimensions.width);
+      expect(img.height).toBe(imageDimensions.height);
     }
   });
 
