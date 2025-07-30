@@ -37,6 +37,96 @@ interface NeynarUser {
   score: number;
 }
 
+function TestRedis() {
+  const [value, setValue] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleWrite() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/test-redis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'write', key: 'test-key', value: 'hello redis!' }),
+      });
+      const data = await res.json();
+      setValue(data.value || null);
+    } catch (e) {
+      setError('Write failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleRead() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/test-redis?action=read&key=test-key');
+      const data = await res.json();
+      setValue(data.value || null);
+    } catch (e) {
+      setError('Read failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDelete() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/test-redis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', key: 'test-key' }),
+      });
+      const data = await res.json();
+      setValue(null);
+    } catch (e) {
+      setError('Delete failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="my-8 p-4 border rounded-lg bg-gray-50 dark:bg-gray-900">
+      <h3 className="font-bold mb-2">Test Redis</h3>
+      <div className="flex gap-2 mb-2">
+        <button
+          className="px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
+          onClick={handleWrite}
+          disabled={loading}
+        >
+          Write
+        </button>
+        <button
+          className="px-4 py-2 rounded bg-green-500 text-white hover:bg-green-600 disabled:opacity-50"
+          onClick={handleRead}
+          disabled={loading}
+        >
+          Read
+        </button>
+        <button
+          className="px-4 py-2 rounded bg-red-500 text-white hover:bg-red-600 disabled:opacity-50"
+          onClick={handleDelete}
+          disabled={loading}
+        >
+          Delete
+        </button>
+      </div>
+      {loading && <div className="text-xs text-gray-500">Loading...</div>}
+      {error && <div className="text-xs text-red-500">{error}</div>}
+      <div className="text-xs mt-2">
+        Value: {value ?? <span className="text-gray-400">(none)</span>}
+      </div>
+    </div>
+  );
+}
+
 export default function Home({ title }: { title?: string } = { title: 'Choo Choo on Base' }) {
   const {
     isSDKLoaded,
@@ -497,6 +587,7 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
       </div>
 
       <YoinkDialog isOpen={isYoinkDialogOpen} onClose={() => setIsYoinkDialogOpen(false)} />
+      <TestRedis />
     </div>
   );
 }
