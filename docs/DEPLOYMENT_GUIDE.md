@@ -58,6 +58,10 @@ I also originally had a post-build script that checked the ABI file from `app` a
 
 the only other variables required were app-specific logic (neynar API/project ID, contract addresses, etc.). Without defining the `PORT` and `HOSTNAME`, the build would complete and deploy but the healthcheck endpoint couldn't be reached for railway to ensure the app was running. The endpoint `app/api/health/` simply returns a 200 code if it's available, and provides the status of the Redis store.
 
+## Redis
+
+configuring Redis was pretty straightforward—add the instance and update env variables which Railway lets you do in a couple clicks. the one hiccup I had is that by default, `ioredis` only does IPv4 lookups but Railway's private only uses IPv6. Thanks to a clear logs and documentation it was a quick fix: switching to `REDIS_PUBLIC_URL` variable and everything works.
+
 ---
 
 ## Full deploy commands (CI or local)
