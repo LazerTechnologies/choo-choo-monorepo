@@ -14,7 +14,7 @@
     "dev": "node scripts/dev.js",
     "build": "next build",
     "build:interactive": "node scripts/build.js",
-    "start": "next start",
+    "start": "node .next/standalone/server.js",
     "lint": "next lint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
