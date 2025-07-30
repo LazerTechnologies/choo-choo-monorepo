@@ -1,4 +1,3 @@
-import sharp from 'sharp';
 import fs from 'fs/promises';
 import path from 'path';
 import { baseDir, imageDimensions, layerOrder, LayerName } from '../config';
@@ -131,22 +130,24 @@ export const composeImage = async (): Promise<{
     });
   }
 
-  // Prepare composite layers for Sharp
-  const compositeLayers: { input: Buffer; top: number; left: number }[] = [];
+  // Dynamically import ImageScript to avoid ESM/CJS interop issues
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { Image } = await import('imagescript');
 
-  // Load each layer as a buffer for compositing
+  // Create a blank transparent canvas
+  const canvas = new Image(imageDimensions.width, imageDimensions.height);
+  // Fill with transparent pixels (RGBA: 0, 0, 0, 0)
+  canvas.fill(0x00000000);
+
+  // Draw each trait layer in order (background → foreground)
   for (const { layer, originalName, formattedName } of selectedTraits) {
     const imagePath = path.join(baseDir, 'layers', layer, originalName);
 
     try {
-      // Load image as buffer to preserve exact dimensions and transparency
-      const imageBuffer = await fs.readFile(imagePath);
-
-      compositeLayers.push({
-        input: imageBuffer,
-        top: 0,
-        left: 0,
-      });
+      const layerBuffer = await fs.readFile(imagePath);
+      const layerImg = await Image.decode(layerBuffer);
+      // Composite at the top-left corner
+      canvas.composite(layerImg, 0, 0);
     } catch (error) {
       throw new Error(
         `Failed to load image for layer "${layer}", trait "${formattedName}" at ${imagePath}: ${
@@ -156,20 +157,9 @@ export const composeImage = async (): Promise<{
     }
   }
 
-  // Create base image and composite all layers
   try {
-    const imageBuffer = await sharp({
-      create: {
-        width: imageDimensions.width,
-        height: imageDimensions.height,
-        channels: 4,
-        background: { r: 0, g: 0, b: 0, alpha: 0 }, // Transparent background
-      },
-    })
-      .composite(compositeLayers)
-      .png()
-      .toBuffer();
-
+    const pngUint8 = await canvas.encode(); // defaults to PNG
+    const imageBuffer = Buffer.from(pngUint8);
     return { imageBuffer, attributes };
   } catch (error) {
     throw new Error(
