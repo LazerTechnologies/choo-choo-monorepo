@@ -73,6 +73,7 @@
     "crypto": "^1.0.1",
     "eslint": "^8",
     "eslint-config-next": "15.0.3",
+    "ignore-loader": "^0.1.2",
     "jsdom": "^26.1.0",
     "localtunnel": "^2.0.2",
     "pino-pretty": "^13.0.0",

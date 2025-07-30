@@ -13,7 +13,7 @@ WORKDIR /app
 RUN npm config set registry https://registry.npmjs.org/
 
 # Install pnpm
-RUN npm install -g pnpm@10.12.1
+RUN npm install -g pnpm@10.13.1
 
 # Copy package.json and pnpm files first
 COPY package.json pnpm-workspace.yaml turbo.json ./
@@ -28,7 +28,7 @@ FROM base AS builder
 WORKDIR /app
 
 # Install pnpm
-RUN npm install -g pnpm@10.12.1
+RUN npm install -g pnpm@10.13.1
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/app/node_modules ./app/node_modules
@@ -46,6 +46,7 @@ ENV NEXT_PUBLIC_MINI_APP_BUTTON_TEXT="Launch Mini App"
 ENV NEXT_PUBLIC_URL="https://placeholder.railway.app"
 ENV NEXTAUTH_SECRET="railway-build-secret-placeholder"
 ENV NEXTAUTH_URL="https://placeholder.railway.app"
+# @todo: keep address updated to latest address
 ENV NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS="0x0000000000000000000000000000000000000001"
 ENV KV_REST_API_URL="https://placeholder-redis.upstash.io"
 ENV KV_REST_API_TOKEN="placeholder-token"
@@ -73,6 +74,7 @@ COPY --from=builder /app/app/public ./public
 # Copy necessary files for the generator package
 COPY --from=builder /app/generator/dist ./generator/dist
 COPY --from=builder /app/generator/layers ./generator/layers
+COPY --from=builder /app/generator/rarities.json ./generator/rarities.json
 
 USER nextjs
 
