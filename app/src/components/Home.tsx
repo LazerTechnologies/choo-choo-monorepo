@@ -18,6 +18,8 @@ import {
 import { ShareButton } from './ui/Share';
 import { config } from '@/components/providers/WagmiProvider';
 import { Button } from '@/components/base/Button';
+import { Card } from '@/components/base/Card';
+import { Input } from '@/components/base/Input';
 import { truncateAddress } from '@/lib/truncateAddress';
 import { base, degen, mainnet, optimism, unichain } from 'wagmi/chains';
 import { BaseError, UserRejectedRequestError } from 'viem';
@@ -233,6 +235,105 @@ function TestPinata() {
         </div>
       )}
     </div>
+  );
+}
+
+function TestUserAddress() {
+  const [fid, setFid] = useState('');
+  const [result, setResult] = useState<{ fid: number; address: string; type: string } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleFetchAddress = useCallback(async () => {
+    if (!fid.trim()) {
+      setError('Please enter a FID');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const res = await fetch(`/api/users/address?fid=${encodeURIComponent(fid.trim())}`);
+      const data = await res.json();
+
+      if (res.ok) {
+        setResult(data);
+      } else {
+        setError(data.error || 'Failed to fetch address');
+      }
+    } catch (e) {
+      setError('Failed to fetch address');
+    } finally {
+      setLoading(false);
+    }
+  }, [fid]);
+
+  return (
+    <Card className="my-8">
+      <Card.Header>
+        <Card.Title>Test User Wallet Address</Card.Title>
+        <Card.Description>
+          Fetch a Farcaster user&apos;s main wallet address (verification) by FID
+        </Card.Description>
+      </Card.Header>
+      <Card.Content>
+        <div className="flex items-center gap-2 mb-3">
+          <Input
+            type="text"
+            placeholder="Enter FID (e.g. 123)"
+            value={fid}
+            onChange={(e) => setFid(e.target.value)}
+            className="flex-1"
+          />
+          <span className="text-gray-500">:</span>
+          <div className="min-w-0 flex-1">
+            {loading ? (
+              <span className="text-gray-500 text-xs">Loading...</span>
+            ) : result ? (
+              <code className="text-xs font-mono text-green-600 dark:text-green-400 break-all">
+                {result.address}
+              </code>
+            ) : (
+              <span className="text-gray-400 text-xs">No address fetched</span>
+            )}
+          </div>
+          <Button
+            onClick={handleFetchAddress}
+            disabled={loading || !fid.trim()}
+            size="sm"
+            isLoading={loading}
+          >
+            🔎
+          </Button>
+        </div>
+
+        {error && <div className="text-xs text-red-500 mb-2">{error}</div>}
+
+        {result && (
+          <div className="text-xs space-y-1 border-t border-gray-300 dark:border-gray-600 pt-2">
+            <div>
+              <span className="font-semibold">FID:</span> {result.fid}
+            </div>
+            <div>
+              <span className="font-semibold">Address Type:</span>{' '}
+              <span
+                className={result.type === 'verification' ? 'text-green-600' : 'text-amber-600'}
+              >
+                {result.type}
+              </span>
+            </div>
+            <div>
+              <span className="font-semibold">Full Address:</span>
+              <div className="font-mono bg-gray-100 dark:bg-gray-800 p-1 rounded mt-1 break-all">
+                {result.address}
+              </div>
+            </div>
+          </div>
+        )}
+      </Card.Content>
+    </Card>
   );
 }
 
@@ -470,10 +571,6 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
               />
             </div>
 
-            {/* Test Sections */}
-            <TestRedis />
-            <TestPinata />
-
             {/* App Description */}
             <div className="pb-6 text-center px-4">
               <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
@@ -484,7 +581,13 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
               </p>
             </div>
 
+            {/* Test Sections */}
+            <TestRedis />
+            <TestPinata />
+            <TestUserAddress />
+
             {/* Next Stop Trigger */}
+            {/* 
             <div className="pb-8 px-4">
               <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-6 space-y-4">
                 <h3 className="text-lg font-semibold text-center">Trigger Next Stop</h3>
@@ -494,6 +597,7 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
                 <NextStopTrigger />
               </div>
             </div>
+            */}
 
             <div className="pb-8">
               <JourneyTimeline items={dummyJourneyData} />
