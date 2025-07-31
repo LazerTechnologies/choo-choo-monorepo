@@ -33,72 +33,14 @@ if (!NEYNAR_API_KEY) {
 }
 
 async function testNeynarAPI() {
-  const testFid = process.argv[2] || '3'; // Default to FID 3 (dan) if no argument provided
+  const testFid = process.argv[2] || '377557'; // Default to your FID if no argument provided
 
-  console.log(`🔍 Testing Neynar API with FID: ${testFid}`);
+  console.log(`🔍 Testing Neynar Bulk API with FID: ${testFid}`);
   console.log('='.repeat(50));
 
   try {
-    // Test 1: Single user fetch
-    console.log('\n📋 Test 1: Single User Fetch');
-    console.log(`GET https://api.neynar.com/v2/farcaster/user?fid=${testFid}`);
-
-    const userResponse = await fetch(
-      `https://api.neynar.com/v2/farcaster/user?fid=${testFid}`,
-      {
-        headers: {
-          accept: 'application/json',
-          'x-api-key': NEYNAR_API_KEY,
-        },
-      }
-    );
-
-    if (!userResponse.ok) {
-      throw new Error(
-        `HTTP ${userResponse.status}: ${userResponse.statusText}`
-      );
-    }
-
-    const userData = await userResponse.json();
-    console.log('\n✅ Full Response:');
-    console.log(JSON.stringify(userData, null, 2));
-
-    // Extract key wallet info
-    const user = userData?.result?.user;
-    if (user) {
-      console.log('\n🔑 Wallet Information:');
-      console.log(`- Username: ${user.username}`);
-      console.log(`- Display Name: ${user.display_name}`);
-      console.log(`- FID: ${user.fid}`);
-      console.log(`- Custody Address: ${user.custody_address}`);
-      console.log(
-        `- Verifications: ${JSON.stringify(user.verifications || [])}`
-      );
-      console.log(
-        `- Verified Addresses: ${JSON.stringify(user.verified_addresses || {})}`
-      );
-
-      // Show what our API would return
-      const verifications = user?.verifications ?? [];
-      const primaryWallet = verifications[0] || user?.custody_address;
-      const addressType = verifications[0] ? 'verification' : 'custody';
-
-      console.log('\n🎯 Our API would return:');
-      console.log(
-        JSON.stringify(
-          {
-            fid: user.fid,
-            address: primaryWallet,
-            type: addressType,
-          },
-          null,
-          2
-        )
-      );
-    }
-
-    // Test 2: Bulk user fetch (for comparison)
-    console.log('\n📋 Test 2: Bulk User Fetch');
+    // Test: Bulk user fetch with single FID
+    console.log('\n📋 Bulk User API with Single FID');
     console.log(
       `GET https://api.neynar.com/v2/farcaster/user/bulk?fids=${testFid}`
     );
@@ -113,12 +55,79 @@ async function testNeynarAPI() {
       }
     );
 
-    if (bulkResponse.ok) {
-      const bulkData = await bulkResponse.json();
-      console.log('\n✅ Bulk Response:');
-      console.log(JSON.stringify(bulkData, null, 2));
+    console.log(`📊 Status: ${bulkResponse.status} ${bulkResponse.statusText}`);
+
+    if (!bulkResponse.ok) {
+      const errorText = await bulkResponse.text();
+      console.log(`❌ Error Response: ${errorText}`);
+      return;
+    }
+
+    const bulkData = await bulkResponse.json();
+    console.log('\n✅ Full Bulk Response:');
+    console.log(JSON.stringify(bulkData, null, 2));
+
+    // Extract key wallet info from bulk response
+    const users = bulkData?.users || [];
+    if (users.length > 0) {
+      const user = users[0]; // First (and only) user
+      console.log('\n🔑 Wallet Information:');
+      console.log(`- Username: ${user.username}`);
+      console.log(`- Display Name: ${user.display_name}`);
+      console.log(`- FID: ${user.fid}`);
+      console.log(`- Custody Address: ${user.custody_address}`);
+      console.log(
+        `- Verifications: ${JSON.stringify(user.verifications || [])}`
+      );
+      console.log(
+        `- Verified Addresses: ${JSON.stringify(user.verified_addresses || {})}`
+      );
+
+      // Analyze verified addresses structure
+      if (user.verified_addresses) {
+        console.log('\n🎯 Verified Addresses Breakdown:');
+        const { eth_addresses, sol_addresses, primary } =
+          user.verified_addresses;
+        console.log(`- ETH Addresses: ${JSON.stringify(eth_addresses || [])}`);
+        console.log(`- SOL Addresses: ${JSON.stringify(sol_addresses || [])}`);
+        console.log(`- Primary: ${JSON.stringify(primary || {})}`);
+
+        // Show what our current API would return
+        const firstEthAddress = eth_addresses?.[0];
+        if (firstEthAddress) {
+          console.log('\n🎯 Our current API would return:');
+          console.log(
+            JSON.stringify(
+              {
+                fid: user.fid,
+                address: firstEthAddress,
+                type: 'verification',
+              },
+              null,
+              2
+            )
+          );
+        } else {
+          console.log(
+            '\n❌ Our current API would return 404 (no ETH addresses)'
+          );
+          if (sol_addresses?.[0]) {
+            console.log(`   But user has SOL address: ${sol_addresses[0]}`);
+          }
+        }
+      }
+
+      // Compare with verifications array (legacy format)
+      const legacyVerifications = user?.verifications ?? [];
+      if (legacyVerifications.length > 0) {
+        console.log('\n📜 Legacy Verifications Array:');
+        console.log(`- First verification: ${legacyVerifications[0]}`);
+        console.log(
+          `- All verifications: ${JSON.stringify(legacyVerifications)}`
+        );
+      }
     } else {
-      console.log(`❌ Bulk request failed: ${bulkResponse.status}`);
+      console.log('\n❌ No users found in response');
     }
   } catch (error) {
     console.error('\n❌ Error:', error.message);
@@ -132,7 +141,7 @@ async function testNeynarAPI() {
 async function testMultipleFids() {
   const fids = process.argv.slice(2);
   if (fids.length === 0) {
-    fids.push('3'); // Default to dan's FID
+    fids.push('377557'); // Default to your FID
   }
 
   for (const fid of fids) {

@@ -1,22 +1,22 @@
 import { NextResponse } from 'next/server';
 import { isAddress } from 'viem';
-import type { NeynarVerificationResponse, UserAddressResponse } from '@/types/neynar';
+import type { NeynarBulkUsersResponse, UserAddressResponse } from '@/types/neynar';
 
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
 
 /**
  * API Route: /api/users/address
  *
- * Fetches a Farcaster user's primary verified wallet address.
- * Uses the Neynar Hub API to get actual wallet verifications (not custody addresses).
+ * Fetches a Farcaster user's primary verified Ethereum address.
+ * Uses the Neynar Bulk API to get verified Ethereum wallet addresses only.
  *
  * Query Parameters:
  *   - fid (string, required): The Farcaster ID (FID) to fetch the address for.
  *
  * Responses:
- *   - 200: { fid: number, address: string, type: 'verification' }
+ *   - 200: { fid: number, address: string, type: 'verification', protocol: 'ethereum' }
  *   - 400: { error: string } - Missing or invalid FID
- *   - 404: { error: string } - User not found or no verified addresses
+ *   - 404: { error: string } - User not found or no verified Ethereum addresses
  *   - 500: { error: string } - API error
  */
 export async function GET(request: Request) {
@@ -37,44 +37,56 @@ export async function GET(request: Request) {
   }
 
   try {
-    const verificationsRes = await fetch(
-      `https://hub-api.neynar.com/v1/verificationsByFid?fid=${fid}`,
-      {
-        headers: {
-          'x-api-key': NEYNAR_API_KEY,
-        },
-      }
-    );
+    // Use Neynar Bulk API to get user data
+    const bulkRes = await fetch(`https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`, {
+      headers: {
+        accept: 'application/json',
+        'x-api-key': NEYNAR_API_KEY,
+      },
+    });
 
-    if (!verificationsRes.ok) {
-      if (verificationsRes.status === 404) {
+    if (!bulkRes.ok) {
+      if (bulkRes.status === 404) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
-      throw new Error(`Neynar Hub API error: ${verificationsRes.statusText}`);
+      throw new Error(`Neynar Bulk API error: ${bulkRes.statusText}`);
     }
 
-    const verificationsData: NeynarVerificationResponse = await verificationsRes.json();
-    const verifications = verificationsData?.messages || [];
+    const bulkData: NeynarBulkUsersResponse = await bulkRes.json();
+    const users = bulkData?.users || [];
 
-    const ethAddresses = verifications
-      .filter(
-        (msg) =>
-          msg?.data?.type === 'MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS' &&
-          msg?.data?.verificationAddAddressBody?.protocol === 'PROTOCOL_ETHEREUM'
-      )
-      .map((msg) => msg?.data?.verificationAddAddressBody?.address)
-      .filter((addr) => addr && isAddress(addr));
-
-    if (ethAddresses.length > 0) {
-      const response: UserAddressResponse = {
-        fid,
-        address: ethAddresses[0],
-        type: 'verification',
-      };
-      return NextResponse.json(response);
+    if (users.length === 0) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ error: 'User has no verified wallet addresses' }, { status: 404 });
+    const user = users[0];
+    const verifiedAddresses = user.verified_addresses;
+
+    if (!verifiedAddresses) {
+      return NextResponse.json(
+        { error: 'User has no verified Ethereum addresses' },
+        { status: 404 }
+      );
+    }
+
+    // Use primary ETH address if available, otherwise first ETH address
+    const address = verifiedAddresses.primary?.eth_address || verifiedAddresses.eth_addresses?.[0];
+
+    // Validate Ethereum address exists and is valid
+    if (!address || !isAddress(address)) {
+      return NextResponse.json(
+        { error: 'User has no verified Ethereum addresses' },
+        { status: 404 }
+      );
+    }
+
+    const response: UserAddressResponse = {
+      fid,
+      address,
+      type: 'verification',
+      protocol: 'ethereum',
+    };
+    return NextResponse.json(response);
   } catch (error) {
     console.error('Failed to fetch user address:', error);
     return NextResponse.json(

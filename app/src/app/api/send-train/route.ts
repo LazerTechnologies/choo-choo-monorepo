@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { isAddress } from 'viem';
 import { composeImage, uploadImageToPinata, uploadMetadataToPinata } from 'generator';
 import { getContractService } from '@/lib/services/contract';
+import { redis } from '@/lib/kv';
+import type { NeynarBulkUsersResponse } from '@/types/neynar';
 
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
 
@@ -46,17 +48,17 @@ async function fetchRepliesAndReactions(
   const allFids = Array.from(fidSet);
 
   // 3. Bulk fetch user data in chunks of 100
-  const fidToUser: Record<number, { verifications?: string[]; custody_address?: string }> = {};
+  const fidToUser: Record<number, NeynarBulkUsersResponse['users'][0]> = {};
   for (let i = 0; i < allFids.length; i += 100) {
     const chunk = allFids.slice(i, i + 100);
     const userRes = await fetch(
       `https://api.neynar.com/v2/farcaster/user/bulk?fids=${chunk.join(',')}`,
       {
-        headers: { accept: 'application/json', api_key: NEYNAR_API_KEY },
+        headers: { accept: 'application/json', 'x-api-key': NEYNAR_API_KEY },
       }
     );
     if (!userRes.ok) continue;
-    const userData = await userRes.json();
+    const userData: NeynarBulkUsersResponse = await userRes.json();
     for (const user of userData?.users ?? []) {
       if (user.fid) fidToUser[user.fid] = user;
     }
@@ -69,8 +71,12 @@ async function fetchRepliesAndReactions(
     if (!fid) continue;
     const user = fidToUser[fid];
     if (!user) continue;
-    const verifications = user?.verifications ?? [];
-    const primaryWallet = verifications[0] || user?.custody_address;
+
+    // Get first verified Ethereum address (primary if available, otherwise first in array)
+    const verifiedAddresses = user.verified_addresses;
+    const primaryWallet =
+      verifiedAddresses?.primary?.eth_address || verifiedAddresses?.eth_addresses?.[0];
+
     if (!primaryWallet || !isAddress(primaryWallet)) continue;
     // Sum reactions (likes + recasts)
     const reactions =
@@ -185,7 +191,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to upload metadata to Pinata' }, { status: 500 });
     }
 
-    // 7. Execute the on-chain transaction
+    // 7. Store the IPFS hashes in Redis for the generated NFT
+    try {
+      await redis.set(`choochoo:nft:${tokenId}:image_hash`, imageCid);
+      await redis.set(`choochoo:nft:${tokenId}:metadata_hash`, metadataCid);
+      console.log(`[send-train] Stored IPFS hashes in Redis for token ${tokenId}`);
+    } catch (err) {
+      console.error('[send-train] Failed to store IPFS hashes in Redis:', err);
+      // Don't fail the request for Redis storage issues, just log the error
+    }
+
+    // 8. Execute the on-chain transaction
     let txHash;
     try {
       txHash = await contractService.executeNextStop(winnerAddress, tokenURI);
