@@ -273,9 +273,9 @@ function TestUserAddress() {
   return (
     <Card className="my-8">
       <Card.Header>
-        <Card.Title>Test User Wallet Address</Card.Title>
+        <Card.Title>Test User Verified Address</Card.Title>
         <Card.Description>
-          Fetch a Farcaster user&apos;s main wallet address (verification) by FID
+          Fetch a Farcaster user&apos;s verified wallet address by FID
         </Card.Description>
       </Card.Header>
       <Card.Content>
@@ -318,11 +318,7 @@ function TestUserAddress() {
             </div>
             <div>
               <span className="font-semibold">Address Type:</span>{' '}
-              <span
-                className={result.type === 'verification' ? 'text-green-600' : 'text-amber-600'}
-              >
-                {result.type}
-              </span>
+              <span className="text-green-600">{result.type}</span>
             </div>
             <div>
               <span className="font-semibold">Full Address:</span>

@@ -1,21 +1,22 @@
 import { NextResponse } from 'next/server';
 import { isAddress } from 'viem';
+import type { NeynarVerificationResponse, UserAddressResponse } from '@/types/neynar';
 
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
 
 /**
  * API Route: /api/users/address
  *
- * Fetches a Farcaster user's primary wallet address (first verification address).
- * Falls back to custody_address if no verifications exist.
+ * Fetches a Farcaster user's primary verified wallet address.
+ * Uses the Neynar Hub API to get actual wallet verifications (not custody addresses).
  *
  * Query Parameters:
  *   - fid (string, required): The Farcaster ID (FID) to fetch the address for.
  *
  * Responses:
- *   - 200: { fid: number, address: string, type: 'verification' | 'custody' }
+ *   - 200: { fid: number, address: string, type: 'verification' }
  *   - 400: { error: string } - Missing or invalid FID
- *   - 404: { error: string } - User not found or no valid address
+ *   - 404: { error: string } - User not found or no verified addresses
  *   - 500: { error: string } - API error
  */
 export async function GET(request: Request) {
@@ -36,43 +37,44 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Fetch user data from Neynar
-    const userRes = await fetch(`https://api.neynar.com/v2/farcaster/user?fid=${fid}`, {
-      headers: {
-        accept: 'application/json',
-        api_key: NEYNAR_API_KEY,
-      },
-    });
+    const verificationsRes = await fetch(
+      `https://hub-api.neynar.com/v1/verificationsByFid?fid=${fid}`,
+      {
+        headers: {
+          'x-api-key': NEYNAR_API_KEY,
+        },
+      }
+    );
 
-    if (!userRes.ok) {
-      if (userRes.status === 404) {
+    if (!verificationsRes.ok) {
+      if (verificationsRes.status === 404) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
-      throw new Error(`Neynar API error: ${userRes.statusText}`);
+      throw new Error(`Neynar Hub API error: ${verificationsRes.statusText}`);
     }
 
-    const userData = await userRes.json();
-    const user = userData?.result?.user;
+    const verificationsData: NeynarVerificationResponse = await verificationsRes.json();
+    const verifications = verificationsData?.messages || [];
 
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    const ethAddresses = verifications
+      .filter(
+        (msg) =>
+          msg?.data?.type === 'MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS' &&
+          msg?.data?.verificationAddAddressBody?.protocol === 'PROTOCOL_ETHEREUM'
+      )
+      .map((msg) => msg?.data?.verificationAddAddressBody?.address)
+      .filter((addr) => addr && isAddress(addr));
+
+    if (ethAddresses.length > 0) {
+      const response: UserAddressResponse = {
+        fid,
+        address: ethAddresses[0],
+        type: 'verification',
+      };
+      return NextResponse.json(response);
     }
 
-    // Get primary wallet address (verifications[0] or custody_address)
-    const verifications = user?.verifications ?? [];
-    const primaryWallet = verifications[0] || user?.custody_address;
-
-    if (!primaryWallet || !isAddress(primaryWallet)) {
-      return NextResponse.json({ error: 'User has no valid wallet address' }, { status: 404 });
-    }
-
-    const addressType = verifications[0] ? 'verification' : 'custody';
-
-    return NextResponse.json({
-      fid,
-      address: primaryWallet,
-      type: addressType,
-    });
+    return NextResponse.json({ error: 'User has no verified wallet addresses' }, { status: 404 });
   } catch (error) {
     console.error('Failed to fetch user address:', error);
     return NextResponse.json(
