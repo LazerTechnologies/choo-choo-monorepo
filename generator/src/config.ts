@@ -5,11 +5,6 @@ import fs from 'fs';
 export const baseDir = path.resolve(__dirname, '../..');
 export const layersDir = path.join(baseDir, 'layers');
 
-// Debug logging for path resolution
-console.log('[generator-config] __dirname:', __dirname);
-console.log('[generator-config] baseDir:', baseDir);
-console.log('[generator-config] layersDir:', layersDir);
-
 export const imageDimensions = {
   width: 2048 as const,
   height: 2048 as const,

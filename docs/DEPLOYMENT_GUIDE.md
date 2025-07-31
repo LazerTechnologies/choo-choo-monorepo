@@ -38,11 +38,11 @@ the following are the main changes required from my original structure (`foundry
 
 ### Final scripts
 
-While for most apps, railway would likely simply work I ran into some trouble with the monorepo structure, originally with the generator package not being built properly beforehand and later with the static assets not being placed in the correct directory. I ended up using `turborepo` to orchestrate a production build script, building the `generator/` package first, and add a `postbuild` script to ensure the assets where available.
+While for most apps, railway would likely simply work I ran into some trouble with the monorepo structure, originally with the generator package not being built properly beforehand and later with the static assets not being placed in the correct directory. I ended up using `turborepo` to orchestrate a production build script, building the `generator/` package first, and add a `postbuild` script to ensure the assets are available for both the `app/` and `generator/` as the API requires generator assets.
 
 ```json
 "build": "next build",
-"postbuild": "mkdir -p .next/standalone/app && cp -r public .next/standalone/app/ && mkdir -p .next/standalone/app/.next && cp -r .next/static .next/standalone/app/.next/"
+"postbuild": "mkdir -p .next/standalone/app && cp -r public .next/standalone/app/ && mkdir -p .next/standalone/app/.next && cp -r .next/static .next/standalone/app/.next/ && mkdir -p .next/standalone/generator && cp -r ../generator/dist .next/standalone/generator/ && cp -r ../generator/layers .next/standalone/generator/ && cp ../generator/rarities.json .next/standalone/generator/"
 ```
 
 I also originally had a post-build script that checked the ABI file from `app` against the most recent `contracts` ABI to make sure my development environment was only running with the latest contract version but since including the foundry project in the build caused it to fail and the production contract wouldn't be changing, I removed it, though if this were a project that used upgradeable contracts it would be a helpful script that I would want to set up correctly

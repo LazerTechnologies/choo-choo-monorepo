@@ -13,7 +13,7 @@
   "scripts": {
     "dev": "node scripts/dev.js",
     "build": "next build",
-    "postbuild": "mkdir -p .next/standalone/app && cp -r public .next/standalone/app/ && mkdir -p .next/standalone/app/.next && cp -r .next/static .next/standalone/app/.next/",
+    "postbuild": "mkdir -p .next/standalone/app && cp -r public .next/standalone/app/ && mkdir -p .next/standalone/app/.next && cp -r .next/static .next/standalone/app/.next/ && mkdir -p .next/standalone/generator && cp -r ../generator/dist .next/standalone/generator/ && cp -r ../generator/layers .next/standalone/generator/ && cp ../generator/rarities.json .next/standalone/generator/",
     "build:interactive": "node scripts/build.js",
     "start": "node .next/standalone/app/server.js",
     "lint": "next lint",
