@@ -97,6 +97,8 @@ after switching from vercel to railway, I went back to vercel to delete the proj
 
 so now that I have more experience with monorepo deployments, I know that vercel works out of the box better than railway does. Vercel automatically exposes the correct `HOSTNAME` and `PORT` and it provides better logging. But railway has a much better UI and makes provisioning services a lot easier. Had I known what I know now, I would have set everything up on vercel as having all of my code contained in my monorepo and only needing a KV store there's not much need for all of the extra things that railway provides. For larger projects, or non-next.js fullstack apps I would 100% go with railway again.
 
+another benefit of vercel is that it supports fetching files from LFS, while railway requires you to spin up a volume or commit the `png` files to git in order to include them in the build. due to the small size of my image directory (and the difficulty of copying them over to a volume since railway doesn't have native LFS support), I included them in git so they would be available directly.
+
 | Monorepo Support                | Vercel | Railway |
 | ------------------------------- | ------ | ------- |
 | **auso-assigning ports**        | ✅     | ❌      |
@@ -104,6 +106,7 @@ so now that I have more experience with monorepo deployments, I know that vercel
 | **proper output dirs**          | ❌     | ❌      |
 | **ease of connecting services** | ❌     | ✅      |
 | **container support**           | ❌     | ✅      |
+| **Git LFS support**             | ✅     | ❌      |
 
 ---
 
