@@ -136,13 +136,10 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
     // ========== TRANSFER LOGIC ========== //
     /**
      * @notice Moves the train (tokenId 0) to the next passenger and stamps a ticket for the current passenger.
-     * @dev ChooChoo-themed replacement for transfer/propagate. Only the train (tokenId 0) can be moved this way.
+     * @dev Replacement for transfer/propagate. Only admins can move the train.
      * @param to The address of the next passenger.
      */
-    function nextStop(address to) external notInvalidAddress(to) {
-        if (!_isAuthorized(ownerOf(0), _msgSender(), 0)) {
-            revert NotOwnerNorApproved(_msgSender(), 0);
-        }
+    function nextStop(address to) external onlyAdmin notInvalidAddress(to) {
         address from = ownerOf(0);
         if (to == from) {
             revert CannotSendToCurrentPassenger(to);
@@ -160,38 +157,56 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
     }
 
     /**
+     * @notice Admin function to move train and set ticket metadata in one call.
+     * @dev Used by the backend to move train and immediately set the generated ticket data.
+     * @param to The address of the next passenger.
+     * @param ticketTokenURI The IPFS URL for the ticket metadata.
+     */
+    function nextStopWithTicketData(address to, string memory ticketTokenURI)
+        external
+        onlyAdmin
+        notInvalidAddress(to)
+    {
+        address from = ownerOf(0);
+        if (to == from) {
+            revert CannotSendToCurrentPassenger(to);
+        }
+        if (hasBeenPassenger[to]) {
+            revert AlreadyRodeTrain(to);
+        }
+
+        // Store the token ID that will be minted
+        uint256 futureTicketId = nextTicketId;
+
+        previousPassenger = from;
+        lastTransferTimestamp = block.timestamp;
+        hasBeenPassenger[to] = true;
+        _safeTransfer(from, to, 0, "");
+        trainJourney.push(to);
+        emit TrainDeparted(from, to, block.timestamp);
+        _stampTicket(from);
+
+        // Set the ticket data immediately after minting
+        ticketData[futureTicketId].tokenURI = ticketTokenURI;
+    }
+
+    /**
      * @notice Internal transfer handler for all token transfers.
-     * @dev Handles both train and ticket transfers. Only the train triggers ticket stamping and state updates. Once an address has ridden the train, they cannot ride it again.
+     * @dev Handles both train and ticket transfers. Only admins can move the train (token ID 0).
      * @param from The address sending the token.
      * @param to The address receiving the token.
      * @param tokenId The tokenId to transfer.
      * @param _data Additional data.
-     *
-     * @dev Handles both train and ticket transfers. Only the train triggers ticket stamping and state updates.
      */
     function _customTransfer(address from, address to, uint256 tokenId, bytes memory _data)
         internal
         notInvalidAddress(to)
     {
-        // Prevent previous passengers from receiving the train again
-        if (tokenId == 0 && hasBeenPassenger[to]) {
-            revert AlreadyRodeTrain(to);
-        }
         if (tokenId == 0) {
-            if (!_isAuthorized(ownerOf(tokenId), _msgSender(), tokenId)) {
-                revert NotOwnerNorApproved(_msgSender(), tokenId);
-            }
-            if (to == from) {
-                revert CannotSendToCurrentPassenger(to);
-            }
-            previousPassenger = from;
-            lastTransferTimestamp = block.timestamp;
-            hasBeenPassenger[to] = true;
-            _safeTransfer(from, to, tokenId, _data);
-            trainJourney.push(to);
-            emit TrainDeparted(from, to, block.timestamp);
-            _stampTicket(from);
+            // Train can only be moved by admins via nextStop functions
+            revert("Train can only be moved by admins");
         } else {
+            // Regular ticket transfers
             if (!_isAuthorized(ownerOf(tokenId), _msgSender(), tokenId)) {
                 revert NotOwnerNorApproved(_msgSender(), tokenId);
             }
@@ -334,6 +349,69 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
      */
     function getTrainJourneyLength() external view returns (uint256) {
         return trainJourney.length;
+    }
+
+    /**
+     * @notice Returns a slice of the train journey for pagination.
+     * @param start The starting index (inclusive).
+     * @param end The ending index (exclusive).
+     * @return journey A slice of the journey array.
+     */
+    function getTrainJourneySlice(uint256 start, uint256 end) external view returns (address[] memory journey) {
+        require(start < trainJourney.length, "Start index out of bounds");
+        require(end <= trainJourney.length, "End index out of bounds");
+        require(start < end, "Invalid range");
+
+        uint256 length = end - start;
+        journey = new address[](length);
+        for (uint256 i = 0; i < length; i++) {
+            journey[i] = trainJourney[start + i];
+        }
+    }
+
+    /**
+     * @notice Returns the current holder of the train (token ID 0).
+     * @return The address currently holding the train.
+     */
+    function getCurrentTrainHolder() external view returns (address) {
+        return ownerOf(0);
+    }
+
+    /**
+     * @notice Returns comprehensive train status information.
+     * @return holder Current train holder.
+     * @return totalStops Total number of stops made.
+     * @return lastMoveTime Timestamp of last movement.
+     * @return canBeYoinked Whether the train can currently be yoinked.
+     * @return nextTicketId_ The ID that will be assigned to the next ticket.
+     */
+    function getTrainStatus()
+        external
+        view
+        returns (address holder, uint256 totalStops, uint256 lastMoveTime, bool canBeYoinked, uint256 nextTicketId_)
+    {
+        holder = ownerOf(0);
+        totalStops = trainJourney.length;
+        lastMoveTime = lastTransferTimestamp;
+        canBeYoinked = block.timestamp >= lastTransferTimestamp + 2 days;
+        nextTicketId_ = nextTicketId;
+    }
+
+    /**
+     * @notice Checks if an address has ever held the train.
+     * @param passenger The address to check.
+     * @return hasRidden True if the address has been a passenger.
+     */
+    function hasRiddenTrain(address passenger) external view returns (bool hasRidden) {
+        return hasBeenPassenger[passenger];
+    }
+
+    /**
+     * @notice Returns the total number of tickets minted (excluding the train).
+     * @return The total supply minus 1 (for the train).
+     */
+    function getTotalTickets() external view returns (uint256) {
+        return totalSupply() > 0 ? totalSupply() - 1 : 0;
     }
 
     /**
