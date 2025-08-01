@@ -1,47 +1,16 @@
 # ChooChoo Train Implementation Checklist
 
-## IMMEDIATE PRIORITY: Fix Canvas/Native Dependencies Issue
+## Phase 1: NFT Creation
 
-The `/api/send-train` endpoint is currently crashing due to the `canvas` package's native binaries not being compatible with Next.js serverless functions. Here's the step-by-step solution:
+- [x] write `ChooChooTrain.sol` and scripts
+- [x] get image generator working
 
-### Phase 1: Canvas Issue Resolution
+## Phase 2: Complete Backend Orchestration Implementation
 
-- [ ] **Option A: Switch to Canvas-Free Image Generat**
+- [x] **Railway setup**
+- [x] **Redis**
 
-  - **Goal:** Replace `canvas` with a serverless-friendly image generation solution
-  - **How:**
-    1. **Install `@vercel/og` or similar:** Replace canvas with a serverless-compatible image generation library
-    2. **Update generator package:** Rewrite `generator/src/utils/compose.ts` to use SVG/HTML-based composition instead of canvas
-    3. **Alternative:** Use `imagescript` for server-side composition (zero dependencies)
-    4. **Benefit:** Works in Vercel serverless functions without native dependencies
-
-### Phase 2: Complete Backend Orchestration Implementation
-
-Once canvas issue is resolved, implement the full backend flow:
-
-- [ ] **Environment Setup & Configuration:**
-
-  - [ ] **Vercel KV Store Setup:**
-    - Create Vercel KV instance in dashboard
-    - Add `KV_REST_API_URL` and `KV_REST_API_TOKEN` to environment variables
-    - Install `@upstash/redis` in app package
-  - [ ] **Required Environment Variables:**
-    ```
-    NEYNAR_API_KEY=your_neynar_key
-    PINATA_JWT=your_pinata_jwt
-    CHOOCHOO_TRAIN_ADDRESS=contract_address
-    ADMIN_PRIVATE_KEY=private_key
-    RPC_URL=base_rpc_url
-    INTERNAL_SECRET=random_secret_string
-    APP_URL=http://localhost:3000 (dev) / https://yourdomain.com (prod)
-    USE_MAINNET=false (dev) / true (prod)
-    KV_REST_API_URL=your_vercel_kv_url
-    KV_REST_API_TOKEN=your_vercel_kv_token
-    ```
-
-- [ ] **KV Store Integration:**
-
-  - [ ] **Create KV utilities:**
+  - [ ] **Create Redis utilities:**
     - `app/src/lib/kv.ts` - Helper functions for KV operations
     - Functions: `setCastHash()`, `getCastHash()`, `setTokenMetadata()`, `getTokenMetadata()`
   - [ ] **Cast hash management:**
@@ -51,14 +20,7 @@ Once canvas issue is resolved, implement the full backend flow:
     - Store processing states: pending, processing, completed, failed
     - Implement idempotency for retry protection
 
-- [ ] **Pinata Integration Setup:**
-
-  - [ ] **Verify Pinata configuration:**
-    - Test JWT token in environment
-    - Verify upload permissions
-  - [ ] **Error handling:**
-    - Implement retry logic for failed uploads
-    - Add proper error messages and logging
+- [x] **Pinata Integration**
 
 - [ ] **Contract Integration Completion:**
 
@@ -133,7 +95,6 @@ The backend is the core of the application, orchestrating the train's movement, 
     1. **Neynar Signer:** Use the Neynar API to create a signer for your app's Farcaster account. This will give you an `signer_uuid` that you can use to post casts.
     2. **API Route:** Create a new API route (e.g., `/api/internal/post-cast`) that uses the Neynar SDK and the `signer_uuid` to post a cast.
     3. **Security:** Ensure this route is protected and can only be called by your backend services.
-- [x] **Vercel KV Store Integration:** _(Updated above in Phase 2)_
 - [x] **Implement Orchestration API Route (`/api/send-train`):**
   - **Goal:** Create the main entry point for the train's movement, orchestrating NFT generation and contract interaction.
   - **Status:** Partially implemented but needs canvas fix and completion per Phase 2 above.
@@ -141,31 +102,76 @@ The backend is the core of the application, orchestrating the train's movement, 
   - **Goal:** Provide secure interfaces for contract interactions and `totalSupply` queries using distinct endpoints.
   - **Status:** Done. Created separate `/read` endpoint for `totalSupply` queries and `/execute` endpoint for `nextStop` transactions.
 
-## 2.5. Security and Reliability for `/api/send-train`
+## 3. Test all pieces of `api/send-train`
 
-_(Updated and expanded above in Phase 2)_
+### 3.1 Neynar API Integration Testing
 
-- [x] **Create a dedicated `generator` package:**
+- [x] **Create test endpoint:** `/api/test-neynar-replies`
+  - [x] Test `fetchReactions` function with real cast hash
+  - [x] Verify API pagination works with `cursor` parameter
+  - [x] Test unique user deduplication (no reaction counting needed)
+  - [x] Verify primary wallet extraction logic:
+    - `verified_addresses.primary.eth_address` → `verified_addresses.eth_addresses[0]` fallback
+  - [x] Test random winner selection from all eligible reactors
+  - [x] Verify FID deduplication works correctly
+  - [x] Test edge cases: no replies, invalid cast hash, API rate limits
+  - [x] Return complete user data: fid, username, display_name, pfp_url, primary.eth_address
 
-  - **Goal:** Isolate all image and metadata generation logic from the Next.js frontend application.
-  - **Status:** Done but needs canvas fix per Phase 1 above.
+### 3.2 Contract Service Integration Testing
 
-- [x] **Add Artwork and Configure Git LFS:**
+- [ ] **Create test endpoint:** `/api/test-contract`
+  - [ ] Test contract connection works with RPC endpoint
+  - [ ] Verify `getTotalSupply()` returns correct current value
+  - [ ] Test token ID calculation (`totalSupply + 1`) accuracy
+  - [ ] Test `executeNextStop()` transaction submission (testnet first)
+  - [ ] Verify gas estimation and transaction confirmation
+  - [ ] Test contract error handling (insufficient gas, invalid recipient)
 
-  - **Goal:** Store all raw art layers in the repository without bloating the Git history.
-  - **Status:** Done. All artwork has been added to `generator/layers/`. Git LFS has been configured to track all `.png` and `.jpg` files, and the `.gitattributes` file is committed.
+### 3.3 Winner Selection Algorithm Testing
 
-- [x] **Implement Rarity and Trait Management:**
+- [x] **Test random selection logic:**
+  - [x] Test with eligible reactors of varying counts
+  - [x] Verify random selection produces different winners on repeated calls
+  - [x] Test edge case: single reactor
+  - [x] Verify address validation for selected winner
+  - [x] Test winner selection with multiple eligible users
 
-  - **Goal:** Create a flexible system for defining trait rarities that can be easily updated.
-  - **Status:** Done. A `generator/rarities.json` file has been created to map each trait to a numerical weight. The composition logic reads this file directly.
+### 3.4 Token ID Coordination Testing
 
-- [x] **Implement Core Generation Logic in TypeScript:**
-  - **Goal:** Write clean, well-typed, and maintainable code for composing images and uploading them to IPFS.
-  - **Status:** Done but needs canvas replacement per Phase 1 above.
-    - `src/config.ts`: Defines layer order, image dimensions, and collection metadata.
-    - `src/utils/compose.ts`: Contains the logic to select traits based on rarity and compose the final image using `canvas`. **NEEDS CANVAS REPLACEMENT**
-    - `src/utils/pinata.ts`: Contains helper functions to upload image buffers and metadata JSON to Pinata.
+- [ ] **Test end-to-end token ID consistency:**
+  - [ ] Contract `totalSupply` → calculated `tokenId` matches
+  - [ ] Image naming uses correct token ID
+  - [ ] Metadata references correct token ID
+  - [ ] Redis storage uses correct token ID keys
+  - [ ] Test no race conditions with simultaneous requests
+
+### 3.5 Error Recovery & Edge Cases Testing
+
+- [ ] **Test failure scenarios:**
+  - [ ] Neynar API failures: rate limiting, timeouts, invalid responses
+  - [ ] Pinata upload failures: network issues, authentication errors
+  - [ ] Contract transaction failures: insufficient gas, reverted transactions
+  - [ ] Redis storage failures (should not break main flow)
+  - [ ] Invalid input: malformed cast hashes, non-existent casts
+  - [ ] Casts with no eligible replies (no verified addresses)
+
+### 3.6 Environment Variables & Configuration Testing
+
+- [x] **Verify all required environment variables:**
+  - [x] `NEYNAR_API_KEY` is valid and has necessary permissions
+  - [x] `PINATA_JWT` works for image and metadata uploads
+  - [ ] `RPC_URL` connects to correct network (testnet/mainnet)
+  - [ ] `CHOOCHOO_TRAIN_ADDRESS` points to correct deployed contract
+  - [ ] `ADMIN_PRIVATE_KEY` has minting permissions on contract
+  - [x] Redis connection variables are correct
+
+### 3.7 Comprehensive Integration Test
+
+- [ ] **Create comprehensive test endpoint:** `/api/test-send-train-components`
+  - [ ] Run all component tests with health check report
+  - [ ] Test complete end-to-end flow with mock data
+  - [ ] Verify all components work together correctly
+  - [ ] Generate test report with pass/fail status for each component
 
 ## 4. Frontend UI Development
 
@@ -174,9 +180,11 @@ With the backend in place, you can now build out the user interface.
 - [x] **Component Implementation:**
   - **Goal:** Create the React components outlined in the documentation.
   - **Status:** Basic components implemented, needs expansion:
-    - ✅ `NextStopTrigger` component added to Home.tsx
-    - [ ] `NFTDisplay.tsx`: Display the NFT image and metadata.
+    - [x] `NextStopTrigger` component added to Home.tsx
+    - [ ] `NFTDisplay.tsx`: Display the NFT image.
     - [ ] `TrainJourney.tsx`: Show the history of the train's journey.
+      - [ ] show the correct NFT for each step of the history
+      - in Redis, each KV should be "token<tokenId>-metadata" : "<IPFS_hash>" (i.e. "token13-metadata" : "Qc0m...")
     - [ ] `SendTrainButton.tsx`: Enhanced version of current trigger.
 - [ ] **Wagmi and Viem Integration:**
   - **Goal:** Connect the frontend to the blockchain.

@@ -1,3 +1,4 @@
+// @todo: delete this file once `send-train` is working
 import { NextResponse } from 'next/server';
 import { redis } from '@/lib/kv';
 import {

@@ -3,87 +3,121 @@ import { isAddress } from 'viem';
 import { composeImage, uploadImageToPinata, uploadMetadataToPinata } from 'generator';
 import { getContractService } from '@/lib/services/contract';
 import { redis } from '@/lib/kv';
-import type { NeynarBulkUsersResponse } from '@/types/neynar';
+import type { NeynarCastReactionsResponse } from '@/types/neynar';
 
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
 
 /**
- * Fetches replies to a given cast from Neynar, along with each reply author's primary wallet address and total reactions.
- * Uses the first address in verifications as the primary wallet, falling back to custody_address if needed.
+ * Fetches reactions to a given cast from Neynar, along with each reactor's primary wallet address.
+ * Uses the efficient reactions API which includes full user data in a single call.
  *
- * @param castHash - The hash of the cast to fetch replies for.
- * @returns An array of objects with primaryWallet, reactions, and fid for each eligible reply.
+ * @param castHash - The hash of the cast to fetch reactions for.
+ * @returns An array of objects with complete user data for each eligible reactor.
  * @throws If the Neynar API key is missing or the API call fails.
  */
-async function fetchRepliesAndReactions(
-  castHash: string
-): Promise<Array<{ primaryWallet: string; reactions: number; fid: number }>> {
+async function fetchReactions(castHash: string): Promise<
+  Array<{
+    primaryWallet: string;
+    fid: number;
+    username: string;
+    displayName: string;
+    pfpUrl: string;
+  }>
+> {
   if (!NEYNAR_API_KEY) throw new Error('Missing NEYNAR_API_KEY');
-  // 1. Fetch all replies to the cast with pagination
-  let allReplies: Array<{
-    author?: { fid?: number };
-    reactions?: { likes?: unknown[]; recasts?: unknown[] };
+
+  // Fetch all reactions to the cast with pagination
+  let allReactions: Array<{
+    reaction_type: 'like' | 'recast';
+    user: {
+      fid: number;
+      username: string;
+      display_name: string;
+      pfp_url: string;
+      verified_addresses: {
+        eth_addresses: string[];
+        primary: { eth_address: string | null };
+      };
+    };
   }> = [];
   let cursor: string | undefined = undefined;
+
   do {
-    const url = new URL(`https://api.neynar.com/v2/farcaster/cast/replies`);
-    url.searchParams.set('cast_hash', castHash);
+    const url = new URL(`https://api.neynar.com/v2/farcaster/reactions/cast/`);
+    url.searchParams.set('hash', castHash);
+    url.searchParams.set('types', 'all');
     url.searchParams.set('limit', '100');
     if (cursor) url.searchParams.set('cursor', cursor);
-    const repliesRes = await fetch(url.toString(), {
-      headers: { accept: 'application/json', api_key: NEYNAR_API_KEY },
+
+    const reactionsRes = await fetch(url.toString(), {
+      headers: { accept: 'application/json', 'x-api-key': NEYNAR_API_KEY },
     });
-    if (!repliesRes.ok) throw new Error('Failed to fetch replies from Neynar');
-    const repliesData = await repliesRes.json();
-    const replies = repliesData?.result?.casts ?? [];
-    allReplies = allReplies.concat(replies);
-    cursor = repliesData?.result?.next?.cursor;
+
+    if (!reactionsRes.ok) {
+      throw new Error(
+        `Failed to fetch reactions from Neynar: ${reactionsRes.status} ${reactionsRes.statusText}`
+      );
+    }
+
+    const reactionsData: NeynarCastReactionsResponse = await reactionsRes.json();
+    const reactions = reactionsData?.reactions ?? [];
+    allReactions = allReactions.concat(reactions);
+    cursor = reactionsData?.next?.cursor || undefined;
   } while (cursor);
 
-  // 2. Collect all unique fids
-  const fidSet = new Set<number>();
-  for (const reply of allReplies) {
-    if (reply.author?.fid) fidSet.add(reply.author.fid);
-  }
-  const allFids = Array.from(fidSet);
-
-  // 3. Bulk fetch user data in chunks of 100
-  const fidToUser: Record<number, NeynarBulkUsersResponse['users'][0]> = {};
-  for (let i = 0; i < allFids.length; i += 100) {
-    const chunk = allFids.slice(i, i + 100);
-    const userRes = await fetch(
-      `https://api.neynar.com/v2/farcaster/user/bulk?fids=${chunk.join(',')}`,
-      {
-        headers: { accept: 'application/json', 'x-api-key': NEYNAR_API_KEY },
-      }
-    );
-    if (!userRes.ok) continue;
-    const userData: NeynarBulkUsersResponse = await userRes.json();
-    for (const user of userData?.users ?? []) {
-      if (user.fid) fidToUser[user.fid] = user;
+  // Collect unique users who reacted (deduplicate by FID)
+  const uniqueUsers: Map<
+    number,
+    {
+      fid: number;
+      username: string;
+      displayName: string;
+      pfpUrl: string;
+      primaryWallet: string;
     }
-  }
+  > = new Map();
 
-  // 4. Assemble results using the user map
-  const results: Array<{ primaryWallet: string; reactions: number; fid: number }> = [];
-  for (const reply of allReplies) {
-    const fid = reply.author?.fid;
+  for (const reaction of allReactions) {
+    const user = reaction.user;
+    const fid = user?.fid;
     if (!fid) continue;
-    const user = fidToUser[fid];
-    if (!user) continue;
 
-    // Get first verified Ethereum address (primary if available, otherwise first in array)
+    // Skip if we already processed this user
+    if (uniqueUsers.has(fid)) continue;
+
+    // Get primary wallet address
     const verifiedAddresses = user.verified_addresses;
     const primaryWallet =
       verifiedAddresses?.primary?.eth_address || verifiedAddresses?.eth_addresses?.[0];
 
     if (!primaryWallet || !isAddress(primaryWallet)) continue;
-    // Sum reactions (likes + recasts)
-    const reactions =
-      (reply.reactions?.likes?.length ?? 0) + (reply.reactions?.recasts?.length ?? 0);
-    results.push({ primaryWallet, reactions, fid });
+
+    // Add user to our unique set
+    uniqueUsers.set(fid, {
+      fid,
+      username: user.username || '',
+      displayName: user.display_name || '',
+      pfpUrl: user.pfp_url || '',
+      primaryWallet,
+    });
   }
-  return results;
+
+  // Convert to array
+  return Array.from(uniqueUsers.values());
+}
+
+/**
+ * Randomly selects a winner from an array of eligible reactors.
+ *
+ * @param reactors - Array of eligible reactors
+ * @returns A randomly selected reactor
+ */
+function selectRandomWinner<T>(reactors: T[]): T {
+  if (reactors.length === 0) {
+    throw new Error('Cannot select winner from empty array');
+  }
+  const randomIndex = Math.floor(Math.random() * reactors.length);
+  return reactors[randomIndex];
 }
 
 /**
@@ -120,26 +154,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Missing or invalid castHash' }, { status: 400 });
     }
 
-    // 1. Fetch cast replies and reactions from Neynar
-    let replies;
+    // 1. Fetch cast reactions from Neynar
+    let reactors;
     try {
-      replies = await fetchRepliesAndReactions(castHash);
+      reactors = await fetchReactions(castHash);
     } catch (err) {
-      console.error('[send-train] Failed to fetch replies and reactions:', err);
-      return NextResponse.json({ error: 'Failed to fetch replies from Neynar' }, { status: 500 });
+      console.error('[send-train] Failed to fetch reactions:', err);
+      return NextResponse.json({ error: 'Failed to fetch reactions from Neynar' }, { status: 500 });
     }
-    if (!replies.length) {
-      console.error('[send-train] No eligible replies found for castHash:', castHash);
-      return NextResponse.json({ error: 'No eligible replies found' }, { status: 400 });
+    if (!reactors.length) {
+      console.error('[send-train] No eligible reactors found for castHash:', castHash);
+      return NextResponse.json({ error: 'No eligible reactors found' }, { status: 400 });
     }
 
-    // 2. Select the winner (most reactions)
+    // 2. Randomly select the winner
     let winner;
     try {
-      winner = replies.reduce(
-        (max, curr) => (curr.reactions > max.reactions ? curr : max),
-        replies[0]
-      );
+      winner = selectRandomWinner(reactors);
     } catch (err) {
       console.error('[send-train] Failed to select winner:', err);
       return NextResponse.json({ error: 'Failed to select winner' }, { status: 500 });
@@ -215,10 +246,17 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      winner: winnerAddress,
+      winner: {
+        address: winnerAddress,
+        fid: winner.fid,
+        username: winner.username,
+        displayName: winner.displayName,
+        pfpUrl: winner.pfpUrl,
+      },
       tokenURI,
       txHash,
       tokenId,
+      totalEligibleReactors: reactors.length,
     });
   } catch (error) {
     console.error(

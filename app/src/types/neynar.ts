@@ -21,8 +21,8 @@ export interface NeynarUser {
     eth_addresses: string[];
     sol_addresses: string[];
     primary: {
-      eth_address: string;
-      sol_address: string;
+      eth_address: string | null;
+      sol_address: string | null;
     };
   };
   verified_accounts: Array<{
@@ -53,4 +53,50 @@ export interface UserAddressResponse {
   address: string;
   type: 'verification';
   protocol: 'ethereum';
+}
+
+/**
+ * Neynar Cast Reactions API response types
+ */
+export interface NeynarReaction {
+  reaction_type: 'like' | 'recast';
+  reaction_timestamp: string;
+  object: 'likes' | 'recasts';
+  user: NeynarUser;
+}
+
+export interface NeynarCastReactionsResponse {
+  reactions: NeynarReaction[];
+  next: {
+    cursor: string | null;
+  };
+  cursor: string | null;
+}
+
+/**
+ * Neynar Cast Replies API response types
+ */
+export interface NeynarCast {
+  hash: string;
+  author: {
+    fid: number;
+    username: string;
+    display_name: string;
+    pfp_url: string;
+  };
+  text: string;
+  timestamp: string;
+  reactions?: {
+    likes?: NeynarReaction[];
+    recasts?: NeynarReaction[];
+  };
+}
+
+export interface NeynarCastRepliesResponse {
+  result: {
+    casts: NeynarCast[];
+    next?: {
+      cursor: string | null;
+    };
+  };
 }
