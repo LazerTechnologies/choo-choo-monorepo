@@ -22,17 +22,18 @@
 
 - [x] **Pinata Integration**
 
-- [ ] **Contract Integration Completion:**
+- [x] **Contract Integration Completion:**
 
-  - [ ] **Test contract calls:**
-    - Verify `nextStop` function works with admin private key
+  - [x] **Test contract calls:**
+    - Verify `nextStopWithTicketData` function works with admin private key
     - Test `totalSupply` reading
-  - [ ] **Add transaction monitoring:**
-    - Wait for transaction confirmation
+    - Added new contract read methods: `getCurrentTrainHolder`, `getTrainStatus`, `hasRiddenTrain`, `getTotalTickets`
+  - [x] **Add transaction monitoring:**
     - Return transaction hash in response
-  - [ ] **Gas optimization:**
-    - Implement proper gas estimation
-    - Add error handling for failed transactions
+    - Enhanced error handling for admin-only restrictions
+  - [x] **Gas optimization:**
+    - Implement proper gas estimation with `estimateNextStopGas`
+    - Add comprehensive error handling for failed transactions
 
 - [ ] **Security & Reliability Implementation:**
 
@@ -119,13 +120,13 @@ The backend is the core of the application, orchestrating the train's movement, 
 
 ### 3.2 Contract Service Integration Testing
 
-- [ ] **Create test endpoint:** `/api/test-contract`
-  - [ ] Test contract connection works with RPC endpoint
-  - [ ] Verify `getTotalSupply()` returns correct current value
-  - [ ] Test token ID calculation (`totalSupply + 1`) accuracy
-  - [ ] Test `executeNextStop()` transaction submission (testnet first)
-  - [ ] Verify gas estimation and transaction confirmation
-  - [ ] Test contract error handling (insufficient gas, invalid recipient)
+- [x] **Create test endpoint:** `/api/test-contract`
+  - [x] Test contract connection works with RPC endpoint
+  - [x] Verify `getTotalSupply()` returns correct current value
+  - [x] Test token ID calculation (`totalSupply + 1`) accuracy
+  - [x] Test `executeNextStop()` transaction submission (testnet first)
+  - [x] Verify gas estimation and transaction confirmation
+  - [x] Test contract error handling (insufficient gas, invalid recipient)
 
 ### 3.3 Winner Selection Algorithm Testing
 

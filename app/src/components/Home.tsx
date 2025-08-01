@@ -333,6 +333,161 @@ function TestUserAddress() {
   );
 }
 
+function TestAdminNextStop() {
+  const [recipient, setRecipient] = useState('');
+  const [tokenURI, setTokenURI] = useState('');
+  const [result, setResult] = useState<{
+    txHash: string;
+    recipient: string;
+    tokenURI: string;
+    contractInfo: {
+      address: string;
+      network: string;
+      currentSupply: number;
+      nextTokenId: number;
+    };
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleExecuteNextStop = useCallback(async () => {
+    if (!recipient.trim()) {
+      setError('Please enter a recipient address');
+      return;
+    }
+    if (!tokenURI.trim()) {
+      setError('Please enter a token URI or IPFS hash');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const res = await fetch('/api/test-admin-nextstop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipient: recipient.trim(),
+          tokenURI: tokenURI.trim(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setResult(data);
+      } else {
+        setError(data.error || 'Failed to execute nextStop');
+      }
+    } catch (e) {
+      setError('Failed to execute nextStop');
+    } finally {
+      setLoading(false);
+    }
+  }, [recipient, tokenURI]);
+
+  return (
+    <Card className="my-8">
+      <Card.Header>
+        <Card.Title>Test Admin NextStop Function</Card.Title>
+        <Card.Description>
+          Manually execute the nextStop function as an admin (requires ADMIN_PRIVATE_KEY)
+        </Card.Description>
+      </Card.Header>
+      <Card.Content>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Recipient Address
+            </label>
+            <Input
+              type="text"
+              placeholder="0x..."
+              value={recipient}
+              onChange={(e) => setRecipient(e.target.value)}
+              className="w-full"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Token URI / IPFS Hash
+            </label>
+            <Input
+              type="text"
+              placeholder="QmXXXXXX... or ipfs://QmXXXXXX..."
+              value={tokenURI}
+              onChange={(e) => setTokenURI(e.target.value)}
+              className="w-full"
+            />
+            <div className="text-xs text-gray-500 mt-1">
+              Enter IPFS hash or full URI. ipfs:// prefix will be added automatically if needed.
+            </div>
+          </div>
+
+          <Button
+            onClick={handleExecuteNextStop}
+            disabled={loading || !recipient.trim() || !tokenURI.trim()}
+            isLoading={loading}
+            className="w-full"
+          >
+            🚂 Execute NextStop
+          </Button>
+        </div>
+
+        {error && (
+          <div className="text-xs text-red-500 mt-3 p-2 bg-red-50 dark:bg-red-900/20 rounded">
+            {error}
+          </div>
+        )}
+
+        {result && (
+          <div className="text-xs space-y-2 border-t border-gray-300 dark:border-gray-600 pt-3 mt-3">
+            <div className="text-green-600 dark:text-green-400 font-semibold">
+              ✅ Transaction Submitted Successfully!
+            </div>
+
+            <div>
+              <span className="font-semibold">Transaction Hash:</span>
+              <div className="font-mono bg-gray-100 dark:bg-gray-800 p-1 rounded mt-1 break-all">
+                {result.txHash}
+              </div>
+            </div>
+
+            <div>
+              <span className="font-semibold">Recipient:</span>{' '}
+              <code className="text-xs">{result.recipient}</code>
+            </div>
+
+            <div>
+              <span className="font-semibold">Token URI:</span>{' '}
+              <code className="text-xs break-all">{result.tokenURI}</code>
+            </div>
+
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
+              <div className="font-semibold mb-1">Contract Info:</div>
+              <div>
+                <strong>Address:</strong> {result.contractInfo.address}
+              </div>
+              <div>
+                <strong>Network:</strong> {result.contractInfo.network}
+              </div>
+              <div>
+                <strong>Total Supply:</strong> {result.contractInfo.currentSupply}
+              </div>
+              <div>
+                <strong>Next Token ID:</strong> {result.contractInfo.nextTokenId}
+              </div>
+            </div>
+          </div>
+        )}
+      </Card.Content>
+    </Card>
+  );
+}
+
 export default function Home({ title }: { title?: string } = { title: 'Choo Choo on Base' }) {
   const {
     isSDKLoaded,
@@ -581,6 +736,7 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
             <TestRedis />
             <TestPinata />
             <TestUserAddress />
+            <TestAdminNextStop />
 
             {/* Next Stop Trigger */}
             {/* 
