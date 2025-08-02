@@ -333,7 +333,7 @@ function TestUserAddress() {
   );
 }
 
-function TestAdminNextStop() {
+function TestAdminNextStop({ onTokenMinted }: { onTokenMinted?: () => void }) {
   const [recipient, setRecipient] = useState('');
   const [tokenURI, setTokenURI] = useState('');
   const [result, setResult] = useState<{
@@ -378,6 +378,7 @@ function TestAdminNextStop() {
 
       if (res.ok && data.success) {
         setResult(data);
+        onTokenMinted?.();
       } else {
         setError(data.error || 'Failed to execute nextStop');
       }
@@ -386,7 +387,7 @@ function TestAdminNextStop() {
     } finally {
       setLoading(false);
     }
-  }, [recipient, tokenURI]);
+  }, [recipient, tokenURI, onTokenMinted]);
 
   return (
     <Card className="my-8">
@@ -507,55 +508,7 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
   const [neynarUser, setNeynarUser] = useState<NeynarUser | null>(null);
   const [hapticIntensity, setHapticIntensity] = useState<Haptics.ImpactOccurredType>('medium');
   const [isYoinkDialogOpen, setIsYoinkDialogOpen] = useState(false);
-
-  // @todo: Replace with real data from the contract
-  const dummyJourneyData = [
-    {
-      username: 'alice.eth',
-      address: '0x1234567890123456789012345678901234567890',
-      nftImage: '/ChooChoo.webp',
-      ticketNumber: 5,
-      date: 'Dec 15, 2024',
-      duration: '2h 30m',
-      avatarSrc: undefined,
-    },
-    {
-      username: 'bob_crypto',
-      address: '0x2345678901234567890123456789012345678901',
-      nftImage: '/ChooChoo.webp',
-      ticketNumber: 4,
-      date: 'Dec 14, 2024',
-      duration: '1d 5h',
-      avatarSrc: undefined,
-    },
-    {
-      username: 'charlie',
-      address: '0x3456789012345678901234567890123456789012',
-      nftImage: '/ChooChoo.webp',
-      ticketNumber: 3,
-      date: 'Dec 13, 2024',
-      duration: '45m',
-      avatarSrc: undefined,
-    },
-    {
-      username: 'diana.base',
-      address: '0x4567890123456789012345678901234567890123',
-      nftImage: '/ChooChoo.webp',
-      ticketNumber: 2,
-      date: 'Dec 12, 2024',
-      duration: '3h 15m',
-      avatarSrc: undefined,
-    },
-    {
-      username: 'eve_onchain',
-      address: '0x5678901234567890123456789012345678901234',
-      nftImage: '/ChooChoo.webp',
-      ticketNumber: 1,
-      date: 'Dec 11, 2024',
-      duration: '6h 20m',
-      avatarSrc: undefined,
-    },
-  ];
+  const [timelineRefreshTrigger, setTimelineRefreshTrigger] = useState(0);
 
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
@@ -736,7 +689,9 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
             <TestRedis />
             <TestPinata />
             <TestUserAddress />
-            <TestAdminNextStop />
+            <TestAdminNextStop
+              onTokenMinted={() => setTimelineRefreshTrigger((prev) => prev + 1)}
+            />
 
             {/* Next Stop Trigger */}
             {/* 
@@ -752,7 +707,7 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
             */}
 
             <div className="pb-8">
-              <JourneyTimeline items={dummyJourneyData} />
+              <JourneyTimeline refreshOnMintTrigger={timelineRefreshTrigger} />
             </div>
 
             {/* Credits Section */}

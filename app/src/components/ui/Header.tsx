@@ -20,7 +20,7 @@ export function Header({ neynarUser }: HeaderProps) {
   return (
     <div className="relative">
       <div className="w-full py-4 px-4 bg-card border-2 shadow-md transition-all hover:shadow-xs flex items-center justify-between">
-        <Typography variant="h3" className="text-foreground text-white">
+        <Typography variant="h3" className="text-foreground text-white font-comic">
           {APP_NAME}
         </Typography>
         {context?.user && (

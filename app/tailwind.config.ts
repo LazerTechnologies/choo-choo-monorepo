@@ -59,8 +59,9 @@ export default {
       },
       fontFamily: {
         mono: ['var(--font-mono)'],
-        sans: ['Comic Sans MS'],
-        heading: ['var(--font-heading)'],
+        comic: ['var(--font-comic)'],
+        sans: ['var(--font-sans)'],
+        heading: ['var(--font-comic)'],
       },
       keyframes: {
         'accordion-down': {

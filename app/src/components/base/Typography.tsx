@@ -2,7 +2,7 @@ import type { ElementType, ComponentPropsWithoutRef } from 'react';
 import { type VariantProps, cva } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
-const typographyVariants = cva('font-sans', {
+const typographyVariants = cva('font-comic', {
   variants: {
     as: {
       p: 'text-base',
@@ -10,12 +10,12 @@ const typographyVariants = cva('font-sans', {
       caption: 'text-xs',
       li: 'text-base',
       a: 'text-base hover:underline underline-offset-2 decoration-primary',
-      h1: 'font-heading text-4xl lg:text-5xl font-bold',
-      h2: 'font-heading text-3xl lg:text-4xl font-semibold',
-      h3: 'font-heading text-2xl font-medium',
-      h4: 'font-heading text-xl font-normal',
-      h5: 'font-heading text-lg font-normal',
-      h6: 'font-heading text-base font-normal',
+      h1: 'font-sans text-4xl lg:text-5xl font-bold',
+      h2: 'font-sans text-3xl lg:text-4xl font-semibold',
+      h3: 'font-sans text-2xl font-medium',
+      h4: 'font-sans text-xl font-normal',
+      h5: 'font-sans text-lg font-normal',
+      h6: 'font-sans text-base font-normal',
       label: 'font-medium text-sm',
       small: 'text-xs',
     },

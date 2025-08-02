@@ -54,19 +54,22 @@ export function JourneyTimelineItem({
               <div className="min-w-0 flex-1">
                 <Typography
                   variant="label"
-                  className="font-semibold text-gray-900 dark:text-gray-100 truncate"
+                  className="font-semibold text-gray-900 dark:text-gray-100 truncate font-comic"
                 >
                   {username}
                 </Typography>
-                <Typography variant="small" className="text-gray-500 dark:text-gray-400 truncate">
+                <Typography
+                  variant="small"
+                  className="text-gray-500 dark:text-gray-400 truncate font-mono"
+                >
                   {truncatedAddress}
                 </Typography>
               </div>
             </div>
 
             <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
-              <span>{date}</span>
-              <span>Held for {duration}</span>
+              <span className="font-comic">{date}</span>
+              <span className="font-mono">Held for {duration}</span>
             </div>
           </div>
 
@@ -75,7 +78,7 @@ export function JourneyTimelineItem({
             <div className="bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700 rounded-md px-2 py-1">
               <Typography
                 variant="small"
-                className="font-mono font-semibold text-blue-800 dark:text-blue-200"
+                className="font-comic font-semibold text-blue-800 dark:text-blue-200"
               >
                 #{ticketNumber}
               </Typography>

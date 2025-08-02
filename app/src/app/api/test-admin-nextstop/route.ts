@@ -75,9 +75,37 @@ export async function POST(request: Request) {
       console.error('[test-admin-nextstop] Failed to store last moved timestamp:', err);
     }
 
-    // Store comprehensive token data in Redis with mocked Farcaster data
+    // Store comprehensive token data in Redis with real data (except Farcaster data)
     try {
-      // Generate mock data for testing
+      // Extract real IPFS hashes from the provided tokenURI
+      const metadataHash = fullTokenURI.replace('ipfs://', '');
+
+      // For admin test, we need to get the image hash from the metadata
+      // In production, this would come from the generation process
+      let imageHash = '';
+      let generatedAttributes: Array<{ trait_type: string; value: string | number }> = [];
+
+      try {
+        // Try to fetch the metadata to get the image hash and attributes
+        const metadataUrl = `${process.env.PINATA_GATEWAY_URL || 'https://gateway.pinata.cloud'}/ipfs/${metadataHash}`;
+        const metadataResponse = await fetch(metadataUrl);
+        if (metadataResponse.ok) {
+          const metadata = await metadataResponse.json();
+          imageHash = metadata.image?.replace('ipfs://', '') || metadataHash;
+          generatedAttributes = metadata.attributes || [];
+        } else {
+          // Fallback: assume metadata hash is also the image hash
+          imageHash = metadataHash;
+        }
+      } catch (err) {
+        console.warn(
+          '[test-admin-nextstop] Failed to fetch metadata for image hash, using fallback:',
+          err
+        );
+        imageHash = metadataHash;
+      }
+
+      // Generate mock Farcaster data (only part that's mocked)
       const mockUsernames = ['alice.test', 'bob.crypto', 'charlie.eth', 'diana.base', 'eve.web3'];
       const mockDisplayNames = [
         'Alice Tester',
@@ -89,34 +117,33 @@ export async function POST(request: Request) {
       const mockIndex = Math.floor(Math.random() * mockUsernames.length);
       const selectedUsername = mockUsernames[mockIndex];
 
-      // Create proper metadata with Passenger trait
-      const imageHash = fullTokenURI.replace('ipfs://', '');
+      // Create proper metadata with Passenger trait using real tokenId
       const metadata = createTestMetadata(actualTokenId, imageHash, selectedUsername);
 
       const tokenData: TokenData = {
-        // Token identification
+        // Token identification (REAL)
         tokenId: actualTokenId,
 
-        // IPFS data (mock since we don't have real image generation in admin test)
+        // IPFS data (REAL)
         imageHash,
-        metadataHash: fullTokenURI.replace('ipfs://', ''), // This would be different in real scenario
+        metadataHash,
         tokenURI: fullTokenURI,
 
-        // Holder information (real recipient, mock Farcaster data)
+        // Holder information (REAL recipient address, MOCK Farcaster data)
         holderAddress: recipient,
-        holderUsername: selectedUsername,
-        holderFid: 1000 + mockIndex,
-        holderDisplayName: mockDisplayNames[mockIndex],
-        holderPfpUrl: `https://example.com/pfp/${mockIndex}.png`,
+        holderUsername: selectedUsername, // MOCK
+        holderFid: 1000 + mockIndex, // MOCK
+        holderDisplayName: mockDisplayNames[mockIndex], // MOCK
+        holderPfpUrl: `https://example.com/pfp/${mockIndex}.png`, // MOCK
 
-        // Transaction data
+        // Transaction data (REAL)
         transactionHash: txHash,
         timestamp: new Date().toISOString(),
 
-        // Generation metadata (use metadata from our utility)
-        attributes: metadata.attributes,
+        // Generation metadata (REAL from metadata or mock for test)
+        attributes: generatedAttributes.length > 0 ? generatedAttributes : metadata.attributes,
 
-        // Source information
+        // Source information (REAL)
         sourceType: 'admin-test',
       };
 
