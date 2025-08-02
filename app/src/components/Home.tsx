@@ -33,6 +33,38 @@ import { USE_WALLET, APP_NAME } from '@/lib/constants';
 import Image from 'next/image';
 import type { PinataUploadResult } from '@/types/nft';
 
+// Current holder message component
+function CurrentHolderMessage() {
+  const [isCurrentHolder, setIsCurrentHolder] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const checkCurrentHolder = async () => {
+      try {
+        const response = await fetch('/api/current-holder');
+        if (response.ok) {
+          const data = await response.json();
+          setIsCurrentHolder(data.isCurrentHolder);
+        }
+      } catch (error) {
+        console.error('Failed to check current holder status:', error);
+        setIsCurrentHolder(false);
+      }
+    };
+
+    checkCurrentHolder();
+  }, []);
+
+  if (isCurrentHolder === true) {
+    return (
+      <p className="text-green-600 dark:text-green-400 font-medium mt-4 leading-relaxed">
+        🚂 You&apos;re ChooChoo&apos;s current passenger!
+      </p>
+    );
+  }
+
+  return null;
+}
+
 export type Tab = 'home' | 'actions' | 'context' | 'wallet';
 
 interface NeynarUser {
@@ -683,6 +715,9 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
                 to that cast compete for the most reactions, and the winner receives ChooChoo next.
                 All aboard!
               </p>
+
+              {/* @note: utilize current-holder key */}
+              <CurrentHolderMessage />
             </div>
 
             {/* Test Sections */}
