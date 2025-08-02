@@ -48,21 +48,32 @@ function TestRedis({ onCurrentHolderUpdated }: { onCurrentHolderUpdated: () => v
   const [value, setValue] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [toggle, setToggle] = useState(false);
   const { playChooChoo } = useSoundPlayer();
 
   async function handleWrite() {
     setLoading(true);
     setError(null);
     try {
-      const currentHolderData = {
-        fid: 377557,
-        username: 'jonbray.eth',
-        displayName: 'jon',
-        pfpUrl:
-          'https://wrpcd.net/cdn-cgi/imagedelivery/BXluQx4ige9GuW0Ia56BHw/52e69c12-87d6-4d32-cf3d-dafc097fec00/anim=false,fit=contain,f=auto,w=576',
-        address: '0xef00A763368C98C361a9a30cE44D24c8Fed43844',
-        timestamp: new Date().toISOString(),
-      };
+      const currentHolderData = toggle
+        ? {
+            fid: 2802,
+            username: 'garrett',
+            displayName: 'garrett',
+            pfpUrl:
+              'https://wrpcd.net/cdn-cgi/imagedelivery/BXluQx4ige9GuW0Ia56BHw/c131c034-0090-4610-45a4-acda4b805000/anim=false,fit=contain,f=auto,w=576',
+            address: '0xcEaB0087c5fbC22fb19293bd0be5Fa9B23789DA9',
+            timestamp: new Date().toISOString(),
+          }
+        : {
+            fid: 377557,
+            username: 'jonbray.eth',
+            displayName: 'jon',
+            pfpUrl:
+              'https://wrpcd.net/cdn-cgi/imagedelivery/BXluQx4ige9GuW0Ia56BHw/52e69c12-87d6-4d32-cf3d-dafc097fec00/anim=false,fit=contain,f=auto,w=576',
+            address: '0xef00A763368C98C361a9a30cE44D24c8Fed43844',
+            timestamp: new Date().toISOString(),
+          };
 
       const res = await fetch('/api/redis', {
         method: 'POST',
@@ -81,6 +92,7 @@ function TestRedis({ onCurrentHolderUpdated }: { onCurrentHolderUpdated: () => v
 
       // Play choo-choo sound when current holder is set
       playChooChoo({ volume: 0.7 });
+      setToggle((t) => !t);
     } catch (e) {
       setError('Write failed');
     } finally {
@@ -97,7 +109,7 @@ function TestRedis({ onCurrentHolderUpdated }: { onCurrentHolderUpdated: () => v
           onClick={handleWrite}
           disabled={loading}
         >
-          Set Current Holder (jonbray.eth)
+          Set Current Holder ({toggle ? 'garrett' : 'jonbray.eth'})
         </button>
       </div>
       {loading && <div className="text-xs text-gray-500">Setting current holder...</div>}
