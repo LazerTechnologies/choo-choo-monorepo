@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Comic_Neue, IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
+import { Comic_Relief, IBM_Plex_Mono, Public_Sans } from 'next/font/google';
 
 import { getSession } from '@/auth';
 import '@/app/globals.css';
@@ -8,13 +8,6 @@ import { APP_NAME, APP_DESCRIPTION } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/base/Sonner';
 
-const fontComic = Comic_Neue({
-  subsets: ['latin'],
-  display: 'swap',
-  variable: '--font-comic',
-  weight: '400',
-});
-
 const fontMono = IBM_Plex_Mono({
   subsets: ['latin'],
   display: 'swap',
@@ -22,10 +15,17 @@ const fontMono = IBM_Plex_Mono({
   weight: '400',
 });
 
-const fontSans = IBM_Plex_Sans({
+const fontSans = Public_Sans({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-sans',
+  weight: '400',
+});
+
+const fontComicFallback = Comic_Relief({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-comic-fallback',
   weight: '400',
 });
 
@@ -44,7 +44,12 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={cn(fontComic.variable, fontMono.variable, fontSans.variable, 'font-comic')}
+      className={cn(fontMono.variable, fontSans.variable, fontComicFallback.variable, 'font-comic')}
+      style={
+        {
+          '--font-comic': `"Comic Sans MS", var(--font-comic-fallback), Comic Sans, cursive`,
+        } as React.CSSProperties
+      }
     >
       <body>
         <Providers session={session}>{children}</Providers>
