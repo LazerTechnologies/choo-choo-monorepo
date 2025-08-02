@@ -241,20 +241,36 @@ export async function POST(request: Request) {
       );
     }
 
-    // 9. Store last moved timestamp
+    // 9. Get the actual minted token ID after transaction
+    let actualTokenId;
     try {
-      await storeLastMovedTimestamp(tokenId, txHash);
-      console.log(`[send-train] Stored last moved timestamp for token ${tokenId}`);
+      const updatedTotalSupply = await contractService.getTotalSupply();
+      actualTokenId = updatedTotalSupply; // The latest minted token ID
+      console.log(
+        `[send-train] Actual minted token ID: ${actualTokenId} (was predicted as ${tokenId})`
+      );
+    } catch (err) {
+      console.error(
+        '[send-train] Failed to get updated total supply, using predicted token ID:',
+        err
+      );
+      actualTokenId = tokenId; // Fallback to predicted ID
+    }
+
+    // 10. Store last moved timestamp
+    try {
+      await storeLastMovedTimestamp(actualTokenId, txHash);
+      console.log(`[send-train] Stored last moved timestamp for token ${actualTokenId}`);
     } catch (err) {
       console.error('[send-train] Failed to store last moved timestamp:', err);
       // Don't fail the request for this
     }
 
-    // 10. Store comprehensive token data in Redis
+    // 11. Store comprehensive token data in Redis
     try {
       const tokenData: TokenData = {
         // Token identification
-        tokenId,
+        tokenId: actualTokenId,
 
         // IPFS data
         imageHash: imageCid,
@@ -282,7 +298,9 @@ export async function POST(request: Request) {
       };
 
       await storeTokenData(tokenData);
-      console.log(`[send-train] Stored comprehensive token data in Redis for token ${tokenId}`);
+      console.log(
+        `[send-train] Stored comprehensive token data in Redis for token ${actualTokenId}`
+      );
     } catch (err) {
       console.error('[send-train] Failed to store comprehensive token data in Redis:', err);
       // Don't fail the request for Redis storage issues, just log the error
@@ -299,7 +317,7 @@ export async function POST(request: Request) {
       },
       tokenURI,
       txHash,
-      tokenId,
+      tokenId: actualTokenId,
       totalEligibleReactors: reactors.length,
     });
   } catch (error) {

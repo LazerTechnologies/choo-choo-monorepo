@@ -7,12 +7,21 @@ import {
   uploadMetadataToPinata,
   collectionName,
 } from 'generator';
+import { getContractService } from '@/lib/services/contract';
 import type { PinataUploadResult } from '@/types/nft';
 
 export async function POST() {
   try {
-    // Use a test token ID
-    const testTokenId = 999;
+    // Get the next token ID from contract (same as real tokens would get)
+    let testTokenId;
+    try {
+      const contractService = getContractService();
+      const totalSupply = await contractService.getTotalSupply();
+      testTokenId = totalSupply + 1000; // Add 1000 to clearly distinguish test tokens
+    } catch (err) {
+      console.error('[test-pinata] Failed to get contract total supply, using fallback:', err);
+      testTokenId = 9999; // Fallback to high number to avoid conflicts
+    }
 
     console.log('[test-pinata] Generating NFT image using generator package...');
 

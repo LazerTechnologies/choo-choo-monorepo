@@ -51,10 +51,26 @@ export async function POST(request: Request) {
     // Execute the transaction
     const txHash = await contractService.executeNextStop(recipient, fullTokenURI);
 
+    // Get the actual minted token ID after transaction
+    let actualTokenId;
+    try {
+      const updatedTotalSupply = await contractService.getTotalSupply();
+      actualTokenId = updatedTotalSupply; // The latest minted token ID
+      console.log(
+        `[test-admin-nextstop] Actual minted token ID: ${actualTokenId} (was predicted as ${tokenId})`
+      );
+    } catch (err) {
+      console.error(
+        '[test-admin-nextstop] Failed to get updated total supply, using predicted token ID:',
+        err
+      );
+      actualTokenId = tokenId; // Fallback to predicted ID
+    }
+
     // Store last moved timestamp
     try {
-      await storeLastMovedTimestamp(tokenId, txHash);
-      console.log(`[test-admin-nextstop] Stored last moved timestamp for token ${tokenId}`);
+      await storeLastMovedTimestamp(actualTokenId, txHash);
+      console.log(`[test-admin-nextstop] Stored last moved timestamp for token ${actualTokenId}`);
     } catch (err) {
       console.error('[test-admin-nextstop] Failed to store last moved timestamp:', err);
     }
@@ -75,11 +91,11 @@ export async function POST(request: Request) {
 
       // Create proper metadata with Passenger trait
       const imageHash = fullTokenURI.replace('ipfs://', '');
-      const metadata = createTestMetadata(tokenId, imageHash, selectedUsername);
+      const metadata = createTestMetadata(actualTokenId, imageHash, selectedUsername);
 
       const tokenData: TokenData = {
         // Token identification
-        tokenId,
+        tokenId: actualTokenId,
 
         // IPFS data (mock since we don't have real image generation in admin test)
         imageHash,
@@ -106,7 +122,7 @@ export async function POST(request: Request) {
 
       await storeTokenData(tokenData);
       console.log(
-        `[test-admin-nextstop] Stored comprehensive token data in Redis for token ${tokenId}`
+        `[test-admin-nextstop] Stored comprehensive token data in Redis for token ${actualTokenId}`
       );
     } catch (err) {
       console.error(
@@ -121,10 +137,10 @@ export async function POST(request: Request) {
       txHash,
       recipient,
       tokenURI: fullTokenURI,
-      tokenId,
+      tokenId: actualTokenId,
       contractInfo: {
         currentSupply: totalSupply,
-        nextTokenId: tokenId,
+        nextTokenId: actualTokenId,
       },
       timestamp: new Date().toISOString(),
     });

@@ -12,7 +12,7 @@ interface IChooChooTrain {
 
 contract AdminManager is Script {
     address jon = 0xef00A763368C98C361a9a30cE44D24c8Fed43844;
-    address garrett = 0x0000000000000000000000000000000000000001;
+    address garrett = 0x45db9d3457c2Cb05C4BFc7334a33ceE6e19d508F;
     address yon = 0x0000000000000000000000000000000000000002;
 
     address[] adminsToAdd = [jon];
