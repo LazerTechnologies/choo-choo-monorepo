@@ -62,7 +62,7 @@ function TestRedis() {
         timestamp: new Date().toISOString(),
       };
 
-      const res = await fetch('/api/test-redis', {
+      const res = await fetch('/api/redis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -575,6 +575,7 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
             {/* Test Sections */}
             <TestRedis />
             <TestPinata />
+            {/* @todo: move this into it's own component that uses farcaster session to detect the FID of the current user, if admin, display the component in the footer as a dialog that opens when the button is clicked */}
             <TestAdminNextStop
               onTokenMinted={() => setTimelineRefreshTrigger((prev) => prev + 1)}
             />
