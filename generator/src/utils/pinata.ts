@@ -110,24 +110,31 @@ export const uploadImageToPinata = async (imageBuffer: Buffer, name: string): Pr
  * @param tokenId - The ID of the token.
  * @param imageCid - The IPFS CID of the image for this token.
  * @param attributes - The attributes for this token.
+ * @param passengerUsername - Optional Farcaster username for Passenger trait.
  * @returns A promise that resolves to the IPFS hash (CID) of the uploaded metadata.
  */
 export const uploadMetadataToPinata = async (
   tokenId: number,
   imageCid: string,
-  attributes: NftAttribute[]
+  attributes: NftAttribute[],
+  passengerUsername?: string
 ): Promise<string> => {
   try {
+    // Create metadata with proper tokenId naming and Passenger trait
     const metadata = {
       name: `${collectionName} #${tokenId}`,
       description: collectionDescription,
       image: `ipfs://${imageCid}`,
-      attributes,
+      attributes: [
+        ...attributes,
+        // Add Passenger trait if username is provided
+        ...(passengerUsername ? [{ trait_type: 'Passenger', value: passengerUsername }] : []),
+      ],
     };
 
     const response = await pinata.pinJSONToIPFS(metadata, {
       pinataMetadata: {
-        name: `${collectionName} Metadata #${tokenId}`, // @todo: make sure we're pulling tokenId from KV and not direct from contract to avoid race conditions, have a "nextTokenId" variable in KV
+        name: `${collectionName} Metadata #${tokenId}`,
       },
     });
     return response.IpfsHash;

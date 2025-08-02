@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server';
 import { isAddress } from 'viem';
 import { composeImage, uploadImageToPinata, uploadMetadataToPinata } from 'generator';
 import { getContractService } from '@/lib/services/contract';
-import { redis } from '@/lib/kv';
+import { storeTokenData, storeLastMovedTimestamp } from '@/lib/redis-token-utils';
+import { createChooChooMetadata } from '@/lib/nft-metadata-utils';
 import type { NeynarCastReactionsResponse } from '@/types/neynar';
+import type { TokenData } from '@/types/nft';
 
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
 
@@ -181,7 +183,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Winner address is invalid' }, { status: 400 });
     }
 
-    // 3. Get the next token ID from our contract
+    // 3. Get the next token ID
     let contractService, totalSupply, tokenId;
     try {
       contractService = getContractService();
@@ -212,25 +214,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to upload image to Pinata' }, { status: 500 });
     }
 
-    // 6. Upload the final metadata to Pinata
-    let metadataCid, tokenURI;
+    // 6. Create metadata and upload to Pinata
+    let metadataCid, tokenURI, nftMetadata;
     try {
-      metadataCid = await uploadMetadataToPinata(tokenId, imageCid, attributes);
+      // Create standardized metadata with Passenger trait
+      nftMetadata = createChooChooMetadata(tokenId, imageCid, attributes, winner.username);
+
+      metadataCid = await uploadMetadataToPinata(tokenId, imageCid, attributes, winner.username);
       tokenURI = `ipfs://${metadataCid}`;
     } catch (err) {
       console.error('[send-train] Failed to upload metadata to Pinata:', err);
       return NextResponse.json({ error: 'Failed to upload metadata to Pinata' }, { status: 500 });
     }
 
-    // 7. Store the IPFS hashes in Redis for the generated NFT
-    try {
-      await redis.set(`choochoo:nft:${tokenId}:image_hash`, imageCid);
-      await redis.set(`choochoo:nft:${tokenId}:metadata_hash`, metadataCid);
-      console.log(`[send-train] Stored IPFS hashes in Redis for token ${tokenId}`);
-    } catch (err) {
-      console.error('[send-train] Failed to store IPFS hashes in Redis:', err);
-      // Don't fail the request for Redis storage issues, just log the error
-    }
+    // 7. IPFS hashes are stored as part of comprehensive token data (step 10)
 
     // 8. Execute the on-chain transaction
     let txHash;
@@ -242,6 +239,53 @@ export async function POST(request: Request) {
         { error: 'Failed to execute on-chain transaction' },
         { status: 500 }
       );
+    }
+
+    // 9. Store last moved timestamp
+    try {
+      await storeLastMovedTimestamp(tokenId, txHash);
+      console.log(`[send-train] Stored last moved timestamp for token ${tokenId}`);
+    } catch (err) {
+      console.error('[send-train] Failed to store last moved timestamp:', err);
+      // Don't fail the request for this
+    }
+
+    // 10. Store comprehensive token data in Redis
+    try {
+      const tokenData: TokenData = {
+        // Token identification
+        tokenId,
+
+        // IPFS data
+        imageHash: imageCid,
+        metadataHash: metadataCid,
+        tokenURI,
+
+        // Holder information
+        holderAddress: winnerAddress,
+        holderUsername: winner.username,
+        holderFid: winner.fid,
+        holderDisplayName: winner.displayName,
+        holderPfpUrl: winner.pfpUrl,
+
+        // Transaction data
+        transactionHash: txHash,
+        timestamp: new Date().toISOString(),
+
+        // Generation metadata (use standardized metadata attributes)
+        attributes: nftMetadata.attributes,
+
+        // Source information
+        sourceType: 'send-train',
+        sourceCastHash: castHash,
+        totalEligibleReactors: reactors.length,
+      };
+
+      await storeTokenData(tokenData);
+      console.log(`[send-train] Stored comprehensive token data in Redis for token ${tokenId}`);
+    } catch (err) {
+      console.error('[send-train] Failed to store comprehensive token data in Redis:', err);
+      // Don't fail the request for Redis storage issues, just log the error
     }
 
     return NextResponse.json({

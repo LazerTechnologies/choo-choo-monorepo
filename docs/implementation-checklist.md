@@ -248,15 +248,17 @@ This section outlines the key considerations for deploying the entire monorepo t
       - `YOUR_RPC_URL`: An RPC endpoint for your chosen blockchain.
       - `SPONSOR_WALLET_PRIVATE_KEY`: The private key for your paymaster sponsor wallet.
 
-- [ ] **Handling Git LFS:**
-
-  - **Goal:** Ensure the large image assets stored in Git LFS are available during the build and at runtime.
-  - **How:**
-    - No extra configuration is needed. Vercel has native support for Git LFS.
-    - As long as your `.gitattributes` file is committed to the repository, Vercel's build process will automatically detect it, download the LFS objects, and make the full-resolution images in `generator/layers` available to your serverless functions.
-
 - [ ] **Verify Serverless Function Operation:**
   - **Goal:** Confirm that the API routes, especially the new `/api/send-train` route, are functioning correctly in the deployed environment.
   - **How:**
     - After deployment, use the Vercel dashboard logs to monitor the execution of your serverless functions.
     - Trigger the `send-train` flow and check the logs for any errors related to file access, canvas operations, or API calls to Pinata.
+
+## Utils, Metadata, etc.
+
+- add any relevant traits to the train's metadata (passenger info, timestamp, block-height, etc)
+
+## Frontend
+
+- [ ] **Homepage**
+- use `/app/src/lib/redis-token-utils.ts` to pull data to populate the frontend, like how many stops ChooChoo has made (tokenId + 1), etc.

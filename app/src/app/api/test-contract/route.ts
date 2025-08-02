@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from 'next/server';
 import { getContractService, ContractService } from '@/lib/services/contract';
+import { getCurrentTokenTracker, getLastMovedTimestamp } from '@/lib/redis-token-utils';
 import { isAddress } from 'viem';
 
 interface TestResult {
@@ -201,7 +202,6 @@ async function testGasEstimation(contractService: ContractService): Promise<Test
 
 async function testExecuteNextStop(contractService: ContractService): Promise<TestResult> {
   // Only test if testnet is configured and explicitly enabled
-  const isTestingEnabled = process.env.ENABLE_CONTRACT_TESTING === 'true';
   const isTestnet = process.env.USE_MAINNET !== 'true';
 
   if (!isTestnet) {
@@ -210,7 +210,6 @@ async function testExecuteNextStop(contractService: ContractService): Promise<Te
       message: 'SKIPPED - Contract testing not enabled or on mainnet',
       data: {
         reason: 'Set USE_MAINNET=false to enable transaction testing',
-        isTestingEnabled,
         isTestnet,
       },
     };
@@ -301,8 +300,15 @@ export async function GET() {
       errorHandling: await testErrorHandling(contractService),
     };
 
-    // Get contract info for the summary
+    // Get contract info and current token tracker for the summary
     const contractInfo = await contractService.getContractInfo();
+    let currentTokenTracker, lastMovedTimestamp;
+    try {
+      currentTokenTracker = await getCurrentTokenTracker();
+      lastMovedTimestamp = await getLastMovedTimestamp();
+    } catch (err) {
+      console.warn('[test-contract] Failed to get Redis data:', err);
+    }
 
     // Calculate overall success
     const testStatuses = Object.values(results).map((result) => result.success);
@@ -328,13 +334,19 @@ export async function GET() {
         adminCount: contractInfo.adminCount,
         healthy: contractInfo.healthy,
       },
+      redisInfo: {
+        currentTokenId: currentTokenTracker?.currentTokenId || null,
+        lastUpdated: currentTokenTracker?.lastUpdated || null,
+        hasTokenTracker: !!currentTokenTracker,
+        lastMovedTimestamp: lastMovedTimestamp?.timestamp || null,
+        lastMovedTxHash: lastMovedTimestamp?.transactionHash || null,
+      },
       timestamp: new Date().toISOString(),
       environment: {
         hasAdminKey: !!process.env.ADMIN_PRIVATE_KEY,
         hasRpcUrl: !!process.env.RPC_URL,
         hasContractAddress: !!process.env.CHOOCHOO_TRAIN_ADDRESS,
         isMainnet: process.env.USE_MAINNET === 'true',
-        testingEnabled: process.env.ENABLE_CONTRACT_TESTING === 'true',
       },
     });
   } catch (error) {
