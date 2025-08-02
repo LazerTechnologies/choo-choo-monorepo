@@ -29,41 +29,11 @@ import { Header } from '@/components/ui/Header';
 import { Footer } from '@/components/ui/Footer';
 import { YoinkDialog } from '@/components/ui/dialogs/YoinkDialog';
 import { JourneyTimeline } from '@/components/ui/timeline';
+import { CurrentHolderItem } from '@/components/ui/timeline/CurrentHolderItem';
+import { Typography } from '@/components/base/Typography';
 import { USE_WALLET, APP_NAME } from '@/lib/constants';
 import Image from 'next/image';
 import type { PinataUploadResult } from '@/types/nft';
-
-// Current holder message component
-function CurrentHolderMessage() {
-  const [isCurrentHolder, setIsCurrentHolder] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    const checkCurrentHolder = async () => {
-      try {
-        const response = await fetch('/api/current-holder');
-        if (response.ok) {
-          const data = await response.json();
-          setIsCurrentHolder(data.isCurrentHolder);
-        }
-      } catch (error) {
-        console.error('Failed to check current holder status:', error);
-        setIsCurrentHolder(false);
-      }
-    };
-
-    checkCurrentHolder();
-  }, []);
-
-  if (isCurrentHolder === true) {
-    return (
-      <p className="text-green-600 dark:text-green-400 font-medium mt-4 leading-relaxed">
-        🚂 You&apos;re ChooChoo&apos;s current passenger!
-      </p>
-    );
-  }
-
-  return null;
-}
 
 export type Tab = 'home' | 'actions' | 'context' | 'wallet';
 
@@ -81,10 +51,25 @@ function TestRedis() {
     setLoading(true);
     setError(null);
     try {
+      // @note: store this in redis the first time in staging
+      const currentHolderData = {
+        fid: 377557,
+        username: 'jonbray.eth',
+        displayName: 'jon',
+        pfpUrl:
+          'https://wrpcd.net/cdn-cgi/imagedelivery/BXluQx4ige9GuW0Ia56BHw/52e69c12-87d6-4d32-cf3d-dafc097fec00/anim=false,fit=contain,f=auto,w=576',
+        address: '0xef00A763368C98C361a9a30cE44D24c8Fed43844',
+        timestamp: new Date().toISOString(),
+      };
+
       const res = await fetch('/api/test-redis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'write', key: 'test-key', value: 'hello redis!' }),
+        body: JSON.stringify({
+          action: 'write',
+          key: 'current-holder',
+          value: JSON.stringify(currentHolderData),
+        }),
       });
       const data = await res.json();
       setValue(data.value || null);
@@ -95,69 +80,23 @@ function TestRedis() {
     }
   }
 
-  async function handleRead() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/test-redis?action=read&key=test-key');
-      const data = await res.json();
-      setValue(data.value || null);
-    } catch (e) {
-      setError('Read failed');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleDelete() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch('/api/test-redis', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'delete', key: 'test-key' }),
-      });
-      const data = await res.json();
-      setValue(null);
-    } catch (e) {
-      setError('Delete failed');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
     <div className="my-8 p-4 border rounded-lg bg-gray-50 dark:bg-gray-900">
-      <h3 className="font-bold mb-2">Test Redis</h3>
-      <div className="flex gap-2 mb-2">
+      <h3 className="font-bold mb-2 text-white dark:text-white">Set Current Holder</h3>
+      <div className="mb-2">
         <button
           className="px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
           onClick={handleWrite}
           disabled={loading}
         >
-          Write
-        </button>
-        <button
-          className="px-4 py-2 rounded bg-green-500 text-white hover:bg-green-600 disabled:opacity-50"
-          onClick={handleRead}
-          disabled={loading}
-        >
-          Read
-        </button>
-        <button
-          className="px-4 py-2 rounded bg-red-500 text-white hover:bg-red-600 disabled:opacity-50"
-          onClick={handleDelete}
-          disabled={loading}
-        >
-          Delete
+          Set Current Holder (jonbray.eth)
         </button>
       </div>
-      {loading && <div className="text-xs text-gray-500">Loading...</div>}
+      {loading && <div className="text-xs text-gray-500">Setting current holder...</div>}
       {error && <div className="text-xs text-red-500">{error}</div>}
-      <div className="text-xs mt-2">
-        Value: {value ?? <span className="text-gray-400">(none)</span>}
-      </div>
+      {value && (
+        <div className="text-xs mt-2 text-green-600">✅ Current holder data set successfully</div>
+      )}
     </div>
   );
 }
@@ -267,101 +206,6 @@ function TestPinata() {
         </div>
       )}
     </div>
-  );
-}
-
-function TestUserAddress() {
-  const [fid, setFid] = useState('');
-  const [result, setResult] = useState<{ fid: number; address: string; type: string } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleFetchAddress = useCallback(async () => {
-    if (!fid.trim()) {
-      setError('Please enter a FID');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setResult(null);
-
-    try {
-      const res = await fetch(`/api/users/address?fid=${encodeURIComponent(fid.trim())}`);
-      const data = await res.json();
-
-      if (res.ok) {
-        setResult(data);
-      } else {
-        setError(data.error || 'Failed to fetch address');
-      }
-    } catch (e) {
-      setError('Failed to fetch address');
-    } finally {
-      setLoading(false);
-    }
-  }, [fid]);
-
-  return (
-    <Card className="my-8">
-      <Card.Header>
-        <Card.Title>Test User Verified Address</Card.Title>
-        <Card.Description>
-          Fetch a Farcaster user&apos;s verified wallet address by FID
-        </Card.Description>
-      </Card.Header>
-      <Card.Content>
-        <div className="flex items-center gap-2 mb-3">
-          <Input
-            type="text"
-            placeholder="Enter FID (e.g. 123)"
-            value={fid}
-            onChange={(e) => setFid(e.target.value)}
-            className="flex-1"
-          />
-          <span className="text-gray-500">:</span>
-          <div className="min-w-0 flex-1">
-            {loading ? (
-              <span className="text-gray-500 text-xs">Loading...</span>
-            ) : result ? (
-              <code className="text-xs font-mono text-green-600 dark:text-green-400 break-all">
-                {result.address}
-              </code>
-            ) : (
-              <span className="text-gray-400 text-xs">No address fetched</span>
-            )}
-          </div>
-          <Button
-            onClick={handleFetchAddress}
-            disabled={loading || !fid.trim()}
-            size="sm"
-            isLoading={loading}
-          >
-            🔎
-          </Button>
-        </div>
-
-        {error && <div className="text-xs text-red-500 mb-2">{error}</div>}
-
-        {result && (
-          <div className="text-xs space-y-1 border-t border-gray-300 dark:border-gray-600 pt-2">
-            <div>
-              <span className="font-semibold">FID:</span> {result.fid}
-            </div>
-            <div>
-              <span className="font-semibold">Address Type:</span>{' '}
-              <span className="text-green-600">{result.type}</span>
-            </div>
-            <div>
-              <span className="font-semibold">Full Address:</span>
-              <div className="font-mono bg-gray-100 dark:bg-gray-800 p-1 rounded mt-1 break-all">
-                {result.address}
-              </div>
-            </div>
-          </div>
-        )}
-      </Card.Content>
-    </Card>
   );
 }
 
@@ -715,15 +559,22 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
                 to that cast compete for the most reactions, and the winner receives ChooChoo next.
                 All aboard!
               </p>
+            </div>
 
-              {/* @note: utilize current-holder key */}
-              <CurrentHolderMessage />
+            {/* Current Stop Section */}
+            <div className="w-full max-w-md mx-auto mb-8">
+              <Typography
+                variant="h3"
+                className="text-center mb-4 text-gray-900 dark:text-gray-100 font-comic"
+              >
+                Current Stop
+              </Typography>
+              <CurrentHolderItem refreshOnMintTrigger={timelineRefreshTrigger} />
             </div>
 
             {/* Test Sections */}
             <TestRedis />
             <TestPinata />
-            <TestUserAddress />
             <TestAdminNextStop
               onTokenMinted={() => setTimelineRefreshTrigger((prev) => prev + 1)}
             />

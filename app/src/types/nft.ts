@@ -1,4 +1,17 @@
 /**
+ * Base types for more explicit typing
+ */
+
+/** IPFS URI in the format "ipfs://hash" */
+export type IPFSUri = `ipfs://${string}`;
+
+/** Token URI (typically an IPFS URI pointing to metadata) */
+export type TokenURI = IPFSUri;
+
+/** ISO 8601 timestamp string */
+export type ISOTimestamp = string;
+
+/**
  * NFT metadata structure (ERC721/1155 standard)
  */
 export interface NFTMetadata {
@@ -15,7 +28,7 @@ export interface NFTMetadata {
 export interface PinataFileResponse {
   IpfsHash: string;
   PinSize: number;
-  Timestamp: string;
+  Timestamp: ISOTimestamp;
   isDuplicate?: boolean;
 }
 
@@ -25,7 +38,7 @@ export interface PinataFileResponse {
 export interface PinataJSONResponse {
   IpfsHash: string;
   PinSize: number;
-  Timestamp: string;
+  Timestamp: ISOTimestamp;
   isDuplicate?: boolean;
 }
 
@@ -37,7 +50,7 @@ export interface PinataUploadResult {
   imageUrl: string;
   metadataHash: string;
   metadataUrl: string;
-  tokenURI: string;
+  tokenURI: TokenURI;
   metadata: NFTMetadata;
 }
 
@@ -47,7 +60,7 @@ export interface PinataUploadResult {
 export interface IPFSAsset {
   hash: string;
   url: string;
-  uri: string; // ipfs:// format
+  uri: IPFSUri;
 }
 
 /**
@@ -70,7 +83,7 @@ export interface TokenData {
   // IPFS
   imageHash: string;
   metadataHash: string;
-  tokenURI: string; // ipfs://metadata_hash
+  tokenURI: TokenURI;
 
   // Holder information
   holderAddress: string;
@@ -81,7 +94,7 @@ export interface TokenData {
 
   // Transaction data
   transactionHash: string;
-  timestamp: string; // ISO string
+  timestamp: ISOTimestamp;
   blockNumber?: number;
 
   // Generation metadata
@@ -98,13 +111,25 @@ export interface TokenData {
  */
 export interface CurrentTokenTracker {
   currentTokenId: number;
-  lastUpdated: string; // ISO string
+  lastUpdated: ISOTimestamp;
 }
 
 /**
  * Last moved timestamp tracker for train movement
  */
 export interface LastMovedTimestamp {
-  timestamp: string; // ISO string
+  timestamp: ISOTimestamp;
   transactionHash: string;
+}
+
+/**
+ * Current train holder data stored in Redis
+ */
+export interface CurrentHolderData {
+  fid: number;
+  username: string;
+  displayName: string;
+  pfpUrl: string;
+  address: string;
+  timestamp: ISOTimestamp;
 }

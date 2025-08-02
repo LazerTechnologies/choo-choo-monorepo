@@ -1,0 +1,179 @@
+import { Card } from '@/components/base/Card';
+import { Avatar } from '@/components/base/Avatar';
+import { Typography } from '@/components/base/Typography';
+import { useState, useEffect } from 'react';
+import type { CurrentHolderData } from '@/types/nft';
+
+interface CurrentHolderItemProps {
+  refreshOnMintTrigger?: number;
+}
+
+export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemProps) {
+  const [currentHolder, setCurrentHolder] = useState<CurrentHolderData | null>(null);
+  const [isCurrentUser, setIsCurrentUser] = useState(false);
+  const [duration, setDuration] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+
+  // Fetch current holder data
+  const fetchCurrentHolder = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/current-holder');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.hasCurrentHolder) {
+          setCurrentHolder(data.currentHolder);
+          setIsCurrentUser(data.isCurrentHolder);
+        } else {
+          setCurrentHolder(null);
+          setIsCurrentUser(false);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch current holder:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    fetchCurrentHolder();
+  }, []);
+
+  // Refresh when refreshOnMintTrigger changes (new token minted)
+  useEffect(() => {
+    if (refreshOnMintTrigger && refreshOnMintTrigger > 0) {
+      fetchCurrentHolder();
+    }
+  }, [refreshOnMintTrigger]);
+
+  // Calculate duration since holding
+  useEffect(() => {
+    if (!currentHolder?.timestamp) return;
+
+    const updateDuration = () => {
+      const now = new Date();
+      const holderSince = new Date(currentHolder.timestamp);
+      const diffInSeconds = Math.floor((now.getTime() - holderSince.getTime()) / 1000);
+
+      if (diffInSeconds < 60) {
+        setDuration(`${diffInSeconds}s`);
+      } else if (diffInSeconds < 3600) {
+        const minutes = Math.floor(diffInSeconds / 60);
+        setDuration(`${minutes}m`);
+      } else if (diffInSeconds < 86400) {
+        const hours = Math.floor(diffInSeconds / 3600);
+        setDuration(`${hours}h`);
+      } else {
+        const days = Math.floor(diffInSeconds / 86400);
+        setDuration(`${days}d`);
+      }
+    };
+
+    updateDuration();
+    const interval = setInterval(updateDuration, 1000);
+    return () => clearInterval(interval);
+  }, [currentHolder?.timestamp]);
+
+  if (loading) {
+    return (
+      <Card className="w-full">
+        <Card.Content className="p-3">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+            <div className="flex-1">
+              <div className="h-4 bg-gray-200 rounded animate-pulse mb-2"></div>
+              <div className="h-3 bg-gray-200 rounded animate-pulse w-2/3"></div>
+            </div>
+            <div className="w-8 h-6 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+        </Card.Content>
+      </Card>
+    );
+  }
+
+  if (!currentHolder) {
+    return (
+      <Card className="w-full">
+        <Card.Content className="p-3">
+          <div className="text-center text-gray-500 dark:text-gray-400">
+            <Typography variant="body" className="font-comic">
+              🚂 No current passenger - train is at the station!
+            </Typography>
+          </div>
+        </Card.Content>
+      </Card>
+    );
+  }
+
+  // Truncate address to show first 6 and last 4 characters
+  const truncatedAddress = `${currentHolder.address.slice(0, 6)}...${currentHolder.address.slice(-4)}`;
+
+  // Display name logic
+  const displayName = isCurrentUser ? 'You' : currentHolder.username;
+
+  return (
+    <Card className="w-full border-2 border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20">
+      <Card.Content className="p-3">
+        <div className="flex items-center gap-3">
+          {/* Left: User Avatar (instead of NFT image) */}
+          <div className="flex-shrink-0">
+            <Avatar size="sm" className="border-2 border-green-400">
+              <Avatar.Image src={currentHolder.pfpUrl} alt={currentHolder.username} />
+              <Avatar.Fallback className="bg-green-500 text-white text-xs font-bold">
+                {currentHolder.username.slice(0, 2).toUpperCase()}
+              </Avatar.Fallback>
+            </Avatar>
+          </div>
+
+          {/* Center: User info and details */}
+          <div className="flex-1 min-w-0">
+            <div className="mb-1">
+              {isCurrentUser ? (
+                <Typography
+                  variant="label"
+                  className="font-semibold text-green-800 dark:text-green-200 truncate font-comic"
+                >
+                  {displayName}
+                </Typography>
+              ) : (
+                <a
+                  href={`https://farcaster.xyz/${currentHolder.username}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-green-800 dark:text-green-200 hover:text-green-600 dark:hover:text-green-300 truncate font-comic hover:underline transition-colors"
+                >
+                  {displayName}
+                </a>
+              )}
+              <Typography
+                variant="small"
+                className="text-green-600 dark:text-green-400 truncate font-mono block"
+              >
+                {truncatedAddress}
+              </Typography>
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-green-700 dark:text-green-300">
+              <span className="font-comic">Current passenger</span>
+              <span className="font-mono">Holding for {duration}</span>
+            </div>
+          </div>
+
+          {/* Right: Special #0 ticket number for current holder */}
+          <div className="flex-shrink-0">
+            <div className="bg-green-200 dark:bg-green-800 border border-green-400 dark:border-green-600 rounded-md px-2 py-1">
+              <Typography
+                variant="small"
+                className="font-comic font-semibold text-green-800 dark:text-green-200"
+              >
+                #0
+              </Typography>
+            </div>
+          </div>
+        </div>
+      </Card.Content>
+    </Card>
+  );
+}

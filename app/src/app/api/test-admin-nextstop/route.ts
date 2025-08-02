@@ -4,7 +4,7 @@ import { isAddress, type Address } from 'viem';
 import { getContractService } from '@/lib/services/contract';
 import { storeTokenData, storeLastMovedTimestamp } from '@/lib/redis-token-utils';
 import { createTestMetadata } from '@/lib/nft-metadata-utils';
-import type { TokenData } from '@/types/nft';
+import type { TokenData, TokenURI } from '@/types/nft';
 
 // Validation schemas
 const addressSchema = z.string().refine(isAddress, {
@@ -40,7 +40,9 @@ export async function POST(request: Request) {
     const { recipient, tokenURI } = parsed.data as { recipient: Address; tokenURI: string };
 
     // Add IPFS prefix if not present
-    const fullTokenURI = tokenURI.startsWith('ipfs://') ? tokenURI : `ipfs://${tokenURI}`;
+    const fullTokenURI = (
+      tokenURI.startsWith('ipfs://') ? tokenURI : `ipfs://${tokenURI}`
+    ) as TokenURI;
 
     const contractService = getContractService();
 

@@ -8,7 +8,7 @@ import {
   collectionName,
 } from 'generator';
 import { getContractService } from '@/lib/services/contract';
-import type { PinataUploadResult } from '@/types/nft';
+import type { PinataUploadResult, TokenURI } from '@/types/nft';
 
 export async function POST() {
   try {
@@ -69,7 +69,7 @@ export async function POST() {
     // 4. Create URLs and token URI
     const imageUrl = `https://gateway.pinata.cloud/ipfs/${imageHash}`;
     const metadataUrl = `https://gateway.pinata.cloud/ipfs/${metadataHash}`;
-    const tokenURI = `ipfs://${metadataHash}`;
+    const tokenURI = `ipfs://${metadataHash}` as TokenURI;
 
     // 5. Create the complete metadata object (for display purposes)
     const completeMetadata = {

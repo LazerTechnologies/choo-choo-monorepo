@@ -5,7 +5,7 @@ import { getContractService } from '@/lib/services/contract';
 import { storeTokenData, storeLastMovedTimestamp } from '@/lib/redis-token-utils';
 import { createChooChooMetadata } from '@/lib/nft-metadata-utils';
 import { redis } from '@/lib/kv';
-import type { TokenData } from '@/types/nft';
+import type { TokenData, CurrentHolderData, TokenURI } from '@/types/nft';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
@@ -93,7 +93,9 @@ export async function POST(request: Request) {
       `[internal/mint-token] Minting token ${tokenId} for ${winnerData.username} (${recipient})`
     );
 
-    const fullTokenURI = tokenURI.startsWith('ipfs://') ? tokenURI : `ipfs://${tokenURI}`;
+    const fullTokenURI = (
+      tokenURI.startsWith('ipfs://') ? tokenURI : `ipfs://${tokenURI}`
+    ) as TokenURI;
 
     const contractService = getContractService();
 
@@ -198,10 +200,20 @@ export async function POST(request: Request) {
       );
     }
 
-    // Store the current holder FID in Redis for frontend access
+    // Store the current holder data in Redis for frontend access
     try {
-      await redis.set('current-holder', winnerData.fid.toString());
-      console.log(`[internal/mint-token] Updated current holder to FID: ${winnerData.fid}`);
+      const currentHolderData: CurrentHolderData = {
+        fid: winnerData.fid,
+        username: winnerData.username,
+        displayName: winnerData.displayName,
+        pfpUrl: winnerData.pfpUrl,
+        address: recipient,
+        timestamp: new Date().toISOString(),
+      };
+      await redis.set('current-holder', JSON.stringify(currentHolderData));
+      console.log(
+        `[internal/mint-token] Updated current holder to: ${winnerData.username} (FID: ${winnerData.fid})`
+      );
     } catch (err) {
       console.error('[internal/mint-token] Failed to store current holder in Redis:', err);
       // Don't fail the request for this

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/auth';
 import { redis } from '@/lib/kv';
+import type { CurrentHolderData } from '@/types/nft';
 
 /**
  * GET /api/current-holder
@@ -20,10 +21,13 @@ export async function GET() {
 
     const currentUserFid = session.user.fid;
 
-    // Get the current holder FID from Redis
-    let currentHolderFid: string | null = null;
+    // Get the current holder data from Redis
+    let currentHolderData: CurrentHolderData | null = null;
     try {
-      currentHolderFid = await redis.get('current-holder');
+      const holderDataString = await redis.get('current-holder');
+      if (holderDataString) {
+        currentHolderData = JSON.parse(holderDataString);
+      }
     } catch (err) {
       console.error('[current-holder] Failed to get current holder from Redis:', err);
       return NextResponse.json(
@@ -32,22 +36,29 @@ export async function GET() {
       );
     }
 
-    if (!currentHolderFid) {
+    if (!currentHolderData) {
       return NextResponse.json({
         hasCurrentHolder: false,
         isCurrentHolder: false,
         currentUserFid,
-        currentHolderFid: null,
+        currentHolder: null,
       });
     }
 
-    const isCurrentHolder = currentUserFid.toString() === currentHolderFid;
+    const isCurrentHolder = currentUserFid.toString() === currentHolderData.fid.toString();
 
     return NextResponse.json({
       hasCurrentHolder: true,
       isCurrentHolder,
       currentUserFid,
-      currentHolderFid: parseInt(currentHolderFid),
+      currentHolder: {
+        fid: currentHolderData.fid,
+        username: currentHolderData.username,
+        displayName: currentHolderData.displayName,
+        pfpUrl: currentHolderData.pfpUrl,
+        address: currentHolderData.address,
+        timestamp: currentHolderData.timestamp,
+      },
     });
   } catch (error) {
     console.error('[current-holder] Error:', error);
