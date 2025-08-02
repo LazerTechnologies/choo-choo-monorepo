@@ -93,7 +93,7 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
         setLoading(false);
       }
     }
-  }, [playChooChoo, haptics, currentHolder]);
+  }, [playChooChoo, haptics]);
 
   // Initial load
   useEffect(() => {
