@@ -573,15 +573,6 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
             </div>
 
             {/* Test Sections */}
-            <TestRedis
-              onCurrentHolderUpdated={() => setTimelineRefreshTrigger((prev) => prev + 1)}
-            />
-            <TestPinata />
-            {/* @todo: move this into it's own component that uses farcaster session to detect the FID of the current user, if admin, display the component in the footer as a dialog that opens when the button is clicked */}
-            <TestAdminNextStop
-              onTokenMinted={() => setTimelineRefreshTrigger((prev) => prev + 1)}
-            />
-
             {/* Next Stop Trigger */}
             {/* 
             <div className="pb-8 px-4">
@@ -632,6 +623,17 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
 
         {currentTab === 'actions' && (
           <div className="space-y-3 px-6 w-full max-w-md mx-auto">
+            {/* Admin Test Sections */}
+            <TestRedis
+              onCurrentHolderUpdated={() => setTimelineRefreshTrigger((prev) => prev + 1)}
+            />
+            <TestPinata />
+            {/* @todo: move TestAdminNextStop into it's own component that uses farcaster session to detect the FID of the current user, if admin, display the component in the footer as a dialog that opens when the button is clicked */}
+            <TestAdminNextStop
+              onTokenMinted={() => setTimelineRefreshTrigger((prev) => prev + 1)}
+            />
+
+            {/* Existing Actions */}
             <ShareButton
               buttonText="Share Mini App"
               cast={{

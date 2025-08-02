@@ -24,7 +24,10 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
 
   const fetchCurrentHolder = useCallback(async () => {
     try {
-      setLoading(true);
+      if (isInitialLoad.current || !currentHolder) {
+        setLoading(true);
+      }
+
       const response = await fetch('/api/current-holder');
       if (response.ok) {
         const data = await response.json();
@@ -86,9 +89,11 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
     } catch (error) {
       console.error('Failed to fetch current holder:', error);
     } finally {
-      setLoading(false);
+      if (isInitialLoad.current || !currentHolder) {
+        setLoading(false);
+      }
     }
-  }, [playChooChoo, haptics]);
+  }, [playChooChoo, haptics, currentHolder]);
 
   // Initial load
   useEffect(() => {

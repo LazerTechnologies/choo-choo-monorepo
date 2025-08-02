@@ -52,9 +52,9 @@ export const Footer: React.FC<FooterProps> = ({
               : 'text-muted-foreground hover:text-foreground'
           }`}
         >
-          <span className="text-xl">⚡</span>
+          <span className="text-xl">⚙️</span>
           <Typography variant="small" className="mt-1">
-            Actions
+            Admin
           </Typography>
         </button>
 
