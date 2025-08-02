@@ -6,20 +6,14 @@ import type { CurrentHolderData } from '@/types/nft';
 /**
  * GET /api/current-holder
  *
- * Returns information about the current train holder and whether the
- * authenticated user is the current holder.
+ * Returns information about the current train holder.
+ * If user is authenticated via Farcaster, also returns whether they are the current holder.
  */
 export async function GET() {
   try {
+    // Get session (optional - endpoint works without authentication)
     const session = await getSession();
-    if (!session?.user?.fid) {
-      return NextResponse.json(
-        { error: '🔒 Unauthorized - Farcaster authentication required' },
-        { status: 401 }
-      );
-    }
-
-    const currentUserFid = session.user.fid;
+    const currentUserFid = session?.user?.fid || null;
 
     // Get the current holder data from Redis
     let currentHolderData: CurrentHolderData | null = null;
@@ -45,7 +39,10 @@ export async function GET() {
       });
     }
 
-    const isCurrentHolder = currentUserFid.toString() === currentHolderData.fid.toString();
+    // Only calculate isCurrentHolder if user is authenticated
+    const isCurrentHolder = currentUserFid
+      ? currentUserFid.toString() === currentHolderData.fid.toString()
+      : false;
 
     return NextResponse.json({
       hasCurrentHolder: true,

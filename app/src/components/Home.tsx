@@ -43,6 +43,7 @@ interface NeynarUser {
   score: number;
 }
 
+// @todo: remove this once we move to prod
 function TestRedis({ onCurrentHolderUpdated }: { onCurrentHolderUpdated: () => void }) {
   const [value, setValue] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -79,7 +80,6 @@ function TestRedis({ onCurrentHolderUpdated }: { onCurrentHolderUpdated: () => v
       onCurrentHolderUpdated();
 
       // Play choo-choo sound when current holder is set
-      // @todo: make sure to move this in production
       playChooChoo({ volume: 0.7 });
     } catch (e) {
       setError('Write failed');
@@ -575,7 +575,6 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
 
             {/* Test Sections */}
             <TestRedis
-              // @todo: when we move to prod, make sure the current holder fetches on page load
               onCurrentHolderUpdated={() => setTimelineRefreshTrigger((prev) => prev + 1)}
             />
             <TestPinata />

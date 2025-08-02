@@ -6,6 +6,7 @@ import '@/app/globals.css';
 import { Providers } from '@/app/providers';
 import { APP_NAME, APP_DESCRIPTION } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+import { Toaster } from '@/components/base/Sonner';
 
 const fontComic = Comic_Neue({
   subsets: ['latin'],
@@ -47,6 +48,7 @@ export default async function RootLayout({
     >
       <body>
         <Providers session={session}>{children}</Providers>
+        <Toaster />
       </body>
     </html>
   );

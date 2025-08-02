@@ -4,6 +4,7 @@ import { Typography } from '@/components/base/Typography';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { CurrentHolderData } from '@/types/nft';
 import { useSoundPlayer } from '@/hooks/useSoundPlayer';
+import { toast } from '@/components/base/Sonner';
 
 interface CurrentHolderItemProps {
   refreshOnMintTrigger?: number;
@@ -20,7 +21,6 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
   const previousHolderFid = useRef<number | null>(null);
   const isInitialLoad = useRef(true);
 
-  // Fetch current holder data
   const fetchCurrentHolder = useCallback(async () => {
     try {
       setLoading(true);
@@ -37,8 +37,29 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
             previousHolderFid.current !== null &&
             previousHolderFid.current !== newHolderFid
           ) {
-            console.log(`🚂 All aboard! ${newHolder.username} is now riding the train!`);
+            console.log(`[Easter Egg] If you're reading this, you are based 🔵`);
             playChooChoo({ volume: 0.7 });
+
+            // Show toast notification with avatar
+            toast.custom(
+              () => (
+                <div className="flex items-center gap-3 p-2">
+                  <Avatar size="sm" className="border-2 border-green-400 flex-shrink-0">
+                    <Avatar.Image src={newHolder.pfpUrl} alt={newHolder.username} />
+                    <Avatar.Fallback className="bg-green-500 text-white text-xs font-bold">
+                      {newHolder.username.slice(0, 2).toUpperCase()}
+                    </Avatar.Fallback>
+                  </Avatar>
+                  <span className="font-comic text-sm font-semibold">
+                    All aboard! {newHolder.username} is now riding ChooChoo!
+                  </span>
+                </div>
+              ),
+              {
+                duration: 5000,
+                position: 'top-center',
+              }
+            );
           }
 
           setCurrentHolder(newHolder);
