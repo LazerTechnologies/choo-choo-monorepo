@@ -15,20 +15,14 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
   const [currentHolder, setCurrentHolder] = useState<CurrentHolderData | null>(null);
   const [isCurrentUser, setIsCurrentUser] = useState(false);
   const [duration, setDuration] = useState<string>('');
-  const [loading, setLoading] = useState(true);
 
   const { playChooChoo } = useSoundPlayer();
   const { haptics } = useMiniApp();
   const previousHolderFid = useRef<number | null>(null);
   const isInitialLoad = useRef(true);
-  const hasLoadedOnce = useRef(false);
 
   const fetchCurrentHolder = useCallback(async () => {
     try {
-      if (!hasLoadedOnce.current) {
-        setLoading(true);
-      }
-
       const response = await fetch('/api/current-holder');
       if (response.ok) {
         const data = await response.json();
@@ -43,15 +37,12 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
             previousHolderFid.current !== newHolderFid
           ) {
             console.log(`[Easter Egg] If you're reading this, you are based 🔵`);
-
             playChooChoo({ volume: 0.7 });
-
             try {
               await haptics?.impactOccurred('medium');
             } catch (error) {
               console.log('Haptic feedback failed:', error);
             }
-
             toast.custom(
               () => (
                 <div className="flex items-center gap-3 p-2">
@@ -81,18 +72,12 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
           setIsCurrentUser(false);
           previousHolderFid.current = null;
         }
-
-        hasLoadedOnce.current = true;
         if (isInitialLoad.current) {
           isInitialLoad.current = false;
         }
       }
     } catch (error) {
       console.error('Failed to fetch current holder:', error);
-    } finally {
-      if (!hasLoadedOnce.current) {
-        setLoading(false);
-      }
     }
   }, [playChooChoo, haptics]);
 
@@ -116,12 +101,10 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
   // Calculate duration since holding
   useEffect(() => {
     if (!currentHolder?.timestamp) return;
-
     const updateDuration = () => {
       const now = new Date();
       const holderSince = new Date(currentHolder.timestamp);
       const diffInSeconds = Math.floor((now.getTime() - holderSince.getTime()) / 1000);
-
       if (diffInSeconds < 60) {
         setDuration(`${diffInSeconds}s`);
       } else if (diffInSeconds < 3600) {
@@ -135,13 +118,13 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
         setDuration(`${days}d`);
       }
     };
-
     updateDuration();
     const interval = setInterval(updateDuration, 1000);
     return () => clearInterval(interval);
   }, [currentHolder?.timestamp]);
 
-  if (loading) {
+  // Only show skeleton if we have never loaded data
+  if (currentHolder === null) {
     return (
       <Card className="w-full">
         <Card.Content className="p-3">
@@ -158,24 +141,8 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
     );
   }
 
-  if (!currentHolder) {
-    return (
-      <Card className="w-full">
-        <Card.Content className="p-3">
-          <div className="text-center text-gray-500 dark:text-gray-400">
-            <Typography variant="body" className="font-comic">
-              ChooChoo is still at the station!
-            </Typography>
-          </div>
-        </Card.Content>
-      </Card>
-    );
-  }
-
-  // Truncate address to show first 6 and last 4 characters
   const truncatedAddress = `${currentHolder.address.slice(0, 6)}...${currentHolder.address.slice(-4)}`;
 
-  // Display name logic
   const displayName = isCurrentUser ? 'You' : currentHolder.username;
 
   return (

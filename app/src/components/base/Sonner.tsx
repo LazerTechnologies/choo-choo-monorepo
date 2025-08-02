@@ -13,13 +13,21 @@ const Toaster = (props: ToasterProps) => {
       className={`toaster group ${props.className ?? ''}`}
       style={
         {
-          '--normal-bg': 'var(--popover)',
-          '--normal-text': 'var(--popover-foreground)',
-          '--normal-border': 'var(--border)',
+          '--normal-bg': 'hsl(var(--card))',
+          '--normal-text': 'hsl(var(--card-foreground))',
+          '--normal-border': 'hsl(var(--border))',
           zIndex: 9999,
           ...props.style,
         } as React.CSSProperties
       }
+      toastOptions={{
+        className: 'border-2 shadow-md bg-card text-card-foreground',
+        style: {
+          backgroundColor: 'hsl(var(--card))',
+          color: 'hsl(var(--card-foreground))',
+          border: '2px solid hsl(var(--border))',
+        },
+      }}
       position="top-center"
       richColors
     />
