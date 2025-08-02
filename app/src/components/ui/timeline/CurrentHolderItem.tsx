@@ -1,8 +1,9 @@
 import { Card } from '@/components/base/Card';
 import { Avatar } from '@/components/base/Avatar';
 import { Typography } from '@/components/base/Typography';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { CurrentHolderData } from '@/types/nft';
+import { useSoundPlayer } from '@/hooks/useSoundPlayer';
 
 interface CurrentHolderItemProps {
   refreshOnMintTrigger?: number;
@@ -14,19 +15,44 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
   const [duration, setDuration] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
+  // Sound player and holder change detection
+  const { playChooChoo } = useSoundPlayer();
+  const previousHolderFid = useRef<number | null>(null);
+  const isInitialLoad = useRef(true);
+
   // Fetch current holder data
-  const fetchCurrentHolder = async () => {
+  const fetchCurrentHolder = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch('/api/current-holder');
       if (response.ok) {
         const data = await response.json();
         if (data.hasCurrentHolder) {
-          setCurrentHolder(data.currentHolder);
+          const newHolder = data.currentHolder;
+          const newHolderFid = newHolder.fid;
+
+          // Detect holder change and play sound (skip on initial load)
+          if (
+            !isInitialLoad.current &&
+            previousHolderFid.current !== null &&
+            previousHolderFid.current !== newHolderFid
+          ) {
+            console.log(`🚂 All aboard! ${newHolder.username} is now riding the train!`);
+            playChooChoo({ volume: 0.7 });
+          }
+
+          setCurrentHolder(newHolder);
           setIsCurrentUser(data.isCurrentHolder);
+          previousHolderFid.current = newHolderFid;
         } else {
           setCurrentHolder(null);
           setIsCurrentUser(false);
+          previousHolderFid.current = null;
+        }
+
+        // Mark initial load as complete
+        if (isInitialLoad.current) {
+          isInitialLoad.current = false;
         }
       }
     } catch (error) {
@@ -34,19 +60,25 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
     } finally {
       setLoading(false);
     }
-  };
+  }, [playChooChoo]);
 
   // Initial load
   useEffect(() => {
     fetchCurrentHolder();
-  }, []);
+  }, [fetchCurrentHolder]);
 
   // Refresh when refreshOnMintTrigger changes (new token minted)
   useEffect(() => {
     if (refreshOnMintTrigger && refreshOnMintTrigger > 0) {
       fetchCurrentHolder();
     }
-  }, [refreshOnMintTrigger]);
+  }, [refreshOnMintTrigger, fetchCurrentHolder]);
+
+  // Real-time polling for holder changes (every 15 seconds)
+  useEffect(() => {
+    const interval = setInterval(fetchCurrentHolder, 15000);
+    return () => clearInterval(interval);
+  }, [fetchCurrentHolder]);
 
   // Calculate duration since holding
   useEffect(() => {

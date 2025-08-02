@@ -30,6 +30,7 @@ import { Footer } from '@/components/ui/Footer';
 import { YoinkDialog } from '@/components/ui/dialogs/YoinkDialog';
 import { JourneyTimeline } from '@/components/ui/timeline';
 import { CurrentHolderItem } from '@/components/ui/timeline/CurrentHolderItem';
+import { useSoundPlayer } from '@/hooks/useSoundPlayer';
 import { Typography } from '@/components/base/Typography';
 import { USE_WALLET, APP_NAME } from '@/lib/constants';
 import Image from 'next/image';
@@ -42,16 +43,16 @@ interface NeynarUser {
   score: number;
 }
 
-function TestRedis() {
+function TestRedis({ onCurrentHolderUpdated }: { onCurrentHolderUpdated: () => void }) {
   const [value, setValue] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { playChooChoo } = useSoundPlayer();
 
   async function handleWrite() {
     setLoading(true);
     setError(null);
     try {
-      // @note: store this in redis the first time in staging
       const currentHolderData = {
         fid: 377557,
         username: 'jonbray.eth',
@@ -73,6 +74,13 @@ function TestRedis() {
       });
       const data = await res.json();
       setValue(data.value || null);
+
+      // Trigger refresh of CurrentHolderItem
+      onCurrentHolderUpdated();
+
+      // Play choo-choo sound when current holder is set
+      // @todo: make sure to move this in production
+      playChooChoo({ volume: 0.7 });
     } catch (e) {
       setError('Write failed');
     } finally {
@@ -385,6 +393,7 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
   const [hapticIntensity, setHapticIntensity] = useState<Haptics.ImpactOccurredType>('medium');
   const [isYoinkDialogOpen, setIsYoinkDialogOpen] = useState(false);
   const [timelineRefreshTrigger, setTimelineRefreshTrigger] = useState(0);
+  const { playChooChoo } = useSoundPlayer();
 
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
@@ -509,14 +518,6 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
     setIsContextOpen((prev) => !prev);
   }, []);
 
-  // play train whistle when SDK loads on home tab
-  useEffect(() => {
-    if (isSDKLoaded && currentTab === 'home') {
-      const audio = new Audio('/sounds/choochoo.mp3');
-      audio.play();
-    }
-  }, [isSDKLoaded, currentTab]);
-
   if (!isSDKLoaded) {
     return <div>Loading...</div>;
   }
@@ -573,7 +574,10 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
             </div>
 
             {/* Test Sections */}
-            <TestRedis />
+            <TestRedis
+              // @todo: when we move to prod, make sure the current holder fetches on page load
+              onCurrentHolderUpdated={() => setTimelineRefreshTrigger((prev) => prev + 1)}
+            />
             <TestPinata />
             {/* @todo: move this into it's own component that uses farcaster session to detect the FID of the current user, if admin, display the component in the footer as a dialog that opens when the button is clicked */}
             <TestAdminNextStop
