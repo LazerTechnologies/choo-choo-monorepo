@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { CurrentHolderData } from '@/types/nft';
 import { useSoundPlayer } from '@/hooks/useSoundPlayer';
 import { toast } from '@/components/base/Sonner';
+import { useMiniApp } from '@neynar/react';
 
 interface CurrentHolderItemProps {
   refreshOnMintTrigger?: number;
@@ -16,8 +17,8 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
   const [duration, setDuration] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
-  // Sound player and holder change detection
   const { playChooChoo } = useSoundPlayer();
+  const { haptics } = useMiniApp();
   const previousHolderFid = useRef<number | null>(null);
   const isInitialLoad = useRef(true);
 
@@ -31,16 +32,22 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
           const newHolder = data.currentHolder;
           const newHolderFid = newHolder.fid;
 
-          // Detect holder change and play sound (skip on initial load)
+          // Detect holder change and trigger effects (skip on initial load)
           if (
             !isInitialLoad.current &&
             previousHolderFid.current !== null &&
             previousHolderFid.current !== newHolderFid
           ) {
             console.log(`[Easter Egg] If you're reading this, you are based 🔵`);
+
             playChooChoo({ volume: 0.7 });
 
-            // Show toast notification with avatar
+            try {
+              await haptics?.impactOccurred('medium');
+            } catch (error) {
+              console.log('Haptic feedback failed:', error);
+            }
+
             toast.custom(
               () => (
                 <div className="flex items-center gap-3 p-2">
@@ -81,14 +88,13 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
     } finally {
       setLoading(false);
     }
-  }, [playChooChoo]);
+  }, [playChooChoo, haptics]);
 
   // Initial load
   useEffect(() => {
     fetchCurrentHolder();
   }, [fetchCurrentHolder]);
 
-  // Refresh when refreshOnMintTrigger changes (new token minted)
   useEffect(() => {
     if (refreshOnMintTrigger && refreshOnMintTrigger > 0) {
       fetchCurrentHolder();
@@ -152,7 +158,7 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
         <Card.Content className="p-3">
           <div className="text-center text-gray-500 dark:text-gray-400">
             <Typography variant="body" className="font-comic">
-              🚂 No current passenger - train is at the station!
+              ChooChoo is still at the station!
             </Typography>
           </div>
         </Card.Content>

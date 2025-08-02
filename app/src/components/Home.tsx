@@ -393,7 +393,6 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
   const [hapticIntensity, setHapticIntensity] = useState<Haptics.ImpactOccurredType>('medium');
   const [isYoinkDialogOpen, setIsYoinkDialogOpen] = useState(false);
   const [timelineRefreshTrigger, setTimelineRefreshTrigger] = useState(0);
-  const { playChooChoo } = useSoundPlayer();
 
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
