@@ -21,10 +21,11 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
   const { haptics } = useMiniApp();
   const previousHolderFid = useRef<number | null>(null);
   const isInitialLoad = useRef(true);
+  const hasLoadedOnce = useRef(false);
 
   const fetchCurrentHolder = useCallback(async () => {
     try {
-      if (isInitialLoad.current || !currentHolder) {
+      if (!hasLoadedOnce.current) {
         setLoading(true);
       }
 
@@ -81,7 +82,7 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
           previousHolderFid.current = null;
         }
 
-        // Mark initial load as complete
+        hasLoadedOnce.current = true;
         if (isInitialLoad.current) {
           isInitialLoad.current = false;
         }
@@ -89,7 +90,7 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
     } catch (error) {
       console.error('Failed to fetch current holder:', error);
     } finally {
-      if (isInitialLoad.current || !currentHolder) {
+      if (!hasLoadedOnce.current) {
         setLoading(false);
       }
     }
@@ -106,9 +107,9 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
     }
   }, [refreshOnMintTrigger, fetchCurrentHolder]);
 
-  // Real-time polling for holder changes (every 15 seconds)
+  // Real-time polling for holder changes (every 30 seconds)
   useEffect(() => {
-    const interval = setInterval(fetchCurrentHolder, 15000);
+    const interval = setInterval(fetchCurrentHolder, 30000);
     return () => clearInterval(interval);
   }, [fetchCurrentHolder]);
 

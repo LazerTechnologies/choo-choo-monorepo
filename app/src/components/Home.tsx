@@ -548,6 +548,12 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
 
         <h1 className="text-2xl font-bold text-center mb-4">{title}</h1>
 
+        {/* Hidden CurrentHolderItem - always mounted to detect changes */}
+        {/* @todo: remove this once we move to prod */}
+        <div className="hidden">
+          <CurrentHolderItem refreshOnMintTrigger={timelineRefreshTrigger} />
+        </div>
+
         {currentTab === 'home' && (
           <div className="overflow-y-auto h-[calc(100vh-200px)] px-6">
             <div className="flex flex-col items-center justify-center py-8">
