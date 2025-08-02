@@ -38,10 +38,10 @@ export async function GET() {
     // Fetch all token data from Redis
     const tokens = await getTokenDataRange(1, currentTokenId);
 
-    // Filter out null tokens and sort by tokenId
+    // Filter out null tokens and sort by tokenId (highest first)
     const validTokens = tokens
       .filter((token): token is TokenData => token !== null)
-      .sort((a, b) => a.tokenId - b.tokenId);
+      .sort((a, b) => b.tokenId - a.tokenId);
 
     // Build the gateway URL for images
     const pinataGateway = process.env.PINATA_GATEWAY_URL || 'https://gateway.pinata.cloud';

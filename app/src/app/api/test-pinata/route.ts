@@ -17,10 +17,10 @@ export async function POST() {
     try {
       const contractService = getContractService();
       const totalSupply = await contractService.getTotalSupply();
-      testTokenId = totalSupply + 1000; // Add 1000 to clearly distinguish test tokens
+      testTokenId = totalSupply + 1;
     } catch (err) {
       console.error('[test-pinata] Failed to get contract total supply, using fallback:', err);
-      testTokenId = 9999; // Fallback to high number to avoid conflicts
+      testTokenId = 1; // Fallback to token 1
     }
 
     console.log('[test-pinata] Generating NFT image using generator package...');
