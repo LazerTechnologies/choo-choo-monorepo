@@ -291,7 +291,9 @@ function TestAdminNextStop({ onTokenMinted }: { onTokenMinted?: () => void }) {
       <Card.Header>
         <Card.Title>Test Admin NextStop Function</Card.Title>
         <Card.Description>
-          Manually execute the nextStop function as an admin (requires ADMIN_PRIVATE_KEY)
+          Manually execute the nextStop function as an admin. Generate a new NFT above, and copy the
+          tokenURI (metadata) hash into the input below, along with the recipient address to test
+          the function.
         </Card.Description>
       </Card.Header>
       <Card.Content>
