@@ -47,9 +47,9 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
             toast({
               description: (
                 <div className="flex items-center gap-3">
-                  <Avatar size="sm" className="border-2 border-green-400 flex-shrink-0">
+                  <Avatar size="sm" className="border-2 border-blue-400 flex-shrink-0">
                     <Avatar.Image src={newHolder.pfpUrl} alt={newHolder.username} />
-                    <Avatar.Fallback className="bg-green-500 text-white text-xs font-bold">
+                    <Avatar.Fallback className="bg-blue-500 text-white text-xs font-bold">
                       {newHolder.username.slice(0, 2).toUpperCase()}
                     </Avatar.Fallback>
                   </Avatar>
@@ -143,14 +143,14 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
   const displayName = isCurrentUser ? 'You' : currentHolder.username;
 
   return (
-    <Card className="w-full border-2 border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20">
+    <Card className="w-full border-2 border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20">
       <Card.Content className="p-3">
-        <div className="flex items-center gap-3">
-          {/* Left: User Avatar (instead of NFT image) */}
+        <div className="flex items-start gap-3">
+          {/* Left: User Avatar */}
           <div className="flex-shrink-0">
-            <Avatar size="sm" className="border-2 border-green-400">
+            <Avatar size="sm" className="border-2 border-blue-400">
               <Avatar.Image src={currentHolder.pfpUrl} alt={currentHolder.username} />
-              <Avatar.Fallback className="bg-green-500 text-white text-xs font-bold">
+              <Avatar.Fallback className="bg-blue-500 text-white text-xs font-bold">
                 {currentHolder.username.slice(0, 2).toUpperCase()}
               </Avatar.Fallback>
             </Avatar>
@@ -158,11 +158,12 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
 
           {/* Center: User info and details */}
           <div className="flex-1 min-w-0">
+            {/* Username */}
             <div className="mb-1">
               {isCurrentUser ? (
                 <Typography
                   variant="label"
-                  className="font-semibold text-green-800 dark:text-green-200 truncate font-comic"
+                  className="font-semibold text-blue-800 dark:text-blue-200 truncate font-comic"
                 >
                   {displayName}
                 </Typography>
@@ -171,20 +172,25 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
                   href={`https://farcaster.xyz/${currentHolder.username}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-semibold text-green-800 dark:text-green-200 hover:text-green-600 dark:hover:text-green-300 truncate font-comic hover:underline transition-colors"
+                  className="font-semibold text-blue-800 dark:text-blue-200 hover:text-blue-600 dark:hover:text-blue-300 truncate font-comic hover:underline transition-colors"
                 >
                   {displayName}
                 </a>
               )}
+            </div>
+
+            {/* Address */}
+            <div className="mb-2">
               <Typography
                 variant="small"
-                className="text-green-600 dark:text-green-400 truncate font-mono block"
+                className="text-blue-600 dark:text-blue-400 truncate font-mono block"
               >
                 {truncatedAddress}
               </Typography>
             </div>
 
-            <div className="flex items-center justify-between text-xs text-green-700 dark:text-green-300">
+            {/* Date and Duration */}
+            <div className="flex items-center justify-between text-xs text-blue-700 dark:text-blue-300">
               <span className="font-comic">Current passenger</span>
               <span className="font-mono">Holding for {duration}</span>
             </div>
@@ -192,10 +198,10 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
 
           {/* Right: Special #0 ticket number for current holder */}
           <div className="flex-shrink-0">
-            <div className="bg-green-200 dark:bg-green-800 border border-green-400 dark:border-green-600 rounded-md px-2 py-1">
+            <div className="bg-blue-200 dark:bg-blue-800 border border-blue-400 dark:border-blue-600 rounded-md px-2 py-1">
               <Typography
                 variant="small"
-                className="font-comic font-semibold text-green-800 dark:text-green-200"
+                className="font-comic font-semibold text-blue-800 dark:text-blue-200"
               >
                 #0
               </Typography>
