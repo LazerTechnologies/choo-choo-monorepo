@@ -7,7 +7,6 @@ export * from './Dialog';
 export * from './Divider';
 export * from './Input';
 export * from './ResponsiveImage';
-export * from './Sonner';
 export * from './Spinner';
 export * from './Table';
 export * from './Typography';

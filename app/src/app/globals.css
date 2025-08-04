@@ -5,33 +5,95 @@
 @layer base {
   :root {
     --background: #a855f7;
-    --foreground: #555555;
+    --foreground: #ffffff;
 
-    --card: #ffffff;
-    --card-foreground: #555555;
+    --card: #a855f7;
+    --card-foreground: #ffffff;
 
-    --popover: #ffffff;
-    --popover-foreground: #555555;
+    --popover: #a855f7;
+    --popover-foreground: #ffffff;
 
     --primary: #d9534f;
     --primary-foreground: #ffffff;
 
     --secondary: #5bc0de;
-    --secondary-foreground: #333333;
+    --secondary-foreground: #ffffff;
 
-    --muted: #fdf6e3;
-    --muted-foreground: #555555;
+    --muted: #9333ea;
+    --muted-foreground: #ffffff;
 
     --accent: #5bc0de;
-    --accent-foreground: #333333;
+    --accent-foreground: #ffffff;
 
     --destructive: #d9534f;
     --destructive-foreground: #ffffff;
 
-    --border: #1f2937;
-    --input: #dddddd;
-    --ring: #333333;
+    --border: #ffffff;
+    --input: #9333ea;
+    --ring: #ffffff;
 
     --radius: 0.5rem;
+
+    /* Custom properties for new components - using same values for both modes */
+    --radius-base: 0.5rem;
+    --main: 168 85 247; /* purple matching background */
+    --text: 255 255 255; /* white text */
+    --dark-text: 255 255 255; /* same as text */
+    --dark-border: 255 255 255; /* white border */
+    --secondary-black: 147 51 234; /* darker purple */
+    --bg: 168 85 247; /* purple background */
+    --dark-bg: 168 85 247; /* same as bg */
+    --overlay: 0 0 0 / 0.8; /* black with opacity */
+    --shadow-light: 4px 4px 0px 0px hsl(var(--border));
+    --shadow-dark: 4px 4px 0px 0px hsl(var(--border)); /* same as light */
+    --box-shadow-x: 4px;
+    --box-shadow-y: 4px;
+    --reverse-box-shadow-x: -4px;
+    --reverse-box-shadow-y: -4px;
+    --font-heading: var(--font-comic);
+    --font-base: var(--font-sans);
+  }
+
+  /* Dark mode - same values as light mode */
+  .dark {
+    --background: #a855f7;
+    --foreground: #ffffff;
+
+    --card: #a855f7;
+    --card-foreground: #ffffff;
+
+    --popover: #a855f7;
+    --popover-foreground: #ffffff;
+
+    --primary: #d9534f;
+    --primary-foreground: #ffffff;
+
+    --secondary: #5bc0de;
+    --secondary-foreground: #ffffff;
+
+    --muted: #9333ea;
+    --muted-foreground: #ffffff;
+
+    --accent: #5bc0de;
+    --accent-foreground: #ffffff;
+
+    --destructive: #d9534f;
+    --destructive-foreground: #ffffff;
+
+    --border: #ffffff;
+    --input: #9333ea;
+    --ring: #ffffff;
+
+    /* Custom properties - same as light mode */
+    --main: 168 85 247; /* purple matching background */
+    --text: 255 255 255; /* white text */
+    --dark-text: 255 255 255; /* same as text */
+    --dark-border: 255 255 255; /* white border */
+    --secondary-black: 147 51 234; /* darker purple */
+    --bg: 168 85 247; /* purple background */
+    --dark-bg: 168 85 247; /* same as bg */
+    --overlay: 0 0 0 / 0.8; /* black with opacity */
+    --shadow-light: 4px 4px 0px 0px hsl(var(--border));
+    --shadow-dark: 4px 4px 0px 0px hsl(var(--border)); /* same as light */
   }
 }

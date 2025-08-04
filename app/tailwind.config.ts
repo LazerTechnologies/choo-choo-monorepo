@@ -51,17 +51,38 @@ export default {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        // Custom colors for new components
+        main: 'hsl(var(--main, 255 255 255))', // default to white
+        text: 'hsl(var(--text, 0 0 0))', // default to black
+        darkText: 'hsl(var(--dark-text, 255 255 255))', // default to white for dark mode
+        darkBorder: 'hsl(var(--dark-border, 255 255 255))', // default to white for dark mode
+        secondaryBlack: 'hsl(var(--secondary-black, 0 0 0))', // default to black
+        bg: 'hsl(var(--bg, 255 255 255))', // default to white
+        darkBg: 'hsl(var(--dark-bg, 0 0 0))', // default to black
+        overlay: 'hsl(var(--overlay, 0 0 0 / 0.8))', // default to black with opacity
       },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+        base: 'var(--radius-base, 0.5rem)', // custom base radius
+      },
+      boxShadow: {
+        light: 'var(--shadow-light, 4px 4px 0px 0px hsl(var(--border)))',
+        dark: 'var(--shadow-dark, 4px 4px 0px 0px hsl(var(--dark-border, 255 255 255)))',
+      },
+      translate: {
+        boxShadowX: 'var(--box-shadow-x, 4px)',
+        boxShadowY: 'var(--box-shadow-y, 4px)',
+        reverseBoxShadowX: 'var(--reverse-box-shadow-x, -4px)',
+        reverseBoxShadowY: 'var(--reverse-box-shadow-y, -4px)',
       },
       fontFamily: {
         mono: ['var(--font-mono)'],
         comic: ['var(--font-comic)'],
         sans: ['var(--font-sans)'],
-        heading: ['var(--font-comic)'],
+        heading: ['var(--font-heading, var(--font-comic))'], // fallback to comic
+        base: ['var(--font-base, var(--font-sans))'], // fallback to sans
       },
       keyframes: {
         'accordion-down': {

@@ -6,7 +6,7 @@ import '@/app/globals.css';
 import { Providers } from '@/app/providers';
 import { APP_NAME, APP_DESCRIPTION } from '@/lib/constants';
 import { cn } from '@/lib/utils';
-import { Toaster } from '@/components/base/Sonner';
+import { Toaster } from '@/components/base/Toaster';
 
 const fontMono = IBM_Plex_Mono({
   subsets: ['latin'],
@@ -27,6 +27,8 @@ const fontComicFallback = Comic_Relief({
   display: 'swap',
   variable: '--font-comic-fallback',
   weight: '400',
+  fallback: ['Comic Sans MS', 'cursive'],
+  adjustFontFallback: false,
 });
 
 export const metadata: Metadata = {

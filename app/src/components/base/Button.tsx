@@ -1,62 +1,61 @@
+import { Slot } from '@radix-ui/react-slot';
+import { cva, type VariantProps } from 'class-variance-authority';
+
+import * as React from 'react';
+
 import { cn } from '@/lib/utils';
-import { cva, VariantProps } from 'class-variance-authority';
-import React, { ButtonHTMLAttributes } from 'react';
 import { Spinner } from './Spinner';
 
 const buttonVariants = cva(
-  'font-head transition-all outline-none cursor-pointer duration-200 font-medium flex items-center justify-center',
+  'inline-flex items-center justify-center whitespace-nowrap rounded-base text-sm font-base ring-offset-white transition-all gap-2 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
         default:
-          'shadow-md hover:shadow-none bg-primary text-black border-2 border-black transition hover:translate-y-1 hover:bg-primary-hover',
+          'text-text bg-main border-2 border-border dark:border-darkBorder shadow-light dark:shadow-dark hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none dark:hover:shadow-none',
+        noShadow: 'text-text bg-main border-2 border-border dark:border-darkBorder',
+        neutral:
+          'bg-white dark:bg-secondaryBlack text-text dark:text-darkText border-2 border-border dark:border-darkBorder shadow-light dark:shadow-dark hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none dark:hover:shadow-none',
+        reverse:
+          'text-text bg-main border-2 border-border dark:border-darkBorder hover:translate-x-reverseBoxShadowX hover:translate-y-reverseBoxShadowY hover:shadow-light dark:hover:shadow-dark',
+        // Add compatibility variants to match old API
         secondary:
-          'shadow-md hover:shadow-none bg-secondary shadow-primary text-secondary-foreground border-2 border-black transition hover:translate-y-1',
+          'bg-white dark:bg-secondaryBlack text-text dark:text-darkText border-2 border-border dark:border-darkBorder shadow-light dark:shadow-dark hover:translate-x-boxShadowX hover:translate-y-boxShadowY hover:shadow-none dark:hover:shadow-none',
         outline:
-          'shadow-md hover:shadow-none bg-transparent border-2 transition hover:translate-y-1',
-        link: 'bg-transparent hover:underline',
+          'bg-transparent border-2 border-border dark:border-darkBorder text-text dark:text-darkText hover:translate-x-boxShadowX hover:translate-y-boxShadowY shadow-light dark:shadow-dark hover:shadow-none',
+        link: 'bg-transparent hover:underline text-text dark:text-darkText',
       },
       size: {
-        sm: 'px-3 py-1 text-sm shadow hover:shadow-none',
-        md: 'px-4 py-1.5 text-base',
-        lg: 'px-8 py-3 text-lg',
-        icon: 'p-2',
+        default: 'h-10 px-4 py-2',
+        sm: 'h-9 px-3',
+        md: 'h-10 px-4 py-2', // alias for default
+        lg: 'h-11 px-8',
+        icon: 'h-10 w-10',
       },
     },
     defaultVariants: {
-      size: 'md',
       variant: 'default',
+      size: 'default',
     },
   }
 );
 
-export interface IButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement>,
+export interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
+  asChild?: boolean;
   isLoading?: boolean;
 }
 
-export const Button = React.forwardRef<HTMLButtonElement, IButtonProps>(
-  (
-    {
-      children,
-      size = 'md',
-      className = '',
-      variant = 'default',
-      isLoading = false,
-      ...props
-    }: IButtonProps,
-    forwardedRef
-  ) => {
+const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, asChild = false, isLoading = false, children, ...props }, ref) => {
+    const Comp = asChild ? Slot : 'button';
     const isLoadingState = isLoading;
-    const buttonClass = cn(
-      buttonVariants({ variant, size: isLoadingState ? 'icon' : size }),
-      className
-    );
+
     return (
-      <button
-        ref={forwardedRef}
-        className={buttonClass}
+      <Comp
+        className={cn(buttonVariants({ variant, size: isLoadingState ? 'icon' : size, className }))}
+        ref={ref}
         disabled={isLoadingState || props.disabled}
         aria-busy={isLoadingState}
         aria-disabled={isLoadingState || props.disabled}
@@ -72,9 +71,10 @@ export const Button = React.forwardRef<HTMLButtonElement, IButtonProps>(
         ) : (
           children
         )}
-      </button>
+      </Comp>
     );
   }
 );
-
 Button.displayName = 'Button';
+
+export { Button, buttonVariants };

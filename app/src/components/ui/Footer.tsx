@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import type { Tab } from '@/components/Home';
 import { Typography } from '@/components/base/Typography';
+import { Button } from '@/components/base/Button';
+import { Card } from '@/components/base/Card';
 import { getYoinkCountdownState } from '@/utils/countdown';
 
 interface FooterProps {
@@ -28,62 +30,65 @@ export const Footer: React.FC<FooterProps> = ({
   }, []);
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 mx-4 mb-4 bg-background border-2 shadow-lg px-2 py-2 rounded-lg z-50">
-      <div className="flex justify-around items-center h-14">
-        <button
-          onClick={() => setActiveTab('home')}
-          className={`flex flex-col items-center justify-center w-full h-full transition-all hover:translate-y-0.5 border-0 bg-transparent ${
-            activeTab === 'home'
-              ? 'text-primary shadow-md hover:shadow-none'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <span className="text-xl">🏠</span>
-          <Typography variant="small" className="mt-1">
-            Home
-          </Typography>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('actions')}
-          className={`flex flex-col items-center justify-center w-full h-full transition-all hover:translate-y-0.5 border-0 bg-transparent ${
-            activeTab === 'actions'
-              ? 'text-primary shadow-md hover:shadow-none'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <span className="text-xl">⚙️</span>
-          <Typography variant="small" className="mt-1">
-            Admin
-          </Typography>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('context')}
-          className={`flex flex-col items-center justify-center w-full h-full transition-all hover:translate-y-0.5 border-0 bg-transparent ${
-            activeTab === 'context'
-              ? 'text-primary shadow-md hover:shadow-none'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <span className="text-xl">📋</span>
-          <Typography variant="small" className="mt-1">
-            Context
-          </Typography>
-        </button>
-
-        {showWallet && (
-          <button
-            onClick={onYoinkClick}
-            className="flex flex-col items-center justify-center w-full h-full transition-all hover:translate-y-0.5 text-red-500 hover:text-red-600 shadow-md hover:shadow-none border-0 bg-transparent"
+    <div className="fixed bottom-0 left-0 right-0 mx-4 mb-4 z-50">
+      <Card
+        className="px-2 py-2 w-full block !bg-purple-500 !text-white !border-white"
+        style={{ backgroundColor: '#a855f7' }}
+      >
+        <div className="flex justify-around items-center h-14 gap-2">
+          <Button
+            onClick={() => setActiveTab('home')}
+            variant={activeTab === 'home' ? 'default' : 'noShadow'}
+            className={`flex items-center justify-center w-full h-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white ${
+              activeTab === 'home' ? '' : 'opacity-70 hover:opacity-100'
+            }`}
+            style={{ backgroundColor: '#a855f7' }}
           >
-            <span className="text-xl">{countdownState.isAvailable ? '🏁' : '🕑'}</span>
-            <Typography variant="small" className="mt-1">
-              Yoink
+            <Typography variant="small" className="!text-white">
+              Home
             </Typography>
-          </button>
-        )}
-      </div>
+          </Button>
+
+          <Button
+            onClick={() => setActiveTab('actions')}
+            variant={activeTab === 'actions' ? 'default' : 'noShadow'}
+            className={`flex items-center justify-center w-full h-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white ${
+              activeTab === 'actions' ? '' : 'opacity-70 hover:opacity-100'
+            }`}
+            style={{ backgroundColor: '#a855f7' }}
+          >
+            <Typography variant="small" className="!text-white">
+              Admin
+            </Typography>
+          </Button>
+
+          <Button
+            onClick={() => setActiveTab('context')}
+            variant={activeTab === 'context' ? 'default' : 'noShadow'}
+            className={`flex items-center justify-center w-full h-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white ${
+              activeTab === 'context' ? '' : 'opacity-70 hover:opacity-100'
+            }`}
+            style={{ backgroundColor: '#a855f7' }}
+          >
+            <Typography variant="small" className="!text-white">
+              Context
+            </Typography>
+          </Button>
+
+          {showWallet && (
+            <Button
+              onClick={onYoinkClick}
+              variant="reverse"
+              className="flex items-center justify-center w-full h-full !text-red-500 hover:!text-red-400 !bg-purple-500 !border-2 !border-white"
+              style={{ backgroundColor: '#a855f7' }}
+            >
+              <Typography variant="small" className="!text-red-500">
+                Yoink
+              </Typography>
+            </Button>
+          )}
+        </div>
+      </Card>
     </div>
   );
 };

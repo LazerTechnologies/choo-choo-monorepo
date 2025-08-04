@@ -543,9 +543,9 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
         paddingRight: context?.client.safeAreaInsets?.right ?? 0,
       }}
     >
-      <div className="mx-auto py-2 px-4 pb-20">
-        <Header neynarUser={neynarUser} />
+      <Header neynarUser={neynarUser} />
 
+      <div className="mx-auto py-2 px-4 pt-16 pb-24">
         <h1 className="text-2xl font-bold text-center mb-4">{title}</h1>
 
         {/* Hidden CurrentHolderItem - always mounted to detect changes */}

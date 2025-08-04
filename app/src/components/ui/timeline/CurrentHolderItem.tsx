@@ -4,7 +4,7 @@ import { Typography } from '@/components/base/Typography';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { CurrentHolderData } from '@/types/nft';
 import { useSoundPlayer } from '@/hooks/useSoundPlayer';
-import { toast } from '@/components/base/Sonner';
+import { useToast } from '@/hooks/useToast';
 import { useMiniApp } from '@neynar/react';
 
 interface CurrentHolderItemProps {
@@ -18,6 +18,7 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
 
   const { playChooChoo } = useSoundPlayer();
   const { haptics } = useMiniApp();
+  const { toast } = useToast();
   const previousHolderFid = useRef<number | null>(null);
   const isInitialLoad = useRef(true);
 
@@ -43,9 +44,9 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
             } catch (error) {
               console.log('Haptic feedback failed:', error);
             }
-            toast.custom(
-              () => (
-                <div className="flex items-center gap-3 p-2">
+            toast({
+              description: (
+                <div className="flex items-center gap-3">
                   <Avatar size="sm" className="border-2 border-green-400 flex-shrink-0">
                     <Avatar.Image src={newHolder.pfpUrl} alt={newHolder.username} />
                     <Avatar.Fallback className="bg-green-500 text-white text-xs font-bold">
@@ -57,11 +58,7 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
                   </span>
                 </div>
               ),
-              {
-                duration: 5000,
-                position: 'top-center',
-              }
-            );
+            });
           }
 
           setCurrentHolder(newHolder);
@@ -79,7 +76,7 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
     } catch (error) {
       console.error('Failed to fetch current holder:', error);
     }
-  }, [playChooChoo, haptics]);
+  }, [playChooChoo, haptics, toast]);
 
   // Initial load
   useEffect(() => {
