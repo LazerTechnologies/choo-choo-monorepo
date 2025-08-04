@@ -143,7 +143,7 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
   const displayName = isCurrentUser ? 'You' : currentHolder.username;
 
   return (
-    <Card className="w-full border-2 border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20">
+    <Card className="w-full border-2 animate-pulse-slow dark:animate-pulse-slow-dark">
       <Card.Content className="p-3">
         <div className="flex items-start gap-3">
           {/* Left: User Avatar */}

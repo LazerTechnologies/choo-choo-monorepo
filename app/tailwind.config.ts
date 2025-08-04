@@ -93,10 +93,32 @@ export default {
           from: { height: 'var(--radix-accordion-content-height)' },
           to: { height: '0' },
         },
+        'pulse-slow': {
+          '0%, 100%': {
+            backgroundColor: 'rgb(219 234 254)', // blue-100
+            borderColor: 'rgb(147 197 253)', // blue-300
+          },
+          '50%': {
+            backgroundColor: 'rgb(191 219 254)', // blue-200
+            borderColor: 'rgb(96 165 250)', // blue-400
+          },
+        },
+        'pulse-slow-dark': {
+          '0%, 100%': {
+            backgroundColor: 'rgb(30 58 138 / 0.2)', // blue-900/20
+            borderColor: 'rgb(29 78 216)', // blue-700
+          },
+          '50%': {
+            backgroundColor: 'rgb(30 64 175 / 0.3)', // blue-800/30
+            borderColor: 'rgb(37 99 235)', // blue-600
+          },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'pulse-slow': 'pulse-slow 3s ease-in-out infinite',
+        'pulse-slow-dark': 'pulse-slow-dark 3s ease-in-out infinite',
       },
     },
   },

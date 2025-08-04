@@ -535,8 +535,8 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
 
   return (
     <div
+      className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-purple-900"
       style={{
-        background: 'var(--background)',
         paddingTop: context?.client.safeAreaInsets?.top ?? 0,
         paddingBottom: context?.client.safeAreaInsets?.bottom ?? 0,
         paddingLeft: context?.client.safeAreaInsets?.left ?? 0,
