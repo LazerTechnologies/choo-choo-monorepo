@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import type { Tab } from '@/components/Home';
 import { Typography } from '@/components/base/Typography';
 import { Button } from '@/components/base/Button';
 import { Card } from '@/components/base/Card';
-import { getYoinkCountdownState } from '@/utils/countdown';
+import { useYoinkCountdown } from '@/hooks/useYoinkCountdown';
 
 interface FooterProps {
   activeTab: Tab;
@@ -18,16 +18,7 @@ export const Footer: React.FC<FooterProps> = ({
   showWallet = false,
   onYoinkClick,
 }) => {
-  const [countdownState, setCountdownState] = useState(() => getYoinkCountdownState());
-
-  // Update countdown every second
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCountdownState(getYoinkCountdownState());
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
+  const countdownState = useYoinkCountdown();
 
   return (
     <div className="fixed bottom-0 left-0 right-0 mx-4 mb-4 z-50">
@@ -79,11 +70,14 @@ export const Footer: React.FC<FooterProps> = ({
             <Button
               onClick={onYoinkClick}
               variant="reverse"
-              className="flex items-center justify-center w-full h-full !text-red-500 hover:!text-red-400 !bg-purple-500 !border-2 !border-white"
+              className="flex flex-col items-center justify-center w-full h-full !text-white hover:!text-gray-400 !bg-purple-500 !border-2 !border-white"
               style={{ backgroundColor: '#a855f7' }}
             >
-              <Typography variant="small" className="!text-red-500">
+              <Typography variant="small" className="!text-white text-xs">
                 Yoink
+              </Typography>
+              <Typography variant="small" className="!text-white text-xs mt-0.5">
+                {countdownState.isLoading ? '...' : countdownState.clockFormat}
               </Typography>
             </Button>
           )}

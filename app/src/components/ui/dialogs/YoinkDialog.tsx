@@ -1,9 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { Dialog } from '@/components/base/Dialog';
 import { Button } from '@/components/base/Button';
-import { getYoinkCountdownState } from '@/utils/countdown';
+import { useYoinkCountdown } from '@/hooks/useYoinkCountdown';
 
 interface YoinkDialogProps {
   isOpen: boolean;
@@ -12,16 +11,7 @@ interface YoinkDialogProps {
 
 // @todo: add a yoink timer
 export function YoinkDialog({ isOpen, onClose }: YoinkDialogProps) {
-  const [countdownState, setCountdownState] = useState(() => getYoinkCountdownState());
-
-  // Update countdown every second
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCountdownState(getYoinkCountdownState());
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
+  const countdownState = useYoinkCountdown();
 
   const handleYoink = () => {
     // TODO: Implement yoink logic
@@ -45,11 +35,19 @@ export function YoinkDialog({ isOpen, onClose }: YoinkDialogProps) {
         <div className="p-6 space-y-4">
           {/* Countdown Display */}
           <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center">
-            <p className="text-lg font-medium text-gray-900 dark:text-gray-100">
-              {countdownState.isAvailable
-                ? '🚂 Choo-Choo can be yoinked now!'
-                : `🚂 Choo-Choo can be yoinked in: ${countdownState.shortFormat}`}
-            </p>
+            {countdownState.isLoading ? (
+              <p className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                Loading countdown...
+              </p>
+            ) : countdownState.error ? (
+              <p className="text-lg font-medium text-red-600">Error: {countdownState.error}</p>
+            ) : (
+              <p className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                {countdownState.isAvailable
+                  ? '🚂 Choo-Choo can be yoinked now!'
+                  : `🚂 Choo-Choo can be yoinked in: ${countdownState.clockFormat}`}
+              </p>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -95,17 +93,18 @@ export function YoinkDialog({ isOpen, onClose }: YoinkDialogProps) {
           </Button>
           <Button
             onClick={handleYoink}
-            disabled={!countdownState.isAvailable}
+            disabled={!countdownState.isAvailable || countdownState.isLoading}
             className={`${
-              countdownState.isAvailable
+              countdownState.isAvailable && !countdownState.isLoading
                 ? 'bg-red-500 hover:bg-red-600 text-white'
                 : 'bg-gray-400 cursor-not-allowed text-gray-600'
             }`}
           >
-            {countdownState.isAvailable ? '🏁' : '🕑'}{' '}
-            {countdownState.isAvailable
-              ? 'Yoink the Train!'
-              : `Available in ${countdownState.shortFormat}`}
+            {countdownState.isLoading
+              ? '🕑 Loading...'
+              : countdownState.isAvailable
+                ? '🏁 Yoink the Train!'
+                : `🕑 Available in ${countdownState.clockFormat}`}
           </Button>
         </Dialog.Footer>
       </Dialog.Content>
