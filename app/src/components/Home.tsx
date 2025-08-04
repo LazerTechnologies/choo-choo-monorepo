@@ -105,7 +105,7 @@ function TestRedis({ onCurrentHolderUpdated }: { onCurrentHolderUpdated: () => v
       <h3 className="font-bold mb-2 text-white dark:text-white">Set Current Holder</h3>
       <div className="mb-2">
         <button
-          className="px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50"
+          className="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 w-full border-white"
           onClick={handleWrite}
           disabled={loading}
         >
@@ -156,13 +156,14 @@ function TestPinata() {
         Generate a new NFT using the generator package and upload to Pinata
       </p>
       <div className="mb-2">
-        <button
-          className="px-4 py-2 rounded bg-purple-500 text-white hover:bg-purple-600 disabled:opacity-50"
+        <Button
           onClick={handleUploadToPinata}
           disabled={loading}
+          className="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 w-full border-white"
+          variant="default"
         >
           Generate & Upload NFT
-        </button>
+        </Button>
       </div>
       {loading && <div className="text-xs text-gray-500">Uploading...</div>}
       {error && <div className="text-xs text-red-500">{error}</div>}
@@ -286,7 +287,7 @@ function TestAdminNextStop({ onTokenMinted }: { onTokenMinted?: () => void }) {
   }, [recipient, tokenURI, onTokenMinted]);
 
   return (
-    <Card className="my-8">
+    <Card className="my-8 !bg-purple-600 !border-white">
       <Card.Header>
         <Card.Title>Test Admin NextStop Function</Card.Title>
         <Card.Description>
@@ -328,7 +329,8 @@ function TestAdminNextStop({ onTokenMinted }: { onTokenMinted?: () => void }) {
             onClick={handleExecuteNextStop}
             disabled={loading || !recipient.trim() || !tokenURI.trim()}
             isLoading={loading}
-            className="w-full"
+            className="w-full bg-purple-600 text-white border-white hover:bg-purple-700"
+            variant="default"
           >
             🚂 Execute NextStop
           </Button>

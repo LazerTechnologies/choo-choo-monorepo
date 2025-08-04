@@ -18,7 +18,7 @@ export default {
     },
     extend: {
       colors: {
-        border: 'hsl(var(--border))',
+        border: 'hsl(var(--border, 0 0% 100%))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
         background: 'hsl(var(--background))',
@@ -54,8 +54,8 @@ export default {
         // Custom colors for new components
         main: 'hsl(var(--main, 255 255 255))', // default to white
         text: 'hsl(var(--text, 0 0 0))', // default to black
-        darkText: 'hsl(var(--dark-text, 255 255 255))', // default to white for dark mode
-        darkBorder: 'hsl(var(--dark-border, 255 255 255))', // default to white for dark mode
+        darkText: 'hsl(var(--dark-text, 0 0% 100%))', // force white for dark mode
+        darkBorder: 'hsl(var(--dark-border, 0 0% 100%))', // force white for dark mode
         secondaryBlack: 'hsl(var(--secondary-black, 0 0 0))', // default to black
         bg: 'hsl(var(--bg, 255 255 255))', // default to white
         darkBg: 'hsl(var(--dark-bg, 0 0 0))', // default to black
