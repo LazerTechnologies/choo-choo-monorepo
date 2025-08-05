@@ -62,7 +62,7 @@ export const Footer: React.FC<FooterProps> = ({
             style={{ backgroundColor: '#a855f7' }}
           >
             <Typography variant="small" className="!text-white">
-              Context
+              Debug
             </Typography>
           </Button>
 

@@ -32,6 +32,7 @@ import { JourneyTimeline } from '@/components/ui/timeline';
 import { CurrentHolderItem } from '@/components/ui/timeline/CurrentHolderItem';
 import { CastingWidget } from '@/components/ui/CastingWidget';
 import { useCurrentHolder } from '@/hooks/useCurrentHolder';
+import { HolderDebug } from '@/components/debug/HolderDebug';
 import { useSoundPlayer } from '@/hooks/useSoundPlayer';
 import { Typography } from '@/components/base/Typography';
 import { USE_WALLET, APP_NAME } from '@/lib/constants';
@@ -672,7 +673,9 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
                     @jonbray.eth
                   </a>
                 </p>
-                <p className="text-sm text-white dark:text-white">Powered by Base 🔵</p>
+                <p className="text-sm text-white dark:text-white">
+                  Built on Base 🔵 | Powered by Neynar 🪐 | Only on Farcaster 💜
+                </p>
               </div>
             </div>
           </div>
@@ -761,12 +764,12 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
         )}
 
         {currentTab === 'context' && (
-          <div className="mx-6">
-            <h2 className="text-lg font-semibold mb-2">Context</h2>
-            <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
-              <pre className="font-mono text-xs whitespace-pre-wrap break-words w-full">
-                {JSON.stringify(context, null, 2)}
-              </pre>
+          <div
+            className="absolute inset-0 flex justify-center items-center px-6"
+            style={{ top: '80px', bottom: '80px' }}
+          >
+            <div className="w-full max-w-md">
+              <HolderDebug />
             </div>
           </div>
         )}

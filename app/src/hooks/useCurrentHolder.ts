@@ -31,11 +31,11 @@ export function useCurrentHolder() {
         }
 
         const data = await response.json();
-        setCurrentHolder(data.holder);
+        setCurrentHolder(data.currentHolder);
 
         // Check if the current user is the holder
-        if (user?.fid && data.holder?.fid) {
-          setIsCurrentHolder(user.fid === data.holder.fid);
+        if (user?.fid && data.currentHolder?.fid) {
+          setIsCurrentHolder(user.fid === data.currentHolder.fid);
         } else {
           setIsCurrentHolder(false);
         }
