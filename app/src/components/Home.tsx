@@ -404,6 +404,7 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
     haptics,
   } = useMiniApp();
   const { isCurrentHolder, loading: isHolderLoading } = useCurrentHolder();
+  const { playChooChoo } = useSoundPlayer();
   const [isContextOpen, setIsContextOpen] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
 
@@ -581,10 +582,17 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
             {/* App Description */}
             <div className="pb-6 text-center px-4">
               <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                ChooChoo is a train trying to visit every wallet on Base! When ChooChoo is in your
-                wallet, you can send out a cast below to help determine his next stop. Anyone who
-                replies to that cast will be in the running to receive ChooChoo next. All aboard!
+                ChooChoo is trying to visit every wallet on Base! When ChooChoo is in your wallet,
+                send out a cast below to help determine his next stop. Anyone who replies to that
+                cast will be in the running to receive ChooChoo next.
               </p>
+              <Button
+                variant="link"
+                onClick={() => playChooChoo({ volume: 0.7 })}
+                className="mt-2 text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
+              >
+                🚂 All aboard!
+              </Button>
             </div>
 
             {/* Current Stop Section */}

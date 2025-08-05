@@ -1,22 +1,21 @@
 import { NextResponse } from 'next/server';
 import { getContractService } from '@/lib/services/contract';
 import { getSession } from '@/auth';
+import { redis } from '@/lib/kv';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
 /**
  * POST /api/send-train
  *
- * Orchestrates the next stop for the ChooChoo train journey. Anyone can call this endpoint.
- * Now uses internal microservice endpoints for better modularity and maintainability.
+ * Orchestrates the next stop for the ChooChoo train journey. Anyone can call this endpoint if criteria is met.
+ * Uses internal microservice endpoints for each step.
+ * Uses the current cast hash stored in Redis from the app-generated cast published by the current holder.
  *
- * Expects a JSON body:
- *   { castHash: string }
- *
- * @param request - The HTTP request object (expects JSON body with castHash).
+ * @param request - The HTTP request object (no body required).
  * @returns 200 with { success: true, winner, tokenId, txHash, tokenURI, totalEligibleReactors } on success, or 400/500 with error message.
  */
-export async function POST(request: Request) {
+export async function POST() {
   try {
     // 1. Authentication - only allow authenticated Farcaster users
     const session = await getSession();
@@ -30,24 +29,27 @@ export async function POST(request: Request) {
 
     console.log(`[send-train] 🫡 Authenticated request from FID: ${session.user.fid}`);
 
-    // 2. Parse request and validate
-    let body;
+    // 2. Get current cast hash from Redis
+    let castHash;
     try {
-      body = await request.json();
+      castHash = await redis.get('current-cast-hash');
+      if (!castHash) {
+        console.error('[send-train] No current cast hash found in Redis');
+        return NextResponse.json(
+          {
+            error: 'No active cast found. The current holder must publish a cast first.',
+          },
+          { status: 400 }
+        );
+      }
     } catch (err) {
-      console.error('[send-train] Failed to parse request body:', err);
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-    }
-
-    const { castHash } = body;
-    if (!castHash || typeof castHash !== 'string') {
-      console.error('[send-train] Missing or invalid castHash:', castHash);
-      return NextResponse.json({ error: 'Missing or invalid castHash' }, { status: 400 });
+      console.error('[send-train] Failed to get cast hash from Redis:', err);
+      return NextResponse.json({ error: 'Failed to retrieve current cast' }, { status: 500 });
     }
 
     console.log(`[send-train] Starting orchestration for cast: ${castHash}`);
 
-    // 3. Select winner from Farcaster reactions
+    // 3. Select winner from Farcaster reactions using the current cast hash
     let winnerResponse;
     try {
       winnerResponse = await fetch(
