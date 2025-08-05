@@ -171,7 +171,9 @@ export async function POST(request: Request) {
     // 4. Get current holder (who will receive the NFT as their journey ticket)
     let currentHolderData = null;
     try {
-      const currentHolderResponse = await fetch(`${baseUrl}/api/current-holder`);
+      const currentHolderResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_APP_URL}/api/current-holder`
+      );
       if (currentHolderResponse.ok) {
         const data = await currentHolderResponse.json();
         if (data.hasCurrentHolder) {

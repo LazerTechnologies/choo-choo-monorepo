@@ -64,7 +64,7 @@ interface MintTokenRequest {
   tokenURI: string;
   tokenId: number;
   newHolderData: WinnerData;
-  previousHolderData?: WinnerData; // The person who gets the NFT (departing passenger)
+  previousHolderData: WinnerData; // The person who gets the NFT (departing passenger)
   sourceCastHash?: string;
   totalEligibleReactors?: number;
 }
@@ -93,7 +93,7 @@ const mintTokenBodySchema = z.object({
   tokenURI: z.string().min(1, 'Token URI is required'),
   tokenId: z.number().positive('Token ID must be positive'),
   newHolderData: winnerDataSchema,
-  previousHolderData: winnerDataSchema.optional(),
+  previousHolderData: winnerDataSchema, // Required - NFT tickets always go to departing passengers
   sourceCastHash: z.string().optional(),
   totalEligibleReactors: z.number().optional(),
 });
@@ -141,11 +141,23 @@ export async function POST(request: Request) {
       totalEligibleReactors,
     } = body;
 
-    // Determine who gets the NFT: previous holder if exists, otherwise new holder (for first mint)
-    const nftRecipient = previousHolderData
-      ? await getRecipientAddress(previousHolderData)
-      : newHolderAddress;
-    const nftRecipientData = previousHolderData || newHolderData;
+    // The NFT ticket is always minted to the previous holder (departing passenger)
+    if (!previousHolderData) {
+      console.error(
+        '[internal/mint-token] No previous holder data provided - NFT tickets are only minted to departing passengers'
+      );
+      return NextResponse.json(
+        {
+          success: false,
+          error:
+            'Previous holder data is required - NFT tickets are only minted to departing passengers',
+        },
+        { status: 400 }
+      );
+    }
+
+    const nftRecipient = await getRecipientAddress(previousHolderData);
+    const nftRecipientData = previousHolderData;
 
     console.log(
       `[internal/mint-token] Minting token ${tokenId} for ${nftRecipientData.username} (${nftRecipient})`
@@ -225,7 +237,12 @@ export async function POST(request: Request) {
       // Create proper metadata if we don't have attributes
       let finalAttributes = generatedAttributes;
       if (finalAttributes.length === 0) {
-        const metadata = createChooChooMetadata(actualTokenId, imageHash, [], winnerData.username);
+        const metadata = createChooChooMetadata(
+          actualTokenId,
+          imageHash,
+          [],
+          nftRecipientData.username
+        );
         finalAttributes = metadata.attributes!;
       }
 
