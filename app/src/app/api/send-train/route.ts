@@ -169,7 +169,16 @@ export async function POST() {
       );
     }
 
-    // 7. Return combined result
+    // 7. Clear the current cast hash since the train has moved
+    try {
+      await redis.del('current-cast-hash');
+      console.log('[send-train] Cleared current cast hash after successful train movement');
+    } catch (err) {
+      console.error('[send-train] Failed to clear cast hash (non-critical):', err);
+      // Don't fail the request for this
+    }
+
+    // 8. Return combined result
     console.log(
       `[send-train] Successfully orchestrated train movement for token ${mintData.actualTokenId}`
     );

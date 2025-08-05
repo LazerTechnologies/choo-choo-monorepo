@@ -235,29 +235,26 @@ function TestPinata() {
 }
 
 function TestAdminNextStop({ onTokenMinted }: { onTokenMinted?: () => void }) {
-  const [recipient, setRecipient] = useState('');
-  const [tokenURI, setTokenURI] = useState('');
+  const [fid, setFid] = useState('');
   const [result, setResult] = useState<{
-    txHash: string;
-    recipient: string;
-    tokenURI: string;
-    contractInfo: {
+    winner: {
       address: string;
-      network: string;
-      currentSupply: number;
-      nextTokenId: number;
+      username: string;
+      fid: number;
+      displayName: string;
+      pfpUrl: string;
     };
+    tokenId: number;
+    txHash: string;
+    tokenURI: string;
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleExecuteNextStop = useCallback(async () => {
-    if (!recipient.trim()) {
-      setError('Please enter a recipient address');
-      return;
-    }
-    if (!tokenURI.trim()) {
-      setError('Please enter a token URI or IPFS hash');
+    const fidNumber = parseInt(fid.trim());
+    if (!fid.trim() || isNaN(fidNumber) || fidNumber <= 0) {
+      setError('Please enter a valid Farcaster FID (positive number)');
       return;
     }
 
@@ -266,12 +263,11 @@ function TestAdminNextStop({ onTokenMinted }: { onTokenMinted?: () => void }) {
     setResult(null);
 
     try {
-      const res = await fetch('/api/test-admin-nextstop', {
+      const res = await fetch('/api/admin-send-train', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          recipient: recipient.trim(),
-          tokenURI: tokenURI.trim(),
+          fid: fidNumber,
         }),
       });
 
@@ -281,64 +277,51 @@ function TestAdminNextStop({ onTokenMinted }: { onTokenMinted?: () => void }) {
         setResult(data);
         onTokenMinted?.();
       } else {
-        setError(data.error || 'Failed to execute nextStop');
+        setError(data.error || 'Failed to execute admin nextStop');
       }
     } catch (e) {
-      setError('Failed to execute nextStop');
+      setError('Failed to execute admin nextStop');
     } finally {
       setLoading(false);
     }
-  }, [recipient, tokenURI, onTokenMinted]);
+  }, [fid, onTokenMinted]);
 
   return (
     <Card className="my-8 !bg-purple-600 !border-white">
       <Card.Header>
-        <Card.Title>Test Admin NextStop Function</Card.Title>
+        <Card.Title>Admin ChooChoo NextStop</Card.Title>
         <Card.Description>
-          Manually execute the nextStop function as an admin. Generate a new NFT above, and copy the
-          tokenURI (metadata) hash into the input below, along with the recipient address to test
-          the function.
+          Send ChooChoo to any Farcaster user by entering their FID. This will automatically fetch
+          their verified wallet address, generate a unique NFT, and mint it to their wallet.
         </Card.Description>
       </Card.Header>
       <Card.Content>
         <div className="space-y-3">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Recipient Address
+              Farcaster FID
             </label>
             <Input
-              type="text"
-              placeholder="0x..."
-              value={recipient}
-              onChange={(e) => setRecipient(e.target.value)}
+              type="number"
+              placeholder="377557"
+              value={fid}
+              onChange={(e) => setFid(e.target.value)}
               className="w-full"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Token URI / IPFS Hash
-            </label>
-            <Input
-              type="text"
-              placeholder="QmXXXXXX... or ipfs://QmXXXXXX..."
-              value={tokenURI}
-              onChange={(e) => setTokenURI(e.target.value)}
-              className="w-full"
+              min="1"
             />
             <div className="text-xs text-gray-500 mt-1">
-              Enter IPFS hash or full URI. ipfs:// prefix will be added automatically if needed.
+              Enter the Farcaster ID (FID) of the user who should receive ChooChoo next.
             </div>
           </div>
 
           <Button
             onClick={handleExecuteNextStop}
-            disabled={loading || !recipient.trim() || !tokenURI.trim()}
+            disabled={loading || !fid.trim()}
             isLoading={loading}
             className="w-full bg-purple-600 text-white border-white hover:bg-purple-700"
             variant="default"
           >
-            🚂 Execute NextStop
+            🚂 Send ChooChoo to User
           </Button>
         </div>
 
@@ -351,7 +334,31 @@ function TestAdminNextStop({ onTokenMinted }: { onTokenMinted?: () => void }) {
         {result && (
           <div className="text-xs space-y-2 border-t border-gray-300 dark:border-gray-600 pt-3 mt-3">
             <div className="text-green-600 dark:text-green-400 font-semibold">
-              ✅ Transaction Submitted Successfully!
+              ✅ ChooChoo Successfully Sent!
+            </div>
+
+            <div>
+              <span className="font-semibold">Winner:</span>
+              <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded mt-1">
+                <div>
+                  <strong>Username:</strong> @{result.winner.username}
+                </div>
+                <div>
+                  <strong>Display Name:</strong> {result.winner.displayName}
+                </div>
+                <div>
+                  <strong>FID:</strong> {result.winner.fid}
+                </div>
+                <div>
+                  <strong>Address:</strong>{' '}
+                  <code className="text-xs break-all">{result.winner.address}</code>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <span className="font-semibold">Token ID:</span>{' '}
+              <code className="text-xs">#{result.tokenId}</code>
             </div>
 
             <div>
@@ -362,29 +369,8 @@ function TestAdminNextStop({ onTokenMinted }: { onTokenMinted?: () => void }) {
             </div>
 
             <div>
-              <span className="font-semibold">Recipient:</span>{' '}
-              <code className="text-xs">{result.recipient}</code>
-            </div>
-
-            <div>
               <span className="font-semibold">Token URI:</span>{' '}
               <code className="text-xs break-all">{result.tokenURI}</code>
-            </div>
-
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
-              <div className="font-semibold mb-1">Contract Info:</div>
-              <div>
-                <strong>Address:</strong> {result.contractInfo.address}
-              </div>
-              <div>
-                <strong>Network:</strong> {result.contractInfo.network}
-              </div>
-              <div>
-                <strong>Total Supply:</strong> {result.contractInfo.currentSupply}
-              </div>
-              <div>
-                <strong>Next Token ID:</strong> {result.contractInfo.nextTokenId}
-              </div>
             </div>
           </div>
         )}
