@@ -45,102 +45,6 @@ interface NeynarUser {
   score: number;
 }
 
-// @todo: remove this once we move to prod
-function TestRedis({ onCurrentHolderUpdated }: { onCurrentHolderUpdated: () => void }) {
-  const [value, setValue] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [toggle, setToggle] = useState(false);
-  const { playChooChoo } = useSoundPlayer();
-
-  async function handleWrite() {
-    setLoading(true);
-    setError(null);
-    try {
-      const currentHolderData = toggle
-        ? {
-            fid: 2802,
-            username: 'garrett',
-            displayName: 'garrett',
-            pfpUrl:
-              'https://wrpcd.net/cdn-cgi/imagedelivery/BXluQx4ige9GuW0Ia56BHw/c131c034-0090-4610-45a4-acda4b805000/anim=false,fit=contain,f=auto,w=576',
-            address: '0xcEaB0087c5fbC22fb19293bd0be5Fa9B23789DA9',
-            timestamp: new Date().toISOString(),
-          }
-        : {
-            fid: 377557,
-            username: 'jonbray.eth',
-            displayName: 'jon',
-            pfpUrl:
-              'https://wrpcd.net/cdn-cgi/imagedelivery/BXluQx4ige9GuW0Ia56BHw/52e69c12-87d6-4d32-cf3d-dafc097fec00/anim=false,fit=contain,f=auto,w=576',
-            address: '0xef00A763368C98C361a9a30cE44D24c8Fed43844',
-            timestamp: new Date().toISOString(),
-          };
-
-      const res = await fetch('/api/redis', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'write',
-          key: 'current-holder',
-          value: JSON.stringify(currentHolderData),
-        }),
-      });
-      const data = await res.json();
-      setValue(data.value || null);
-
-      // Trigger refresh of CurrentHolderItem
-      onCurrentHolderUpdated();
-
-      // Play choo-choo sound when current holder is set
-      playChooChoo({ volume: 0.7 });
-      setToggle((t) => !t);
-    } catch (e) {
-      setError('Write failed');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <Card className="my-8 !bg-purple-600 !border-white">
-      <Card.Header>
-        <Card.Title>Set Current Holder</Card.Title>
-        <Card.Description>
-          Manually update the current holder data in Redis for development purposes.
-        </Card.Description>
-      </Card.Header>
-      <Card.Content>
-        <div className="space-y-3">
-          <Button
-            onClick={handleWrite}
-            disabled={loading}
-            isLoading={loading}
-            className="w-full bg-purple-600 text-white border-white hover:bg-purple-700"
-            variant="default"
-          >
-            Set Current Holder ({toggle ? 'garrett' : 'jonbray.eth'})
-          </Button>
-
-          {loading && (
-            <div className="text-xs text-gray-300 p-2 bg-purple-700/50 rounded">
-              Setting current holder...
-            </div>
-          )}
-
-          {error && <div className="text-xs text-red-300 p-2 bg-red-900/20 rounded">{error}</div>}
-
-          {value && (
-            <div className="text-xs text-green-300 p-2 bg-green-900/20 rounded">
-              ✅ Current holder data set successfully
-            </div>
-          )}
-        </div>
-      </Card.Content>
-    </Card>
-  );
-}
-
 function TestPinata() {
   const [result, setResult] = useState<(PinataUploadResult & { message?: string }) | null>(null);
   const [loading, setLoading] = useState(false);
@@ -718,9 +622,6 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
             {isAdmin ? (
               <>
                 {/* Admin Test Sections */}
-                <TestRedis
-                  onCurrentHolderUpdated={() => setTimelineRefreshTrigger((prev) => prev + 1)}
-                />
                 <TestPinata />
                 <TestAdminNextStop
                   onTokenMinted={() => setTimelineRefreshTrigger((prev) => prev + 1)}
