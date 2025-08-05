@@ -4,6 +4,8 @@ import { Typography } from '@/components/base/Typography';
 import { Button } from '@/components/base/Button';
 import { Card } from '@/components/base/Card';
 import { useYoinkCountdown } from '@/hooks/useYoinkCountdown';
+import { useNeynarContext } from '@neynar/react';
+import { useMiniApp } from '@neynar/react';
 
 interface FooterProps {
   activeTab: Tab;
@@ -19,6 +21,13 @@ export const Footer: React.FC<FooterProps> = ({
   onYoinkClick,
 }) => {
   const countdownState = useYoinkCountdown();
+  const { user: neynarAuthUser } = useNeynarContext();
+  const { context } = useMiniApp();
+
+  // Admin FIDs - only these users can see the admin button
+  const adminFids = [377557, 2802, 243300];
+  const currentUserFid = neynarAuthUser?.fid || context?.user?.fid;
+  const isAdmin = currentUserFid ? adminFids.includes(currentUserFid) : false;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 mx-4 mb-4 z-50">
@@ -40,31 +49,20 @@ export const Footer: React.FC<FooterProps> = ({
             </Typography>
           </Button>
 
-          <Button
-            onClick={() => setActiveTab('actions')}
-            variant={activeTab === 'actions' ? 'default' : 'noShadow'}
-            className={`flex items-center justify-center w-full h-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white ${
-              activeTab === 'actions' ? '' : 'opacity-70 hover:opacity-100'
-            }`}
-            style={{ backgroundColor: '#a855f7' }}
-          >
-            <Typography variant="small" className="!text-white">
-              Admin
-            </Typography>
-          </Button>
-
-          <Button
-            onClick={() => setActiveTab('context')}
-            variant={activeTab === 'context' ? 'default' : 'noShadow'}
-            className={`flex items-center justify-center w-full h-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white ${
-              activeTab === 'context' ? '' : 'opacity-70 hover:opacity-100'
-            }`}
-            style={{ backgroundColor: '#a855f7' }}
-          >
-            <Typography variant="small" className="!text-white">
-              Debug
-            </Typography>
-          </Button>
+          {isAdmin && (
+            <Button
+              onClick={() => setActiveTab('actions')}
+              variant={activeTab === 'actions' ? 'default' : 'noShadow'}
+              className={`flex items-center justify-center w-full h-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white ${
+                activeTab === 'actions' ? '' : 'opacity-70 hover:opacity-100'
+              }`}
+              style={{ backgroundColor: '#a855f7' }}
+            >
+              <Typography variant="small" className="!text-white">
+                Admin
+              </Typography>
+            </Button>
+          )}
 
           {showWallet && (
             <Button

@@ -33,13 +33,14 @@ import { CurrentHolderItem } from '@/components/ui/timeline/CurrentHolderItem';
 import { CastingWidget } from '@/components/ui/CastingWidget';
 import { useCurrentHolder } from '@/hooks/useCurrentHolder';
 import { HolderDebug } from '@/components/debug/HolderDebug';
+import { useNeynarContext } from '@neynar/react';
 import { useSoundPlayer } from '@/hooks/useSoundPlayer';
 import { Typography } from '@/components/base/Typography';
 import { USE_WALLET, APP_NAME } from '@/lib/constants';
 import Image from 'next/image';
 import type { PinataUploadResult } from '@/types/nft';
 
-export type Tab = 'home' | 'actions' | 'context' | 'wallet';
+export type Tab = 'home' | 'actions' | 'wallet';
 
 interface NeynarUser {
   fid: number;
@@ -405,6 +406,12 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
     haptics,
   } = useMiniApp();
   const { isCurrentHolder, loading: isHolderLoading } = useCurrentHolder();
+  const { user: neynarAuthUser } = useNeynarContext();
+
+  // Admin FIDs - only these users can access the admin tab
+  const adminFids = [377557, 2802, 243300];
+  const currentUserFid = neynarAuthUser?.fid || context?.user?.fid;
+  const isAdmin = currentUserFid ? adminFids.includes(currentUserFid) : false;
   const { playChooChoo } = useSoundPlayer();
   const [isContextOpen, setIsContextOpen] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -683,94 +690,29 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
 
         {currentTab === 'actions' && (
           <div className="space-y-3 px-6 w-full max-w-md mx-auto">
-            {/* Admin Test Sections */}
-            <TestRedis
-              onCurrentHolderUpdated={() => setTimelineRefreshTrigger((prev) => prev + 1)}
-            />
-            <TestPinata />
-            {/* @todo: move TestAdminNextStop into it's own component that uses farcaster session to detect the FID of the current user, if admin, display the component in the footer as a dialog that opens when the button is clicked */}
-            <TestAdminNextStop
-              onTokenMinted={() => setTimelineRefreshTrigger((prev) => prev + 1)}
-            />
-
-            {/* Existing Actions */}
-            <ShareButton
-              buttonText="Share Mini App"
-              cast={{
-                text: 'Check out this awesome frame @1 @2 @3! 🚀🪐',
-                bestFriends: true,
-                embeds: [`${process.env.NEXT_PUBLIC_URL}/share/${context?.user?.fid || ''}`],
-              }}
-              className="w-full"
-            />
-
-            <SignIn />
-
-            <Button
-              onClick={() => actions.openUrl('https://www.youtube.com/watch?v=dQw4w9WgXcQ')}
-              className="w-full"
-            >
-              Open Link
-            </Button>
-
-            <Button onClick={actions.addMiniApp} disabled={added} className="w-full">
-              Add Mini App to Client
-            </Button>
-
-            <Button
-              onClick={async () => {
-                if (context?.user?.fid) {
-                  const shareUrl = `${process.env.NEXT_PUBLIC_URL}/share/${context.user.fid}`;
-                  await navigator.clipboard.writeText(shareUrl);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }
-              }}
-              disabled={!context?.user?.fid}
-              className="w-full"
-            >
-              {copied ? 'Copied!' : 'Copy share URL'}
-            </Button>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                Haptic Intensity
-              </label>
-              <select
-                value={hapticIntensity}
-                onChange={(e) => setHapticIntensity(e.target.value as typeof hapticIntensity)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="light">Light</option>
-                <option value="medium">Medium</option>
-                <option value="heavy">Heavy</option>
-                <option value="soft">Soft</option>
-                <option value="rigid">Rigid</option>
-              </select>
-              <Button
-                onClick={async () => {
-                  try {
-                    await haptics.impactOccurred(hapticIntensity);
-                  } catch (error) {
-                    console.error('Haptic feedback failed:', error);
-                  }
-                }}
-                className="w-full"
-              >
-                Trigger Haptic Feedback
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {currentTab === 'context' && (
-          <div
-            className="absolute inset-0 flex justify-center items-center px-6"
-            style={{ top: '80px', bottom: '80px' }}
-          >
-            <div className="w-full max-w-md">
-              <HolderDebug />
-            </div>
+            {isAdmin ? (
+              <>
+                {/* Admin Test Sections */}
+                <TestRedis
+                  onCurrentHolderUpdated={() => setTimelineRefreshTrigger((prev) => prev + 1)}
+                />
+                <TestPinata />
+                <TestAdminNextStop
+                  onTokenMinted={() => setTimelineRefreshTrigger((prev) => prev + 1)}
+                />
+              </>
+            ) : (
+              <div className="flex justify-center items-center min-h-[300px]">
+                <Card
+                  className="p-6 !bg-purple-500 !text-white !border-white"
+                  style={{ backgroundColor: '#a855f7' }}
+                >
+                  <Typography variant="h4" className="text-center !text-white mb-2">
+                    Admin Dashboard
+                  </Typography>
+                </Card>
+              </div>
+            )}
           </div>
         )}
 

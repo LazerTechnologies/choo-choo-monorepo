@@ -12,12 +12,15 @@ export function HolderDebug() {
   const { currentHolder, isCurrentHolder, loading, error } = useCurrentHolder();
 
   return (
-    <Card className="p-4 bg-yellow-50 border-2 border-yellow-400 mb-4">
-      <Typography variant="h4" className="mb-2 text-yellow-800">
-        🐛 Debug Info
+    <Card
+      className="p-4 !bg-purple-500 !text-white !border-white mb-4"
+      style={{ backgroundColor: '#a855f7' }}
+    >
+      <Typography variant="h4" className="mb-2 !text-white">
+        Debug Info
       </Typography>
 
-      <div className="space-y-2 text-xs">
+      <div className="space-y-2 text-xs !text-white">
         <div>
           <strong>Neynar User:</strong>{' '}
           {neynarUser
@@ -49,11 +52,11 @@ export function HolderDebug() {
 
         {error && (
           <div>
-            <strong>Error:</strong> <span className="text-red-600">{error}</span>
+            <strong>Error:</strong> <span className="text-red-300">{error}</span>
           </div>
         )}
 
-        <div className="mt-2 pt-2 border-t border-yellow-300">
+        <div className="mt-2 pt-2 border-t border-white border-opacity-30">
           <strong>Conditions for CastingWidget:</strong>
           <ul className="ml-4 list-disc">
             <li>context?.user: {context?.user ? '✅' : '❌'}</li>
@@ -62,7 +65,7 @@ export function HolderDebug() {
           </ul>
         </div>
 
-        <div className="mt-2 pt-2 border-t border-yellow-300">
+        <div className="mt-2 pt-2 border-t border-white border-opacity-30">
           <strong>Should show widget:</strong>{' '}
           {context?.user && !loading && isCurrentHolder ? '✅ YES' : '❌ NO'}
         </div>
