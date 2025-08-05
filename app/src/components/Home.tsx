@@ -15,7 +15,6 @@ import {
   useSwitchChain,
   useChainId,
 } from 'wagmi';
-import { ShareButton } from './ui/Share';
 import { config } from '@/components/providers/WagmiProvider';
 import { Button } from '@/components/base/Button';
 import { Card } from '@/components/base/Card';
@@ -32,7 +31,6 @@ import { JourneyTimeline } from '@/components/ui/timeline';
 import { CurrentHolderItem } from '@/components/ui/timeline/CurrentHolderItem';
 import { CastingWidget } from '@/components/ui/CastingWidget';
 import { useCurrentHolder } from '@/hooks/useCurrentHolder';
-import { HolderDebug } from '@/components/debug/HolderDebug';
 import { useNeynarContext } from '@neynar/react';
 import { useSoundPlayer } from '@/hooks/useSoundPlayer';
 import { Typography } from '@/components/base/Typography';
@@ -105,23 +103,41 @@ function TestRedis({ onCurrentHolderUpdated }: { onCurrentHolderUpdated: () => v
   }
 
   return (
-    <div className="my-8 p-4 border rounded-lg bg-gray-50 dark:bg-gray-900">
-      <h3 className="font-bold mb-2 text-white dark:text-white">Set Current Holder</h3>
-      <div className="mb-2">
-        <button
-          className="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 w-full border-white"
-          onClick={handleWrite}
-          disabled={loading}
-        >
-          Set Current Holder ({toggle ? 'garrett' : 'jonbray.eth'})
-        </button>
-      </div>
-      {loading && <div className="text-xs text-gray-500">Setting current holder...</div>}
-      {error && <div className="text-xs text-red-500">{error}</div>}
-      {value && (
-        <div className="text-xs mt-2 text-green-600">✅ Current holder data set successfully</div>
-      )}
-    </div>
+    <Card className="my-8 !bg-purple-600 !border-white">
+      <Card.Header>
+        <Card.Title>Set Current Holder</Card.Title>
+        <Card.Description>
+          Manually update the current holder data in Redis for development purposes.
+        </Card.Description>
+      </Card.Header>
+      <Card.Content>
+        <div className="space-y-3">
+          <Button
+            onClick={handleWrite}
+            disabled={loading}
+            isLoading={loading}
+            className="w-full bg-purple-600 text-white border-white hover:bg-purple-700"
+            variant="default"
+          >
+            Set Current Holder ({toggle ? 'garrett' : 'jonbray.eth'})
+          </Button>
+
+          {loading && (
+            <div className="text-xs text-gray-300 p-2 bg-purple-700/50 rounded">
+              Setting current holder...
+            </div>
+          )}
+
+          {error && <div className="text-xs text-red-300 p-2 bg-red-900/20 rounded">{error}</div>}
+
+          {value && (
+            <div className="text-xs text-green-300 p-2 bg-green-900/20 rounded">
+              ✅ Current holder data set successfully
+            </div>
+          )}
+        </div>
+      </Card.Content>
+    </Card>
   );
 }
 
@@ -154,87 +170,103 @@ function TestPinata() {
   }
 
   return (
-    <div className="my-8 p-4 border rounded-lg bg-gray-50 dark:bg-gray-900">
-      <h3 className="font-bold mb-2">Test Pinata (Generator)</h3>
-      <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-        Generate a new NFT using the generator package and upload to Pinata
-      </p>
-      <div className="mb-2">
-        <Button
-          onClick={handleUploadToPinata}
-          disabled={loading}
-          className="px-4 py-2 rounded bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 w-full border-white"
-          variant="default"
-        >
-          Generate & Upload NFT
-        </Button>
-      </div>
-      {loading && <div className="text-xs text-gray-500">Uploading...</div>}
-      {error && <div className="text-xs text-red-500">{error}</div>}
-      {result && (
-        <div className="text-xs mt-2 space-y-2">
-          <div className="text-green-600 dark:text-green-400">{result.message}</div>
+    <Card className="my-8 !bg-purple-600 !border-white">
+      <Card.Header>
+        <Card.Title>Test Pinata (Generator)</Card.Title>
+        <Card.Description>
+          Generate a new NFT using the generator package and upload to Pinata for testing purposes.
+        </Card.Description>
+      </Card.Header>
+      <Card.Content>
+        <div className="space-y-3">
+          <Button
+            onClick={handleUploadToPinata}
+            disabled={loading}
+            isLoading={loading}
+            className="w-full bg-purple-600 text-white border-white hover:bg-purple-700"
+            variant="default"
+          >
+            Generate & Upload NFT
+          </Button>
 
-          <div className="border-t border-gray-300 dark:border-gray-600 pt-2">
-            <div className="font-semibold mb-1">Image:</div>
-            <div>
-              Hash: <span className="font-mono">{result.imageHash}</span>
-            </div>
-            {result.imageUrl && (
-              <div>
-                URL:{' '}
-                <a
-                  href={result.imageUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 dark:text-blue-400 hover:underline font-mono text-xs break-all"
-                >
-                  {result.imageUrl}
-                </a>
-              </div>
-            )}
-          </div>
-
-          <div className="border-t border-gray-300 dark:border-gray-600 pt-2">
-            <div className="font-semibold mb-1">Metadata:</div>
-            <div>
-              Hash: <span className="font-mono">{result.metadataHash}</span>
-            </div>
-            {result.metadataUrl && (
-              <div>
-                URL:{' '}
-                <a
-                  href={result.metadataUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 dark:text-blue-400 hover:underline font-mono text-xs break-all"
-                >
-                  {result.metadataUrl}
-                </a>
-              </div>
-            )}
-            {result.tokenURI && (
-              <div>
-                Token URI: <span className="font-mono">{result.tokenURI}</span>
-              </div>
-            )}
-          </div>
-
-          {result.metadata && (
-            <div className="border-t border-gray-300 dark:border-gray-600 pt-2">
-              <div className="font-semibold mb-1">Uploaded Metadata:</div>
-              <pre className="bg-gray-100 dark:bg-gray-800 p-2 rounded text-xs overflow-x-auto">
-                {JSON.stringify(result.metadata, null, 2)}
-              </pre>
-            </div>
+          {loading && (
+            <div className="text-xs text-gray-300 p-2 bg-purple-700/50 rounded">Uploading...</div>
           )}
+
+          {error && <div className="text-xs text-red-300 p-2 bg-red-900/20 rounded">{error}</div>}
         </div>
-      )}
-    </div>
+
+        {result && (
+          <div className="text-xs space-y-2 border-t border-gray-300 dark:border-gray-600 pt-3 mt-3">
+            <div className="text-green-300 font-semibold">✅ {result.message}</div>
+
+            <div className="border-t border-gray-400 pt-2">
+              <div className="font-semibold mb-1 text-gray-200">Image:</div>
+              <div className="text-gray-300">
+                Hash: <span className="font-mono">{result.imageHash}</span>
+              </div>
+              {result.imageUrl && (
+                <div className="text-gray-300">
+                  URL:{' '}
+                  <a
+                    href={result.imageUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-300 hover:text-blue-200 hover:underline font-mono text-xs break-all"
+                  >
+                    {result.imageUrl}
+                  </a>
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-gray-400 pt-2">
+              <div className="font-semibold mb-1 text-gray-200">Metadata:</div>
+              <div className="text-gray-300">
+                Hash: <span className="font-mono">{result.metadataHash}</span>
+              </div>
+              {result.metadataUrl && (
+                <div className="text-gray-300">
+                  URL:{' '}
+                  <a
+                    href={result.metadataUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-300 hover:text-blue-200 hover:underline font-mono text-xs break-all"
+                  >
+                    {result.metadataUrl}
+                  </a>
+                </div>
+              )}
+              {result.tokenURI && (
+                <div className="text-gray-300">
+                  Token URI: <span className="font-mono">{result.tokenURI}</span>
+                </div>
+              )}
+            </div>
+
+            {result.metadata && (
+              <div className="border-t border-gray-400 pt-2">
+                <div className="font-semibold mb-1 text-gray-200">Uploaded Metadata:</div>
+                <pre className="bg-purple-800/50 p-2 rounded text-xs overflow-x-auto text-gray-300">
+                  {JSON.stringify(result.metadata, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+      </Card.Content>
+    </Card>
   );
 }
 
-function TestAdminNextStop({ onTokenMinted }: { onTokenMinted?: () => void }) {
+function TestAdminNextStop({
+  onTokenMinted,
+  adminFid,
+}: {
+  onTokenMinted?: () => void;
+  adminFid?: number;
+}) {
   const [fid, setFid] = useState('');
   const [result, setResult] = useState<{
     winner: {
@@ -258,6 +290,12 @@ function TestAdminNextStop({ onTokenMinted }: { onTokenMinted?: () => void }) {
       return;
     }
 
+    // Check if admin FID is available
+    if (!adminFid) {
+      setError('You must be signed in to use admin functions');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setResult(null);
@@ -267,7 +305,8 @@ function TestAdminNextStop({ onTokenMinted }: { onTokenMinted?: () => void }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          fid: fidNumber,
+          targetFid: fidNumber,
+          adminFid: adminFid,
         }),
       });
 
@@ -284,7 +323,7 @@ function TestAdminNextStop({ onTokenMinted }: { onTokenMinted?: () => void }) {
     } finally {
       setLoading(false);
     }
-  }, [fid, onTokenMinted]);
+  }, [fid, adminFid, onTokenMinted]);
 
   return (
     <Card className="my-8 !bg-purple-600 !border-white">
@@ -306,7 +345,7 @@ function TestAdminNextStop({ onTokenMinted }: { onTokenMinted?: () => void }) {
               placeholder="377557"
               value={fid}
               onChange={(e) => setFid(e.target.value)}
-              className="w-full"
+              className="w-full !bg-white !text-black border-gray-300 focus:border-purple-500"
               min="1"
             />
             <div className="text-xs text-gray-500 mt-1">
@@ -685,6 +724,7 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
                 <TestPinata />
                 <TestAdminNextStop
                   onTokenMinted={() => setTimelineRefreshTrigger((prev) => prev + 1)}
+                  adminFid={currentUserFid}
                 />
               </>
             ) : (

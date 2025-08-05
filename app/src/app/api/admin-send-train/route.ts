@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAddress } from 'viem';
 import { getContractService } from '@/lib/services/contract';
-import { getSession } from '@/auth';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
 import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
 
@@ -11,11 +10,13 @@ const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
 
 // Validation schema
 const adminSendTrainBodySchema = z.object({
-  fid: z.number().positive('FID must be positive'),
+  targetFid: z.number().positive('Target FID must be positive'),
+  adminFid: z.number().positive('Admin FID must be positive'),
 });
 
 interface AdminSendTrainRequest {
-  fid: number;
+  targetFid: number;
+  adminFid: number;
 }
 
 interface AdminSendTrainResponse {
@@ -109,26 +110,7 @@ async function fetchUserByFid(fid: number): Promise<{
  */
 export async function POST(request: Request) {
   try {
-    // 1. Authentication - only allow authenticated Farcaster users
-    const session = await getSession();
-    if (!session?.user?.fid) {
-      console.error('[admin-send-train] 🔒 Unauthorized: Must call from within Farcaster');
-      return NextResponse.json(
-        { error: '🔒 Unauthorized - Farcaster authentication required' },
-        { status: 401 }
-      );
-    }
-
-    // 2. Admin check - only allow specific admin FIDs
-    const adminFids = [377557, 2802, 243300];
-    if (!adminFids.includes(session.user.fid)) {
-      console.error(`[admin-send-train] 🔒 Forbidden: FID ${session.user.fid} is not an admin`);
-      return NextResponse.json({ error: '🔒 Forbidden - Admin access required' }, { status: 403 });
-    }
-
-    console.log(`[admin-send-train] 🛡️ Admin request from FID: ${session.user.fid}`);
-
-    // 3. Parse and validate request body
+    // 1. Parse and validate request body
     let body: AdminSendTrainRequest;
     try {
       const rawBody = await request.json();
@@ -151,17 +133,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
     }
 
-    const { fid } = body;
+    const { targetFid, adminFid } = body;
 
-    console.log(`[admin-send-train] Starting admin orchestration for FID: ${fid}`);
+    // 2. Admin check - only allow specific admin FIDs
+    const adminFids = [377557, 2802, 243300];
+    if (!adminFids.includes(adminFid)) {
+      console.error(`[admin-send-train] 🔒 Forbidden: FID ${adminFid} is not an admin`);
+      return NextResponse.json({ error: '🔒 Forbidden - Admin access required' }, { status: 403 });
+    }
 
-    // 4. Fetch user data from Neynar
+    console.log(
+      `[admin-send-train] 🛡️ Admin request from FID: ${adminFid} for target FID: ${targetFid}`
+    );
+
+    // 3. Fetch user data from Neynar
     let winnerData;
     try {
-      winnerData = await fetchUserByFid(fid);
+      winnerData = await fetchUserByFid(targetFid);
       if (!winnerData) {
         return NextResponse.json(
-          { success: false, error: `User with FID ${fid} not found` },
+          { success: false, error: `User with FID ${targetFid} not found` },
           { status: 404 }
         );
       }
@@ -177,7 +168,7 @@ export async function POST(request: Request) {
 
     console.log(`[admin-send-train] Found user: ${winnerData.username} (${winnerData.address})`);
 
-    // 5. Get next token ID
+    // 4. Get next token ID
     let contractService, totalSupply, tokenId;
     try {
       contractService = getContractService();
@@ -188,7 +179,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to get contract state' }, { status: 500 });
     }
 
-    // 6. Generate NFT with winner's username
+    // 5. Generate NFT with winner's username
     let generateResponse;
     try {
       generateResponse = await fetch(
@@ -225,7 +216,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // 7. Mint token on contract
+    // 6. Mint token on contract
     let mintResponse;
     try {
       mintResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/mint-token`, {
@@ -268,7 +259,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // 8. Send admin announcement cast from ChooChoo account
+    // 7. Send admin announcement cast from ChooChoo account
     try {
       const castText = CHOOCHOO_CAST_TEMPLATES.WELCOME_PASSENGER(winnerData.username);
 
@@ -305,7 +296,7 @@ export async function POST(request: Request) {
       // Don't fail the request for cast sending issues
     }
 
-    // 9. Return combined result
+    // 8. Return combined result
     console.log(
       `[admin-send-train] Successfully orchestrated admin train movement for token ${mintData.actualTokenId}`
     );
