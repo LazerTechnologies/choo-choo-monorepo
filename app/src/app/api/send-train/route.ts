@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getContractService } from '@/lib/services/contract';
 import { getSession } from '@/auth';
 import { redis } from '@/lib/kv';
+import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
@@ -178,7 +179,42 @@ export async function POST() {
       // Don't fail the request for this
     }
 
-    // 8. Return combined result
+    // 8. Send announcement cast from ChooChoo account
+    try {
+      const castText = CHOOCHOO_CAST_TEMPLATES.WELCOME_PASSENGER(winnerData.winner.username);
+
+      const castResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_APP_URL}/api/internal/send-cast`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-internal-secret': INTERNAL_SECRET || '',
+          },
+          body: JSON.stringify({
+            text: castText,
+            channel_id: 'base', // Post in the Base channel
+          }),
+        }
+      );
+
+      if (castResponse.ok) {
+        const castData = await castResponse.json();
+        console.log(`[send-train] Successfully sent announcement cast: ${castData.cast?.hash}`);
+      } else {
+        const errorData = await castResponse.json();
+        console.warn(
+          '[send-train] Failed to send announcement cast (non-critical):',
+          errorData.error
+        );
+        // Don't fail the request for cast sending issues
+      }
+    } catch (err) {
+      console.warn('[send-train] Failed to send announcement cast (non-critical):', err);
+      // Don't fail the request for cast sending issues
+    }
+
+    // 9. Return combined result
     console.log(
       `[send-train] Successfully orchestrated train movement for token ${mintData.actualTokenId}`
     );

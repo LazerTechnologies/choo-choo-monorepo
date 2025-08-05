@@ -4,6 +4,7 @@ import { isAddress } from 'viem';
 import { getContractService } from '@/lib/services/contract';
 import { getSession } from '@/auth';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
+import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
@@ -267,7 +268,44 @@ export async function POST(request: Request) {
       );
     }
 
-    // 8. Return combined result
+    // 8. Send admin announcement cast from ChooChoo account
+    try {
+      const castText = CHOOCHOO_CAST_TEMPLATES.WELCOME_PASSENGER(winnerData.username);
+
+      const castResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_APP_URL}/api/internal/send-cast`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-internal-secret': INTERNAL_SECRET || '',
+          },
+          body: JSON.stringify({
+            text: castText,
+            channel_id: 'base', // Post in the Base channel
+          }),
+        }
+      );
+
+      if (castResponse.ok) {
+        const castData = await castResponse.json();
+        console.log(
+          `[admin-send-train] Successfully sent admin announcement cast: ${castData.cast?.hash}`
+        );
+      } else {
+        const errorData = await castResponse.json();
+        console.warn(
+          '[admin-send-train] Failed to send announcement cast (non-critical):',
+          errorData.error
+        );
+        // Don't fail the request for cast sending issues
+      }
+    } catch (err) {
+      console.warn('[admin-send-train] Failed to send announcement cast (non-critical):', err);
+      // Don't fail the request for cast sending issues
+    }
+
+    // 9. Return combined result
     console.log(
       `[admin-send-train] Successfully orchestrated admin train movement for token ${mintData.actualTokenId}`
     );
