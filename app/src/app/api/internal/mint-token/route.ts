@@ -8,6 +8,49 @@ import { redis } from '@/lib/kv';
 import type { TokenData, CurrentHolderData, TokenURI } from '@/types/nft';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
+const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
+
+// Helper function to get user's primary wallet address
+async function getRecipientAddress(userData: WinnerData): Promise<string> {
+  if (!NEYNAR_API_KEY) {
+    throw new Error('Neynar API key not configured');
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.neynar.com/v2/farcaster/user/bulk?fids=${userData.fid}`,
+      {
+        headers: {
+          accept: 'application/json',
+          'x-api-key': NEYNAR_API_KEY,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Neynar API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const user = data?.users?.[0];
+
+    if (!user?.verified_addresses) {
+      throw new Error('User has no verified addresses');
+    }
+
+    const address =
+      user.verified_addresses.primary?.eth_address || user.verified_addresses.eth_addresses?.[0];
+
+    if (!address || !isAddress(address)) {
+      throw new Error('User has no valid Ethereum address');
+    }
+
+    return address;
+  } catch (error) {
+    console.error('[mint-token] Failed to get user address:', error);
+    throw error;
+  }
+}
 
 interface WinnerData {
   username: string;
@@ -17,10 +60,11 @@ interface WinnerData {
 }
 
 interface MintTokenRequest {
-  recipient: string;
+  newHolderAddress: string;
   tokenURI: string;
   tokenId: number;
-  winnerData: WinnerData;
+  newHolderData: WinnerData;
+  previousHolderData?: WinnerData; // The person who gets the NFT (departing passenger)
   sourceCastHash?: string;
   totalEligibleReactors?: number;
 }
@@ -45,10 +89,11 @@ const winnerDataSchema = z.object({
 });
 
 const mintTokenBodySchema = z.object({
-  recipient: addressSchema,
+  newHolderAddress: addressSchema,
   tokenURI: z.string().min(1, 'Token URI is required'),
   tokenId: z.number().positive('Token ID must be positive'),
-  winnerData: winnerDataSchema,
+  newHolderData: winnerDataSchema,
+  previousHolderData: winnerDataSchema.optional(),
   sourceCastHash: z.string().optional(),
   totalEligibleReactors: z.number().optional(),
 });
@@ -86,11 +131,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
     }
 
-    const { recipient, tokenURI, tokenId, winnerData, sourceCastHash, totalEligibleReactors } =
-      body;
+    const {
+      newHolderAddress,
+      tokenURI,
+      tokenId,
+      newHolderData,
+      previousHolderData,
+      sourceCastHash,
+      totalEligibleReactors,
+    } = body;
+
+    // Determine who gets the NFT: previous holder if exists, otherwise new holder (for first mint)
+    const nftRecipient = previousHolderData
+      ? await getRecipientAddress(previousHolderData)
+      : newHolderAddress;
+    const nftRecipientData = previousHolderData || newHolderData;
 
     console.log(
-      `[internal/mint-token] Minting token ${tokenId} for ${winnerData.username} (${recipient})`
+      `[internal/mint-token] Minting token ${tokenId} for ${nftRecipientData.username} (${nftRecipient})`
     );
 
     const fullTokenURI = (
@@ -101,7 +159,7 @@ export async function POST(request: Request) {
 
     let txHash;
     try {
-      txHash = await contractService.executeNextStop(recipient as Address, fullTokenURI);
+      txHash = await contractService.executeNextStop(nftRecipient as Address, fullTokenURI);
       console.log(`[internal/mint-token] Transaction executed: ${txHash}`);
     } catch (err) {
       console.error('[internal/mint-token] Failed to execute contract transaction:', err);
@@ -176,11 +234,11 @@ export async function POST(request: Request) {
         imageHash,
         metadataHash,
         tokenURI: fullTokenURI,
-        holderAddress: recipient,
-        holderUsername: winnerData.username,
-        holderFid: winnerData.fid,
-        holderDisplayName: winnerData.displayName,
-        holderPfpUrl: winnerData.pfpUrl,
+        holderAddress: nftRecipient,
+        holderUsername: nftRecipientData.username,
+        holderFid: nftRecipientData.fid,
+        holderDisplayName: nftRecipientData.displayName,
+        holderPfpUrl: nftRecipientData.pfpUrl,
         transactionHash: txHash,
         timestamp: new Date().toISOString(),
         attributes: finalAttributes,
@@ -200,19 +258,19 @@ export async function POST(request: Request) {
       );
     }
 
-    // Store the current holder data in Redis for frontend access
+    // Store the NEW current holder data in Redis for frontend access (not the NFT recipient)
     try {
       const currentHolderData: CurrentHolderData = {
-        fid: winnerData.fid,
-        username: winnerData.username,
-        displayName: winnerData.displayName,
-        pfpUrl: winnerData.pfpUrl,
-        address: recipient,
+        fid: newHolderData.fid,
+        username: newHolderData.username,
+        displayName: newHolderData.displayName,
+        pfpUrl: newHolderData.pfpUrl,
+        address: newHolderAddress,
         timestamp: new Date().toISOString(),
       };
       await redis.set('current-holder', JSON.stringify(currentHolderData));
       console.log(
-        `[internal/mint-token] Updated current holder to: ${winnerData.username} (FID: ${winnerData.fid})`
+        `[internal/mint-token] Updated current holder to: ${newHolderData.username} (FID: ${newHolderData.fid})`
       );
     } catch (err) {
       console.error('[internal/mint-token] Failed to store current holder in Redis:', err);

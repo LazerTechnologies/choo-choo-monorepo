@@ -168,7 +168,29 @@ export async function POST(request: Request) {
 
     console.log(`[admin-send-train] Found user: ${winnerData.username} (${winnerData.address})`);
 
-    // 4. Get next token ID
+    // 4. Get current holder (who will receive the NFT as their journey ticket)
+    let currentHolderData = null;
+    try {
+      const currentHolderResponse = await fetch(`${baseUrl}/api/current-holder`);
+      if (currentHolderResponse.ok) {
+        const data = await currentHolderResponse.json();
+        if (data.hasCurrentHolder) {
+          currentHolderData = {
+            username: data.currentHolder.username,
+            fid: data.currentHolder.fid,
+            displayName: data.currentHolder.displayName,
+            pfpUrl: data.currentHolder.pfpUrl,
+          };
+          console.log(
+            `[admin-send-train] Current holder: ${currentHolderData.username} (FID: ${currentHolderData.fid}) will receive NFT`
+          );
+        }
+      }
+    } catch (err) {
+      console.warn('[admin-send-train] Failed to get current holder (non-critical):', err);
+    }
+
+    // 5. Get next token ID
     let contractService, totalSupply, tokenId;
     try {
       contractService = getContractService();
@@ -226,15 +248,16 @@ export async function POST(request: Request) {
           'x-internal-secret': INTERNAL_SECRET || '',
         },
         body: JSON.stringify({
-          recipient: winnerData.address,
+          newHolderAddress: winnerData.address,
           tokenURI: nftData.tokenURI,
           tokenId,
-          winnerData: {
+          newHolderData: {
             username: winnerData.username,
             fid: winnerData.fid,
             displayName: winnerData.displayName,
             pfpUrl: winnerData.pfpUrl,
           },
+          previousHolderData: currentHolderData, // Previous holder gets the NFT ticket
           sourceCastHash: undefined, // No cast hash for admin flow
           totalEligibleReactors: 1, // Admin selected, so only 1 "eligible" user
         }),

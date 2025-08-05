@@ -84,7 +84,32 @@ export async function POST() {
       );
     }
 
-    // 4. Get next token ID
+    // 4. Get current holder (who will receive the NFT as their journey ticket)
+    let currentHolderData = null;
+    try {
+      const baseUrl =
+        process.env.NEXT_PUBLIC_APP_URL ||
+        (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+      const currentHolderResponse = await fetch(`${baseUrl}/api/current-holder`);
+      if (currentHolderResponse.ok) {
+        const data = await currentHolderResponse.json();
+        if (data.hasCurrentHolder) {
+          currentHolderData = {
+            username: data.currentHolder.username,
+            fid: data.currentHolder.fid,
+            displayName: data.currentHolder.displayName,
+            pfpUrl: data.currentHolder.pfpUrl,
+          };
+          console.log(
+            `[send-train] Current holder: ${currentHolderData.username} (FID: ${currentHolderData.fid}) will receive NFT`
+          );
+        }
+      }
+    } catch (err) {
+      console.warn('[send-train] Failed to get current holder (non-critical):', err);
+    }
+
+    // 5. Get next token ID
     let contractService, totalSupply, tokenId;
     try {
       contractService = getContractService();
@@ -142,10 +167,11 @@ export async function POST() {
           'x-internal-secret': INTERNAL_SECRET || '',
         },
         body: JSON.stringify({
-          recipient: winnerData.winner.address,
+          newHolderAddress: winnerData.winner.address,
           tokenURI: nftData.tokenURI,
           tokenId,
-          winnerData: winnerData.winner,
+          newHolderData: winnerData.winner,
+          previousHolderData: currentHolderData, // Previous holder gets the NFT ticket
           sourceCastHash: castHash,
           totalEligibleReactors: winnerData.totalEligibleReactors,
         }),
