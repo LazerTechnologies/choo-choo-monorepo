@@ -30,6 +30,8 @@ import { Footer } from '@/components/ui/Footer';
 import { YoinkDialog } from '@/components/ui/dialogs/YoinkDialog';
 import { JourneyTimeline } from '@/components/ui/timeline';
 import { CurrentHolderItem } from '@/components/ui/timeline/CurrentHolderItem';
+import { CastingWidget } from '@/components/ui/CastingWidget';
+import { useCurrentHolder } from '@/hooks/useCurrentHolder';
 import { useSoundPlayer } from '@/hooks/useSoundPlayer';
 import { Typography } from '@/components/base/Typography';
 import { USE_WALLET, APP_NAME } from '@/lib/constants';
@@ -401,6 +403,7 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
     currentTab,
     haptics,
   } = useMiniApp();
+  const { isCurrentHolder, loading: isHolderLoading } = useCurrentHolder();
   const [isContextOpen, setIsContextOpen] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
 
@@ -561,7 +564,9 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
         {currentTab === 'home' && (
           <div className="overflow-y-auto h-[calc(100vh-200px)] px-6">
             <div className="flex flex-col items-center justify-center py-8">
-              <h2 className="text-2xl font-bold mb-4">{title}</h2>
+              <Typography variant="h1" className="text-center mb-4 text-white font-comic text-4xl">
+                {APP_NAME}
+              </Typography>
               <Image
                 src="/ChooChoo.webp"
                 alt="ChooChoo App Logo"
@@ -576,10 +581,9 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
             {/* App Description */}
             <div className="pb-6 text-center px-4">
               <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                ChooChoo is a train trying to visit every wallet on Base! The community decides each
-                stop on the journey. When ChooChoo visits a new wallet, he sends out a cast. Replies
-                to that cast compete for the most reactions, and the winner receives ChooChoo next.
-                All aboard!
+                ChooChoo is a train trying to visit every wallet on Base! When ChooChoo is in your
+                wallet, you can send out a cast below to help determine his next stop. Anyone who
+                replies to that cast will be in the running to receive ChooChoo next. All aboard!
               </p>
             </div>
 
@@ -593,6 +597,29 @@ export default function Home({ title }: { title?: string } = { title: 'Choo Choo
               </Typography>
               <CurrentHolderItem refreshOnMintTrigger={timelineRefreshTrigger} />
             </div>
+
+            {/* Casting Widget - Only show if user is signed in and is current holder */}
+            {context?.user && !isHolderLoading && isCurrentHolder && (
+              <div className="w-full max-w-md mx-auto mb-8 flex flex-col items-center justify-center">
+                <Typography
+                  variant="h3"
+                  className="text-center mb-4 text-gray-900 dark:text-gray-100 font-comic"
+                >
+                  Pick Next Passenger
+                </Typography>
+                <Typography
+                  variant="body"
+                  className="text-center mb-4 text-gray-900 dark:text-gray-100 font-comic"
+                >
+                  You&apos;re the current passenger! Send out a cast to let everyone know that
+                  ChooChoo is about to be on the move. Once people start reacting, you&apos;ll be
+                  able to randomly select a winner and send ChooChoo to their wallet.
+                </Typography>
+                <div className="w-full flex justify-center">
+                  <CastingWidget />
+                </div>
+              </div>
+            )}
 
             {/* Test Sections */}
             {/* Next Stop Trigger */}

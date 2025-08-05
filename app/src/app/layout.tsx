@@ -3,6 +3,7 @@ import { Comic_Relief, IBM_Plex_Mono, Public_Sans } from 'next/font/google';
 
 import { getSession } from '@/auth';
 import '@/app/globals.css';
+import '@neynar/react/dist/style.css';
 import { Providers } from '@/app/providers';
 import { APP_NAME, APP_DESCRIPTION } from '@/lib/constants';
 import { cn } from '@/lib/utils';

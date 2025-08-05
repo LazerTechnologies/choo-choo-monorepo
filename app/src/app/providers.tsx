@@ -3,8 +3,7 @@
 import dynamic from 'next/dynamic';
 import type { Session } from 'next-auth';
 import { SessionProvider } from 'next-auth/react';
-import { MiniAppProvider } from '@neynar/react';
-import { SafeFarcasterSolanaProvider } from '@/components/providers/SafeFarcasterSolanaProvider';
+import { MiniAppProvider, NeynarContextProvider, Theme } from '@neynar/react';
 
 const WagmiProvider = dynamic(() => import('@/components/providers/WagmiProvider'), {
   ssr: false,
@@ -17,15 +16,23 @@ export function Providers({
   session: Session | null;
   children: React.ReactNode;
 }) {
-  const solanaEndpoint = process.env.SOLANA_RPC_ENDPOINT || 'https://solana-rpc.publicnode.com';
   return (
     <SessionProvider session={session}>
       <WagmiProvider>
-        <MiniAppProvider analyticsEnabled={true} backButtonEnabled={true}>
-          <SafeFarcasterSolanaProvider endpoint={solanaEndpoint}>
+        <NeynarContextProvider
+          settings={{
+            clientId: process.env.NEXT_PUBLIC_NEYNAR_CLIENT_ID || '',
+            defaultTheme: Theme.Light,
+            eventsCallbacks: {
+              onAuthSuccess: () => {},
+              onSignout: () => {},
+            },
+          }}
+        >
+          <MiniAppProvider analyticsEnabled={true} backButtonEnabled={true}>
             {children}
-          </SafeFarcasterSolanaProvider>
-        </MiniAppProvider>
+          </MiniAppProvider>
+        </NeynarContextProvider>
       </WagmiProvider>
     </SessionProvider>
   );

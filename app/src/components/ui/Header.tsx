@@ -1,8 +1,7 @@
 import Image from 'next/image';
 import { useState } from 'react';
-import { APP_NAME } from '@/lib/constants';
 import sdk from '@farcaster/frame-sdk';
-import { useMiniApp } from '@neynar/react';
+import { useMiniApp, NeynarAuthButton, useNeynarContext } from '@neynar/react';
 import { Typography } from '@/components/base/Typography';
 import { Card } from '@/components/base/Card';
 
@@ -15,6 +14,7 @@ type HeaderProps = {
 
 export function Header({ neynarUser }: HeaderProps) {
   const { context } = useMiniApp();
+  const { user: neynarAuthUser } = useNeynarContext();
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [hasClickedPfp, setHasClickedPfp] = useState(false);
 
@@ -24,29 +24,29 @@ export function Header({ neynarUser }: HeaderProps) {
         className="py-2 px-4 w-full block !bg-purple-500 !text-white !border-white"
         style={{ backgroundColor: '#a855f7' }}
       >
-        <div className="flex items-center justify-center relative">
-          <Typography variant="h3" className="!text-white font-comic">
-            {APP_NAME}
-          </Typography>
-          {context?.user && (
-            <button
-              className="absolute right-0 transition-all hover:translate-y-0.5 focus:outline-none"
-              onClick={() => {
-                setIsUserDropdownOpen(!isUserDropdownOpen);
-                setHasClickedPfp(true);
-              }}
-            >
-              {context.user.pfpUrl && (
-                <Image
-                  src={context.user.pfpUrl}
-                  alt="Profile"
-                  width={32}
-                  height={32}
-                  className="rounded-full border-2 border-white shadow-md hover:shadow-none transition-all"
-                />
-              )}
-            </button>
-          )}
+        <div className="flex items-center justify-end relative">
+          <div className="flex items-center gap-2">
+            <NeynarAuthButton />
+            {context?.user && (
+              <button
+                className="transition-all hover:translate-y-0.5 focus:outline-none"
+                onClick={() => {
+                  setIsUserDropdownOpen(!isUserDropdownOpen);
+                  setHasClickedPfp(true);
+                }}
+              >
+                {context.user.pfpUrl && (
+                  <Image
+                    src={context.user.pfpUrl}
+                    alt="Profile"
+                    width={32}
+                    height={32}
+                    className="rounded-full border-2 border-white shadow-md hover:shadow-none transition-all"
+                  />
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </Card>
       {context?.user && (
@@ -81,6 +81,11 @@ export function Header({ neynarUser }: HeaderProps) {
                     {neynarUser && (
                       <Typography variant="small" className="!text-white block opacity-70">
                         Neynar Score: {neynarUser.score}
+                      </Typography>
+                    )}
+                    {neynarAuthUser && (
+                      <Typography variant="small" className="!text-white block opacity-70">
+                        Neynar Auth: ✓ {neynarAuthUser.display_name}
                       </Typography>
                     )}
                   </div>
