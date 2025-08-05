@@ -171,7 +171,10 @@ export async function POST(request: Request) {
 
     let txHash;
     try {
-      txHash = await contractService.executeNextStop(nftRecipient as Address, fullTokenURI);
+      console.log(
+        `[internal/mint-token] Executing contract: NFT to ${nftRecipient}, ChooChoo to ${newHolderAddress}`
+      );
+      txHash = await contractService.executeNextStop(newHolderAddress as Address, fullTokenURI);
       console.log(`[internal/mint-token] Transaction executed: ${txHash}`);
     } catch (err) {
       console.error('[internal/mint-token] Failed to execute contract transaction:', err);
