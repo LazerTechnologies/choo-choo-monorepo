@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNeynarContext } from '@neynar/react';
+import { useMiniApp } from '@neynar/react';
 
 interface CurrentHolder {
   fid: number;
@@ -14,6 +15,7 @@ interface CurrentHolder {
 
 export function useCurrentHolder() {
   const { user } = useNeynarContext();
+  const { context } = useMiniApp();
   const [currentHolder, setCurrentHolder] = useState<CurrentHolder | null>(null);
   const [isCurrentHolder, setIsCurrentHolder] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -34,8 +36,9 @@ export function useCurrentHolder() {
         setCurrentHolder(data.currentHolder);
 
         // Check if the current user is the holder
-        if (user?.fid && data.currentHolder?.fid) {
-          setIsCurrentHolder(user.fid === data.currentHolder.fid);
+        const currentUserFid = user?.fid || context?.user?.fid;
+        if (currentUserFid && data.currentHolder?.fid) {
+          setIsCurrentHolder(currentUserFid === data.currentHolder.fid);
         } else {
           setIsCurrentHolder(false);
         }
@@ -49,7 +52,7 @@ export function useCurrentHolder() {
     };
 
     fetchCurrentHolder();
-  }, [user?.fid]);
+  }, [user, context?.user]);
 
   return {
     currentHolder,

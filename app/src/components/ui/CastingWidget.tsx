@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useNeynarContext } from '@neynar/react';
+import { useMiniApp } from '@neynar/react';
 import { useCurrentHolder } from '@/hooks/useCurrentHolder';
 import { useToast } from '@/hooks/useToast';
 import axios, { AxiosError } from 'axios';
@@ -21,12 +22,20 @@ interface CastingWidgetProps {
 
 export function CastingWidget({ onCastSent }: CastingWidgetProps) {
   const { user } = useNeynarContext();
+  const { context } = useMiniApp();
   const { isCurrentHolder, loading } = useCurrentHolder();
   const { toast } = useToast();
   const [isPublishing, setIsPublishing] = useState(false);
 
+  // Check if user has the ability to cast (needs Neynar auth signer)
+  const canCast = !!user?.signer_uuid;
+  const currentUserFid = user?.fid || context?.user?.fid;
+
   const handlePublishCast = async () => {
-    if (!user?.signer_uuid) return;
+    if (!user?.signer_uuid) {
+      alert('Please sign in with Neynar to publish casts');
+      return;
+    }
 
     setIsPublishing(true);
     try {
@@ -64,8 +73,8 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
     }
   };
 
-  // Only show cast widget for the current holder
-  if (!user || loading || !isCurrentHolder) {
+  // Only show cast widget for the current holder who has casting ability
+  if (!currentUserFid || loading || !isCurrentHolder) {
     return null;
   }
 
@@ -73,9 +82,9 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
     <Card className="p-4 !bg-purple-500 !border-white" style={{ backgroundColor: '#a855f7' }}>
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          {user.pfp_url && (
+          {(user?.pfp_url || context?.user?.pfpUrl) && (
             <Image
-              src={user.pfp_url}
+              src={user?.pfp_url || context?.user?.pfpUrl || ''}
               width={40}
               height={40}
               alt="User Profile Picture"
@@ -84,10 +93,10 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
           )}
           <div>
             <Typography variant="body" className="font-semibold !text-white">
-              {user.display_name}
+              {user?.display_name || context?.user?.displayName || 'Current Holder'}
             </Typography>
             <Typography variant="small" className="!text-white">
-              @{user.username}
+              @{user?.username || context?.user?.username || 'unknown'}
             </Typography>
           </div>
         </div>
@@ -105,7 +114,11 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
             className="!text-white hover:!text-white !bg-purple-500 !border-2 !border-white px-8 py-2"
             style={{ backgroundColor: '#a855f7' }}
           >
-            {isPublishing ? 'Sending Cast...' : 'Send Cast'}
+            {isPublishing
+              ? 'Sending Cast...'
+              : canCast
+                ? 'Send Cast'
+                : 'Send Cast (Sign in Required)'}
           </Button>
         </div>
       </div>
