@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Image from 'next/image';
 import { Card } from '@/components/base/Card';
 import { Button } from '@/components/base/Button';
 import { Input } from '@/components/base/Input';
 import { Typography } from '@/components/base/Typography';
+import { Switch } from '@/components/base/Switch';
 import { UsernameInput } from '@/components/ui/UsernameInput';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
-import { useChooChoo } from '@/hooks/useChooChoo';
 import type { PinataUploadResult } from '@/types/nft';
 
 interface AdminPageProps {
@@ -159,16 +159,41 @@ function SetInitialHolder({
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [holderStatus, setHolderStatus] = useState<{
+    hasCurrentHolder: boolean;
+    canSetInitialHolder: boolean;
+  } | null>(null);
+  const [isLoadingStatus, setIsLoadingStatus] = useState(true);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
-  const { useTotalSupply } = useChooChoo();
-  const { data: totalSupply, isLoading: isLoadingSupply, error: supplyError } = useTotalSupply();
+  useEffect(() => {
+    async function checkHolderStatus() {
+      try {
+        setIsLoadingStatus(true);
+        setStatusError(null);
+        const response = await fetch('/api/admin-check-holder-status');
+        if (!response.ok) {
+          throw new Error('Failed to check holder status');
+        }
+        const data = await response.json();
+        setHolderStatus(data);
+      } catch (err) {
+        console.error('Error checking holder status:', err);
+        setStatusError('Failed to check status');
+      } finally {
+        setIsLoadingStatus(false);
+      }
+    }
 
-  const isDisabled = totalSupply !== undefined && Number(totalSupply) > 1;
-  const hasJourneyTickets = totalSupply !== undefined && Number(totalSupply) > 1;
+    checkHolderStatus();
+  }, []);
+
+  const isDisabled = holderStatus ? !holderStatus.canSetInitialHolder : false;
+  const hasCurrentHolder = holderStatus ? holderStatus.hasCurrentHolder : false;
 
   const handleSetInitialHolder = useCallback(async () => {
     if (isDisabled) {
-      setError('Cannot set initial holder: Journey tickets have already been minted');
+      setError('Cannot set initial holder: A current holder already exists');
       return;
     }
 
@@ -202,6 +227,11 @@ function SetInitialHolder({
       if (res.ok && data.success) {
         setResult(data.holder);
         onTokenMinted?.(); // Trigger refresh of current holder display
+        const statusResponse = await fetch('/api/admin-check-holder-status');
+        if (statusResponse.ok) {
+          const statusData = await statusResponse.json();
+          setHolderStatus(statusData);
+        }
       } else {
         setError(data.error || 'Failed to set initial holder');
       }
@@ -221,10 +251,10 @@ function SetInitialHolder({
           Set the initial current holder in Redis for fresh mainnet deployment. This populates the
           current-holder key so the app knows who is holding tokenId: 0 and the rest of the flow
           works properly.
-          {hasJourneyTickets && (
+          {hasCurrentHolder && (
             <div className="mt-2 text-sm font-semibold text-red-600 dark:text-red-400">
-              ⚠️ DISABLED: {Number(totalSupply) - 1} journey ticket(s) have been minted. This
-              function is only for fresh deployments.
+              ⚠️ DISABLED: A current holder already exists. This function is only for fresh
+              deployments.
             </div>
           )}
         </Card.Description>
@@ -236,7 +266,7 @@ function SetInitialHolder({
               label="Select Initial Holder"
               placeholder="Search for a user by username..."
               onUserSelect={setSelectedUser}
-              disabled={isDisabled || isLoadingSupply}
+              disabled={isDisabled || isLoadingStatus}
               helperText="Enter the user who should be the initial current holder."
               className="w-full"
             />
@@ -260,8 +290,8 @@ function SetInitialHolder({
 
           <Button
             onClick={handleSetInitialHolder}
-            disabled={loading || !selectedUser || isDisabled || isLoadingSupply}
-            isLoading={loading || isLoadingSupply}
+            disabled={loading || !selectedUser || isDisabled || isLoadingStatus}
+            isLoading={loading || isLoadingStatus}
             className={`w-full text-white border-white ${
               isDisabled ? 'bg-gray-500 cursor-not-allowed' : 'bg-purple-800 hover:bg-purple-900'
             }`}
@@ -273,15 +303,15 @@ function SetInitialHolder({
           </Button>
         </div>
 
-        {(error || supplyError) && (
+        {(error || statusError) && (
           <div className="text-xs text-red-500 mt-3 p-2 bg-red-50 dark:bg-red-900/20 rounded">
-            {error || 'Failed to check contract state'}
+            {error || statusError}
           </div>
         )}
 
-        {isLoadingSupply && !hasJourneyTickets && (
+        {isLoadingStatus && (
           <div className="text-xs text-blue-600 mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
-            Checking...
+            Checking status...
           </div>
         )}
 
@@ -648,6 +678,131 @@ function TestAdminNextStop({
   );
 }
 
+function AppPauseToggle({ adminFid }: { adminFid?: number }) {
+  const [isPaused, setIsPaused] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [isLoadingStatus, setIsLoadingStatus] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch current pause state on mount
+  useEffect(() => {
+    async function fetchPauseState() {
+      try {
+        setIsLoadingStatus(true);
+        setError(null);
+        const response = await fetch('/api/admin-app-pause');
+        if (!response.ok) {
+          throw new Error('Failed to fetch pause state');
+        }
+        const data = await response.json();
+        setIsPaused(data.isPaused);
+      } catch (err) {
+        console.error('Error fetching pause state:', err);
+        setError('Failed to load pause state');
+      } finally {
+        setIsLoadingStatus(false);
+      }
+    }
+
+    fetchPauseState();
+  }, []);
+
+  const handleTogglePause = useCallback(
+    async (checked: boolean) => {
+      if (!adminFid) {
+        setError('You must be signed in to use admin functions');
+        return;
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await fetch('/api/admin-app-pause', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            isPaused: checked,
+            adminFid: adminFid,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          setIsPaused(checked);
+        } else {
+          setError(data.error || 'Failed to update pause state');
+          // Revert the switch if the API call failed
+          // (the switch will update based on the server state)
+        }
+      } catch (err) {
+        console.error('Error updating pause state:', err);
+        setError('Failed to update pause state');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [adminFid]
+  );
+
+  return (
+    <Card className="my-8 !bg-red-100 !border-red-300 dark:!bg-red-900/20 dark:!border-red-700">
+      <Card.Header>
+        <Card.Title className="text-red-800 dark:text-red-300">⚠️ App Maintenance Mode</Card.Title>
+        <Card.Description className="text-red-700 dark:text-red-400">
+          Toggle this to pause the app for maintenance. When enabled, users will see a maintenance
+          page instead of the normal app.
+        </Card.Description>
+      </Card.Header>
+      <Card.Content>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-red-800 dark:text-red-300">
+                {isPaused ? 'App is PAUSED' : 'App is ACTIVE'}
+              </label>
+              <div className="text-xs text-red-600 dark:text-red-400">
+                {isPaused ? 'Users will see the maintenance page' : 'App is running normally'}
+              </div>
+            </div>
+            <Switch
+              checked={isPaused}
+              onCheckedChange={handleTogglePause}
+              disabled={loading || isLoadingStatus || !adminFid}
+              className="data-[state=checked]:bg-red-600 data-[state=unchecked]:bg-green-500"
+            />
+          </div>
+
+          {isLoadingStatus && (
+            <div className="text-xs text-red-600 p-2 bg-red-50 dark:bg-red-900/20 rounded">
+              Loading pause state...
+            </div>
+          )}
+
+          {loading && (
+            <div className="text-xs text-red-600 p-2 bg-red-50 dark:bg-red-900/20 rounded">
+              Updating...
+            </div>
+          )}
+
+          {error && (
+            <div className="text-xs text-red-700 p-2 bg-red-50 dark:bg-red-900/30 rounded border border-red-200 dark:border-red-800">
+              {error}
+            </div>
+          )}
+
+          {isPaused && (
+            <div className="text-xs text-red-800 dark:text-red-200 p-2 bg-red-200 dark:bg-red-900/40 rounded font-medium">
+              🚨 The app is currently in maintenance mode!
+            </div>
+          )}
+        </div>
+      </Card.Content>
+    </Card>
+  );
+}
+
 export function AdminPage({ onTokenMinted }: AdminPageProps) {
   const { isAdmin, currentUserFid } = useAdminAccess();
 
@@ -675,6 +830,9 @@ export function AdminPage({ onTokenMinted }: AdminPageProps) {
       <TestPinata />
       <SetTicketMetadata adminFid={currentUserFid} />
       <TestAdminNextStop onTokenMinted={onTokenMinted} adminFid={currentUserFid} />
+
+      {/* App Pause Toggle - at the bottom with warning styling */}
+      <AppPauseToggle adminFid={currentUserFid} />
     </div>
   );
 }

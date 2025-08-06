@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { isAddress } from 'viem';
 import { getContractService } from '@/lib/services/contract';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
-import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
+import { CHOOCHOO_CAST_TEMPLATES, ADMIN_FIDS } from '@/lib/constants';
 import { redis } from '@/lib/kv';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
@@ -137,8 +137,7 @@ export async function POST(request: Request) {
     const { targetFid, adminFid } = body;
 
     // 2. Admin check - only allow specific admin FIDs
-    const adminFids = [377557, 2802, 243300];
-    if (!adminFids.includes(adminFid)) {
+    if (!ADMIN_FIDS.includes(adminFid)) {
       console.error(`[admin-send-train] 🔒 Forbidden: FID ${adminFid} is not an admin`);
       return NextResponse.json({ error: '🔒 Forbidden - Admin access required' }, { status: 403 });
     }

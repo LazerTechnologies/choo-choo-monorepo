@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { isAddress } from 'viem';
 import { redis } from '@/lib/kv';
 import { getContractService } from '@/lib/services/contract';
+import { ADMIN_FIDS } from '@/lib/constants';
+
 import type { CurrentHolderData } from '@/types/nft';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
 import { CHOOCHOO_CAST_TEMPLATES, CHOOCHOO_TRAIN_METADATA_URI } from '@/lib/constants';
@@ -11,7 +13,6 @@ const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
 // Admin FIDs (same as in useAdminAccess hook)
-const ADMIN_FIDS = [377557, 2802, 243300];
 
 // Validation schema
 const setInitialHolderBodySchema = z.object({
@@ -134,76 +135,30 @@ export async function POST(request: Request) {
       `[admin-set-initial-holder] Admin ${adminFid} attempting to set initial holder to FID ${targetFid}`
     );
 
-    let totalTickets = 0;
-    let journeyLength = 1;
-    let contractCheckSucceeded = false;
-    let redisCheckSucceeded = false;
-
-    try {
-      const contractService = getContractService();
-      totalTickets = await contractService.getTotalTickets();
-      journeyLength = await contractService.getTrainJourneyLength();
-
-      contractCheckSucceeded = true;
-      console.log(
-        `[admin-set-initial-holder] Contract check succeeded. Tickets: ${totalTickets}, Journey length: ${journeyLength}`
-      );
-    } catch (contractError) {
-      console.log('[admin-set-initial-holder] Contract check failed, trying Redis fallback');
-      console.error('[admin-set-initial-holder] Contract error details:', contractError);
-
-      try {
-        const token1Data = await redis.get('token1');
-        redisCheckSucceeded = true;
-        if (token1Data) {
-          console.log('[admin-set-initial-holder] Redis check: Found token1, journey has started');
-          return NextResponse.json(
-            {
-              error:
-                'Cannot set initial holder: Journey tickets have already been minted. This function is only for fresh deployments.',
-            },
-            { status: 400 }
-          );
-        }
-        console.log('[admin-set-initial-holder] Redis check: No token1 found, proceeding');
-      } catch (redisError) {
-        console.error('[admin-set-initial-holder] Redis check failed:', redisError);
-
-        // If both contract and Redis fail, return error
-        if (!contractCheckSucceeded && !redisCheckSucceeded) {
-          console.error(
-            '[admin-set-initial-holder] CRITICAL: Both contract and Redis checks failed'
-          );
-          return NextResponse.json(
-            { error: 'Failed to determine journey status. Please try again later.' },
-            { status: 500 }
-          );
-        }
-      }
-    }
-
-    if (contractCheckSucceeded && (totalTickets > 0 || journeyLength > 1)) {
-      return NextResponse.json(
-        {
-          error: `Cannot set initial holder: ${totalTickets} ticket(s) have been minted and train has made ${journeyLength} stop(s). This function is only for fresh deployments.`,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Check if there's already a current holder
+    // Check Redis to see if current holder exists
     try {
       const existingHolderData = await redis.get('current-holder');
+
       if (existingHolderData) {
         const existingHolder = JSON.parse(existingHolderData);
         console.log(
-          `[admin-set-initial-holder] Warning: Overwriting existing current holder: ${existingHolder.username} (FID: ${existingHolder.fid})`
+          `[admin-set-initial-holder] Current holder already exists: ${existingHolder.username} (FID: ${existingHolder.fid})`
+        );
+        return NextResponse.json(
+          {
+            error:
+              'Cannot set initial holder: A current holder already exists. This function is only for fresh deployments.',
+          },
+          { status: 400 }
         );
       }
-    } catch (error) {
-      console.error('[admin-set-initial-holder] Error checking existing current holder:', error);
-      console.log(
-        '[admin-set-initial-holder] No existing current holder found, proceeding with initial setup'
+
+      console.log('[admin-set-initial-holder] Redis check: No current holder found, proceeding');
+    } catch (redisError) {
+      console.error('[admin-set-initial-holder] Redis check failed:', redisError);
+      return NextResponse.json(
+        { error: 'Failed to check holder status. Please try again later.' },
+        { status: 500 }
       );
     }
 

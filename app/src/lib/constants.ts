@@ -13,6 +13,11 @@ export const APP_WEBHOOK_URL =
     ? `https://api.neynar.com/f/app/${process.env.NEYNAR_CLIENT_ID}/event`
     : `${APP_URL}/api/webhook`;
 export const USE_WALLET = process.env.NEXT_PUBLIC_USE_WALLET === 'true';
+
+// Admin FIDs for administrative functions
+export const ADMIN_FIDS = process.env.ADMIN_FIDS
+  ? process.env.ADMIN_FIDS.split(',').map((fid) => parseInt(fid.trim(), 10))
+  : [377557, 2802, 243300];
 export const CHOOCHOO_TRAIN_ADDRESS = (() => {
   const address = process.env.NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS;
   if (!address) {
@@ -22,8 +27,7 @@ export const CHOOCHOO_TRAIN_ADDRESS = (() => {
 })();
 
 // ChooChoo Train Metadata
-export const CHOOCHOO_TRAIN_METADATA_URI =
-  'ipfs://bafybeib7jkoiz4syrc7oxksatd2lytef5h2beomkbp6qxm6eqkdei6f65q';
+export const CHOOCHOO_TRAIN_METADATA_URI = process.env.NEXT_PUBLIC_CHOOCHOO_TRAIN_METADATA_URI;
 
 // ChooChoo Cast Templates
 export const CHOOCHOO_CAST_TEMPLATES = {
@@ -72,4 +76,18 @@ export const CHOOCHOO_CAST_TEMPLATES = {
     `@${username} is our first passenger and the journey across Base has officially started! ` +
     `Watch for their announcement cast to see how you can be next.\n\n` +
     `Learn more in the ChooChoo mini-app! 🔵`,
+
+  // [@choochoo] Cast sent when app enters maintenance mode
+  MAINTENANCE_STARTED: () =>
+    `🚧 ChooChoo has stopped back at the station for maintenance.\n\n` +
+    `We're making some quick improvements to keep the journey smooth. ` +
+    `Stay tuned for updates when ChooChoo is back on the move! 🚂\n\n` +
+    `Thanks for your patience!`,
+
+  // [@choochoo] Cast sent when maintenance ends
+  MAINTENANCE_ENDED: () =>
+    `🚂 All aboard! ChooChoo is back on the rails! 🎉\n\n` +
+    `Maintenance is complete and we're ready to continue the journey across Base! ` +
+    `Thank you for your patience.\n\n` +
+    `The adventure continues! 🔵`,
 } as const;

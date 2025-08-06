@@ -11,6 +11,7 @@ import { HomePage } from '@/components/pages/HomePage';
 import { AdminPage } from '@/components/pages/AdminPage';
 import { FAQPage } from '@/components/pages/FAQPage';
 import { YoinkPage } from '@/components/pages/YoinkPage';
+import { PausedPage } from '@/components/pages/PausedPage';
 import { USE_WALLET } from '@/lib/constants';
 import type { Tab, NeynarUser } from '@/types/app';
 
@@ -24,6 +25,8 @@ export default function Home({ title = 'Choo Choo on Base' }: HomeProps) {
 
   const [neynarUser, setNeynarUser] = useState<NeynarUser | null>(null);
   const [timelineRefreshTrigger, setTimelineRefreshTrigger] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isLoadingPauseState, setIsLoadingPauseState] = useState(true);
 
   useEffect(() => {
     if (isSDKLoaded) {
@@ -49,12 +52,54 @@ export default function Home({ title = 'Choo Choo on Base' }: HomeProps) {
     fetchNeynarUserObject();
   }, [context?.user?.fid]);
 
+  // Check if app is paused on page load
+  useEffect(() => {
+    const fetchPauseState = async () => {
+      try {
+        setIsLoadingPauseState(true);
+        const response = await fetch('/api/admin-app-pause');
+        if (response.ok) {
+          const data = await response.json();
+          setIsPaused(data.isPaused);
+        }
+      } catch (error) {
+        console.error('Failed to fetch pause state:', error);
+        // Default to not paused on error
+        setIsPaused(false);
+      } finally {
+        setIsLoadingPauseState(false);
+      }
+    };
+
+    fetchPauseState();
+  }, []);
+
   const handleTokenMinted = () => {
     setTimelineRefreshTrigger((prev) => prev + 1);
   };
 
-  if (!isSDKLoaded) {
+  if (!isSDKLoaded || isLoadingPauseState) {
     return <div>Loading...</div>;
+  }
+
+  // If app is paused, show maintenance page
+  if (isPaused) {
+    return (
+      <div
+        className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-purple-900"
+        style={{
+          paddingTop: context?.client.safeAreaInsets?.top ?? 0,
+          paddingBottom: context?.client.safeAreaInsets?.bottom ?? 0,
+          paddingLeft: context?.client.safeAreaInsets?.left ?? 0,
+          paddingRight: context?.client.safeAreaInsets?.right ?? 0,
+        }}
+      >
+        <Header neynarUser={neynarUser} />
+        <div className="mx-auto py-2 px-4 pt-16 pb-24">
+          <PausedPage />
+        </div>
+      </div>
+    );
   }
 
   return (

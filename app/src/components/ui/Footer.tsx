@@ -6,6 +6,7 @@ import { Card } from '@/components/base/Card';
 import { useYoinkCountdown } from '@/hooks/useYoinkCountdown';
 import { useNeynarContext } from '@neynar/react';
 import { useMiniApp } from '@neynar/react';
+import { ADMIN_FIDS } from '@/lib/constants';
 
 interface FooterProps {
   activeTab: Tab;
@@ -20,9 +21,8 @@ export const Footer: React.FC<FooterProps> = ({ activeTab, setActiveTab }) => {
   const { context } = useMiniApp();
 
   // Admin FIDs - only these users can see the admin button
-  const adminFids = [377557, 2802, 243300];
   const currentUserFid = neynarAuthUser?.fid || context?.user?.fid;
-  const isAdmin = currentUserFid ? adminFids.includes(currentUserFid) : false;
+  const isAdmin = currentUserFid ? ADMIN_FIDS.includes(currentUserFid) : false;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 mx-4 mb-4 z-50">
