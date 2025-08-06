@@ -134,7 +134,7 @@ export const uploadMetadataToPinata = async (
 
     const response = await pinata.pinJSONToIPFS(metadata, {
       pinataMetadata: {
-        name: `${collectionName} Metadata #${tokenId}`,
+        name: `${collectionName}-${tokenId}-metadata`,
       },
     });
     return response.IpfsHash;

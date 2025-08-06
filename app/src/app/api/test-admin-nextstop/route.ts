@@ -57,10 +57,16 @@ export async function POST(request: Request) {
     let actualTokenId;
     try {
       const updatedTotalSupply = await contractService.getTotalSupply();
-      actualTokenId = updatedTotalSupply; // The latest minted token ID
+      actualTokenId = tokenId;
       console.log(
-        `[test-admin-nextstop] Actual minted token ID: ${actualTokenId} (was predicted as ${tokenId})`
+        `[test-admin-nextstop] Actual minted token ID: ${actualTokenId} (total supply now: ${updatedTotalSupply})`
       );
+
+      if (updatedTotalSupply !== tokenId) {
+        console.warn(
+          `[test-admin-nextstop] Warning: Total supply (${updatedTotalSupply}) doesn't match expected token ID (${tokenId})`
+        );
+      }
     } catch (err) {
       console.error(
         '[test-admin-nextstop] Failed to get updated total supply, using predicted token ID:',

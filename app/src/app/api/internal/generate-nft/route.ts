@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     let imageHash;
     try {
       // Sanitize filename for Pinata (replace # with -)
-      const sanitizedFilename = `${collectionName}-${tokenId}.png`;
+      const sanitizedFilename = `${collectionName}-${tokenId}-img.png`;
       imageHash = await uploadImageToPinata(imageBuffer, sanitizedFilename);
       console.log('[internal/generate-nft] Successfully uploaded image to Pinata:', imageHash);
     } catch (err) {

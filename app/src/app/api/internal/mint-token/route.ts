@@ -190,10 +190,19 @@ export async function POST(request: Request) {
     let actualTokenId;
     try {
       const updatedTotalSupply = await contractService.getTotalSupply();
-      actualTokenId = updatedTotalSupply;
+      // The actual token ID is the predicted tokenId (totalSupply + 1 before minting)
+      // updatedTotalSupply should equal tokenId after successful minting
+      actualTokenId = tokenId;
       console.log(
-        `[internal/mint-token] Actual minted token ID: ${actualTokenId} (was predicted as ${tokenId})`
+        `[internal/mint-token] Actual minted token ID: ${actualTokenId} (total supply now: ${updatedTotalSupply})`
       );
+
+      // Verify the mint was successful by checking total supply increased
+      if (updatedTotalSupply !== tokenId) {
+        console.warn(
+          `[internal/mint-token] Warning: Total supply (${updatedTotalSupply}) doesn't match expected token ID (${tokenId})`
+        );
+      }
     } catch (err) {
       console.error(
         '[internal/mint-token] Failed to get updated total supply, using predicted token ID:',
