@@ -4,16 +4,49 @@ import { Button } from '@/components/base/Button';
 import { Card } from '@/components/base/Card';
 import { Typography } from '@/components/base/Typography';
 import { useYoinkCountdown } from '@/hooks/useYoinkCountdown';
+import { useYoinkFlow } from '@/hooks/useYoinkFlow';
+import { useCurrentUserAddress } from '@/hooks/useCurrentUserAddress';
+import { useSession } from 'next-auth/react';
+import { useEffect } from 'react';
 
 export function YoinkPage() {
+  const { data: session } = useSession();
   const countdownState = useYoinkCountdown();
+  const { address, isLoading: addressLoading, error: addressError } = useCurrentUserAddress();
+  const { yoinkTrain, isLoading, isSuccess, isError, error, reset, loadingText } = useYoinkFlow();
 
-  const handleYoink = () => {
-    // @todo: implement `api/yoink` which should update all of the redis data just like the `api/send-train` route, but it goes to the caller's wallet and call the ChooChooTrain.yoink() function on the contract via the admin wallet, sending the ticket NFT to the person it was yoinked from
-    // @todo: update the ChooChooTrain.yoink() function to only be callable by people who haven't held the train before, and use a global 48 hour cooldown
-    // @todo: similar to how the CurrentHolderItem triggers a toast when the current holder changes, add one that says "{username} is yoinking ChooChoo!" at the start of the process, then another toast once the current holder changes (should trigger automatically).
-    console.log('Yoink initiated!');
+  // Handle success and error states
+  useEffect(() => {
+    if (isSuccess) {
+      console.log('🚩 You yoinker! You&apos;re now on ChooChoo!');
+      reset();
+    }
+  }, [isSuccess, reset]);
+
+  useEffect(() => {
+    if (isError && error) {
+      console.error('Yoink failed:', error);
+      reset();
+    }
+  }, [isError, error, reset]);
+
+  const handleYoink = async () => {
+    if (!address) {
+      console.error(
+        'No verified Ethereum address found. Please verify an address in your Farcaster profile.'
+      );
+      return;
+    }
+
+    try {
+      console.log(`User FID ${session?.user?.fid || 'unknown'} is yoinking ChooChoo! 🚂💨`);
+      await yoinkTrain(address);
+    } catch (err) {
+      console.error('Yoink failed:', err);
+    }
   };
+
+  const canYoink = countdownState.isAvailable && !addressLoading && address && !isLoading;
 
   return (
     <div className="space-y-3 px-6 w-full max-w-md mx-auto">
@@ -30,15 +63,31 @@ export function YoinkPage() {
           </Card.Description>
         </Card.Header>
         <Card.Content>
-          {/* Countdown Display */}
+          {/* Status Display */}
           <div className="bg-purple-700 border border-white rounded-lg p-4 text-center mb-4">
-            {countdownState.isLoading ? (
+            {isLoading ? (
+              <Typography variant="body" className="!text-white font-comic">
+                {loadingText}
+              </Typography>
+            ) : countdownState.isLoading ? (
               <Typography variant="body" className="!text-white font-comic">
                 Loading countdown...
               </Typography>
             ) : countdownState.error ? (
               <Typography variant="body" className="!text-red-300 font-comic">
                 Error: {countdownState.error}
+              </Typography>
+            ) : addressLoading ? (
+              <Typography variant="body" className="!text-white font-comic">
+                Loading your address...
+              </Typography>
+            ) : addressError ? (
+              <Typography variant="body" className="!text-red-300 font-comic">
+                Address error: {addressError}
+              </Typography>
+            ) : !address ? (
+              <Typography variant="body" className="!text-yellow-300 font-comic">
+                ⚠️ No verified Ethereum address found
               </Typography>
             ) : (
               <Typography variant="body" className="!text-white font-comic">
@@ -54,27 +103,44 @@ export function YoinkPage() {
             <Typography variant="h5" className="!text-white font-comic">
               What is Yoinking?
             </Typography>
-            <Typography variant="small" className="!text-white font-comic">
-              • If ChooChoo is stuck with an inactive holder, anyone who hasn&apos;t ridden the
-              train before can hop aboard and become the next passenger
-            </Typography>
-            <Typography variant="small" className="!text-white font-comic">
-              • ChooChoo can be yoinked 48 hours after he last moved
-            </Typography>
-            <Typography variant="small" className="!text-blue-300 font-comic-bold">
-              • After yoinking, don&apos;t forget to send a cast from the home page to let everyone
-              know you&apos;re on board!
-            </Typography>
+            <div className="space-y-2">
+              <Typography variant="small" className="!text-white font-comic block">
+                • If ChooChoo is stuck with an inactive holder, anyone who hasn&apos;t ridden the
+                train before can hop aboard and become the next passenger
+              </Typography>
+              <Typography variant="small" className="!text-white font-comic block">
+                • ChooChoo can be yoinked 48 hours after he last moved
+              </Typography>
+              <Typography variant="small" className="!text-blue-300 font-comic-bold block">
+                • After yoinking, don&apos;t forget to send a cast from the home page to let
+                everyone know you&apos;re on board!
+              </Typography>
+            </div>
           </div>
+
+          {!address && !addressLoading && (
+            <div className="bg-yellow-100 border border-yellow-400 rounded-lg p-3 mb-4">
+              <Typography variant="small" className="!text-yellow-800 font-comic">
+                💡 To yoink ChooChoo, you need a verified Ethereum address in your Farcaster
+                profile. Go to Settings → Verified Addresses in the Farcaster app to add one.
+              </Typography>
+            </div>
+          )}
 
           <Button
             onClick={handleYoink}
-            disabled={!countdownState.isAvailable}
-            className="w-full mt-4 bg-purple-600 text-white border-white hover:bg-purple-700"
+            disabled={!canYoink}
+            className="w-full mt-4 bg-purple-600 text-white border-white hover:bg-purple-700 disabled:opacity-50"
             variant="default"
           >
             <Typography variant="body" className="!text-white font-comic">
-              {countdownState.isAvailable ? 'Yoink ChooChoo!' : 'Not Available Yet'}
+              {isLoading
+                ? 'Yoinking...'
+                : !address
+                  ? 'Need Verified Address'
+                  : canYoink
+                    ? 'Yoink ChooChoo!'
+                    : 'Not Available Yet'}
             </Typography>
           </Button>
         </Card.Content>

@@ -15,9 +15,7 @@ Choo-Choo on Base is an homage to The Worm. How many wallets can Choo Choo visit
 
 ChooChoo can visit new wallets using the `nextStop` function. When ChooChoo moves on to its next stop, the previous holder receives a "ticket" NFT as a souvenir.
 
-If the train gets stuck, previous passengers can "yoink" the train after a certain time:
-- After 2 days of no movement, the immediate previous passenger can yoink.
-- After 3 days, any previous passenger can yoink.
+If ChooChoo hasn't moved for 48 hours, a user can "yoink" ChooChoo to their address through the Farcaster mini-app.
 
 @author Jon Bray
 @warpcast https://warpcast.com/jonbray.eth
@@ -80,9 +78,7 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
     // ========== ERRORS ========== //
     /// @dev Caller is not the owner nor approved for the token.
     error NotOwnerNorApproved(address caller, uint256 tokenId);
-    /// @dev Address must have held the train before.
-    error NotPreviousPassenger(address caller);
-    /// @dev Only previous passengers can yoink.
+    /// @dev Only admins can yoink.
     error NotEligibleToYoink(string reason);
     /// @dev Cannot mint or transfer to the zero address or dead address.
     error TransferToInvalidAddress(address to);
@@ -96,12 +92,6 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
     address constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
     // ========== MODIFIERS ========== //
-    modifier onlyPreviousPassengers() {
-        if (!(balanceOf(msg.sender) > 0 && msg.sender != ownerOf(0))) {
-            revert NotPreviousPassenger(msg.sender);
-        }
-        _;
-    }
 
     modifier notInvalidAddress(address to) {
         if (to == address(0) || to == DEAD_ADDRESS) {
@@ -393,7 +383,7 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
         holder = ownerOf(0);
         totalStops = trainJourney.length;
         lastMoveTime = lastTransferTimestamp;
-        canBeYoinked = block.timestamp >= lastTransferTimestamp + 2 days;
+        canBeYoinked = block.timestamp >= lastTransferTimestamp + 48 hours;
         nextTicketId_ = nextTicketId;
     }
 
@@ -453,45 +443,32 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
 
     // ========== YOINK MECHANIC ========== //
     /**
-     * @notice Checks if a passenger is eligible to yoink the train.
-     * @param caller The address to check.
+     * @notice Checks if the train can be yoinked by an admin.
      * @return canYoink True if eligible, false otherwise.
      * @return reason The reason for eligibility or ineligibility.
      */
-    function isYoinkable(address caller) public view returns (bool canYoink, string memory reason) {
-        if (balanceOf(caller) == 0 || caller == ownerOf(0)) {
-            return (false, "Caller is not a previous passenger");
+    function isYoinkable() public view returns (bool canYoink, string memory reason) {
+        if (block.timestamp < lastTransferTimestamp + 48 hours) {
+            return (false, "48 hour cooldown not met");
         }
-        if (block.timestamp < lastTransferTimestamp + 2 days) {
-            return (false, "Yoink not available yet");
-        }
-        if (block.timestamp < lastTransferTimestamp + 3 days) {
-            if (caller == previousPassenger) {
-                return (true, "Last passenger can yoink");
-            } else {
-                return (false, "Only last passenger can yoink at this time");
-            }
-        } else {
-            if (hasBeenPassenger[caller]) {
-                return (true, "Any previous passenger can yoink");
-            } else {
-                return (false, "Caller never held the train");
-            }
-        }
+        return (true, "Train can be yoinked by admin");
     }
 
     /**
-     * @notice Allows a previous passenger to yoink (rescue) the train to a new address if it is stuck.
+     * @notice Allows an admin to yoink the train to a new address.
      * @param to The address to send the train to.
      */
-    function yoink(address to) external onlyPreviousPassengers notInvalidAddress(to) {
-        (bool canYoink, string memory reason) = isYoinkable(_msgSender());
+    function yoink(address to) external onlyAdmin notInvalidAddress(to) {
+        (bool canYoink, string memory reason) = isYoinkable();
         if (!canYoink) {
             revert NotEligibleToYoink(reason);
         }
         address from = ownerOf(0);
         if (to == from) {
             revert CannotSendToCurrentPassenger(to);
+        }
+        if (hasBeenPassenger[to]) {
+            revert AlreadyRodeTrain(to);
         }
         previousPassenger = from;
         lastTransferTimestamp = block.timestamp;

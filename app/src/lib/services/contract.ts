@@ -151,6 +151,123 @@ export class ContractService {
   }
 
   /**
+   * Check if the train can be yoinked (48-hour cooldown check)
+   */
+  async isYoinkable(): Promise<{ canYoink: boolean; reason: string }> {
+    const contract = this.createTypedContract();
+    const result = await contract.read.isYoinkable();
+    const [canYoink, reason] = result as [boolean, string];
+    return { canYoink, reason };
+  }
+
+  /**
+   * Execute the yoink function on the contract (admin-only)
+   * @todo: use coinbase paymaster to cover gas costs
+   */
+  async executeYoink(recipient: Address): Promise<`0x${string}`> {
+    if (!this.config.adminPrivateKey) {
+      throw new Error(
+        'Missing ADMIN_PRIVATE_KEY for contract execution. Admin role required for yoink operation.'
+      );
+    }
+
+    try {
+      const account = privateKeyToAccount(this.config.adminPrivateKey);
+      const walletClient = createWalletClient({
+        account,
+        chain: this.chain,
+        transport: http(this.config.rpcUrl),
+      });
+
+      const contract = getContract({
+        address: this.config.address,
+        abi: ChooChooTrainAbi,
+        client: walletClient,
+      });
+
+      const hash = await contract.write.yoink([recipient]);
+      return hash;
+    } catch (error) {
+      // Enhanced error handling for yoink-specific restrictions
+      if (error instanceof Error) {
+        if (
+          error.message.includes('AccessControlUnauthorizedAccount') ||
+          error.message.includes('Not an admin')
+        ) {
+          throw new Error(
+            'Admin role required: The current private key does not have ADMIN_ROLE permissions on the contract'
+          );
+        }
+        if (error.message.includes('AlreadyRodeTrain')) {
+          throw new Error(
+            `Recipient ${recipient} has already ridden the train and cannot receive it again`
+          );
+        }
+        if (error.message.includes('CannotSendToCurrentPassenger')) {
+          throw new Error(`Cannot yoink train to current holder ${recipient}`);
+        }
+        if (error.message.includes('NotEligibleToYoink')) {
+          throw new Error('48 hour cooldown not met - yoink not available yet');
+        }
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Set ticket metadata on the contract (admin-only)
+   */
+  async setTicketData(
+    tokenId: number,
+    tokenURI: string,
+    image: string,
+    traits: string
+  ): Promise<`0x${string}`> {
+    if (!this.config.adminPrivateKey) {
+      throw new Error(
+        'Missing ADMIN_PRIVATE_KEY for contract execution. Admin role required for setting ticket data.'
+      );
+    }
+
+    try {
+      const account = privateKeyToAccount(this.config.adminPrivateKey);
+      const walletClient = createWalletClient({
+        account,
+        chain: this.chain,
+        transport: http(this.config.rpcUrl),
+      });
+
+      const contract = getContract({
+        address: this.config.address,
+        abi: ChooChooTrainAbi,
+        client: walletClient,
+      });
+
+      const hash = await contract.write.setTicketData([BigInt(tokenId), tokenURI, image, traits]);
+      return hash;
+    } catch (error) {
+      // Enhanced error handling for setTicketData-specific restrictions
+      if (error instanceof Error) {
+        if (
+          error.message.includes('AccessControlUnauthorizedAccount') ||
+          error.message.includes('Not an admin')
+        ) {
+          throw new Error(
+            'Admin role required: The current private key does not have ADMIN_ROLE permissions on the contract'
+          );
+        }
+        if (error.message.includes('Cannot update train NFT')) {
+          throw new Error('Cannot update metadata for train NFT (token ID 0)');
+        }
+        if (error.message.includes('Token does not exist')) {
+          throw new Error(`Token ${tokenId} does not exist`);
+        }
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Execute the nextStopWithTicketData function on the contract
    * This is the new function that moves the train and sets ticket metadata in one transaction
    * @todo: use coinbase paymaster to cover gas costs

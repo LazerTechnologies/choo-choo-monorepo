@@ -178,6 +178,11 @@ contract ChooChooTrainTest is Test {
         assertEq(totalStops, 2);
         assertFalse(canBeYoinked); // just moved, so no yoink available yet
         assertEq(nextTicketId_, 2); // next ticket will be ID 2
+
+        // Test that after 48 hours, yoink becomes available
+        vm.warp(block.timestamp + 48 hours);
+        (,,, canBeYoinked,) = train.getTrainStatus();
+        assertTrue(canBeYoinked); // now yoink is available
     }
 
     function testHasRiddenTrain() public {
@@ -263,34 +268,32 @@ contract ChooChooTrainTest is Test {
         // Move train to passenger2
         vm.prank(owner); // only admin can move train
         train.nextStop(passenger2);
-        // Fast forward <2 days: no yoink
-        vm.warp(block.timestamp + 1 days);
-        vm.prank(passenger1);
-        (bool canYoink, string memory reason) = train.isYoinkable(passenger1);
+
+        // Fast forward < 48 hours: no yoink available
+        vm.warp(block.timestamp + 24 hours);
+        (bool canYoink, string memory reason) = train.isYoinkable();
         assertFalse(canYoink);
-        assertEq(reason, "Yoink not available yet");
-        // Fast forward to 2 days: only last passenger can yoink
-        vm.warp(block.timestamp + 1 days);
-        (canYoink, reason) = train.isYoinkable(passenger1);
+        assertEq(reason, "48 hour cooldown not met");
+
+        // Fast forward to 48 hours: yoink available
+        vm.warp(block.timestamp + 24 hours);
+        (canYoink, reason) = train.isYoinkable();
         assertTrue(canYoink);
-        assertEq(reason, "Last passenger can yoink");
-        // passenger1 yoinks
+        assertEq(reason, "Train can be yoinked by admin");
+
+        // Only admin can yoink
         vm.prank(passenger1);
+        vm.expectRevert(bytes("Not an admin"));
+        train.yoink(passenger3);
+
+        // Admin yoinks to passenger3
+        vm.prank(owner);
         train.yoink(passenger3);
         assertEq(train.ownerOf(0), passenger3);
         assertTrue(train.hasBeenPassenger(passenger3));
-        // Fast forward to 3 days: any previous passenger can yoink
-        // Note: We need an admin to move the train, so let's add passenger3 as admin temporarily
-        vm.prank(owner);
-        train.addAdmin(passenger3);
-        vm.prank(passenger3);
-        train.nextStop(passenger4);
-        assertTrue(train.hasBeenPassenger(passenger4));
 
-        vm.warp(block.timestamp + 3 days);
-        (canYoink, reason) = train.isYoinkable(passenger1);
-        assertTrue(canYoink);
-        assertEq(reason, "Any previous passenger can yoink");
+        // Check that previous holder got a ticket
+        assertEq(train.ownerOf(3), passenger2); // passenger2 gets ticket ID 3
     }
 
     function testYoinkRevertsIfNotEligible() public {
@@ -298,9 +301,16 @@ contract ChooChooTrainTest is Test {
         train.nextStop(passenger1);
         vm.prank(owner); // only admin can move train
         train.nextStop(passenger2);
-        // Not enough time passed
+
+        // Not enough time passed - admin should still get reverted
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSignature("NotEligibleToYoink(string)", "48 hour cooldown not met"));
+        train.yoink(passenger3);
+
+        // Non-admin should be reverted even after time passes
+        vm.warp(block.timestamp + 48 hours);
         vm.prank(passenger1);
-        vm.expectRevert();
+        vm.expectRevert(bytes("Not an admin"));
         train.yoink(passenger3);
     }
 
@@ -309,10 +319,49 @@ contract ChooChooTrainTest is Test {
         train.nextStop(passenger1);
         vm.prank(owner); // only admin can move train
         train.nextStop(passenger2);
-        vm.warp(block.timestamp + 2 days);
-        vm.prank(passenger1);
+        vm.warp(block.timestamp + 48 hours);
+        vm.prank(owner); // admin trying to yoink
         vm.expectRevert(abi.encodeWithSignature("CannotSendToCurrentPassenger(address)", passenger2));
         train.yoink(passenger2);
+    }
+
+    function testYoinkCannotSendToPreviousPassenger() public {
+        vm.prank(owner);
+        train.nextStop(passenger1);
+        vm.prank(owner); // only admin can move train
+        train.nextStop(passenger2);
+        vm.warp(block.timestamp + 48 hours);
+
+        // Admin cannot yoink to passenger1 who already rode the train
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSignature("AlreadyRodeTrain(address)", passenger1));
+        train.yoink(passenger1);
+
+        // Admin cannot yoink to owner who already rode the train
+        vm.prank(owner);
+        vm.expectRevert(abi.encodeWithSignature("AlreadyRodeTrain(address)", owner));
+        train.yoink(owner);
+    }
+
+    function testAddedAdminCanYoink() public {
+        // Add new admin
+        vm.prank(owner);
+        train.addAdmin(admin1);
+
+        // Move train to passenger1
+        vm.prank(owner);
+        train.nextStop(passenger1);
+
+        // Wait 48 hours
+        vm.warp(block.timestamp + 48 hours);
+
+        // Added admin can yoink
+        vm.prank(admin1);
+        train.yoink(passenger2);
+
+        assertEq(train.ownerOf(0), passenger2);
+        assertTrue(train.hasBeenPassenger(passenger2));
+        assertEq(train.ownerOf(2), passenger1); // passenger1 gets ticket ID 2
     }
 
     function testEventsEmitted() public {

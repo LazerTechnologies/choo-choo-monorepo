@@ -58,6 +58,43 @@ choo-choo-monorepo/
 
 ---
 
+## How ChooChoo Works
+
+### The Journey System
+
+ChooChoo is a unique NFT that travels between Farcaster users, creating a permanent record of its journey through ticket NFTs:
+
+- **ChooChoo Train NFT (tokenId: 0)**: The main asset that moves between users
+- **Journey Ticket NFTs (tokenId < 0)**: Minted to previous holders as proof of their ride
+- **Current Holder**: Has the train and can send it to the next person
+- **Previous Holders**: Received ticket NFTs and are part of ChooChoo's journey history
+
+### Normal Journey Flow
+
+1. **Current holder posts announcement**: User with ChooChoo posts a cast asking for the next passenger
+2. **Community engagement**: Other users react to the cast to get in line for the next ride
+3. **Winner selection**: Anyone can trigger the selection process after reactions accumulate
+4. **Automatic transfer**: System selects a random winner from reactions, mints a ticket NFT to the previous holder, and transfers ChooChoo to the winner
+5. **Social notification**: ChooChoo's official account posts a welcome message for the new holder
+
+> The current holder can also choose to manually send ChooChoo to a Farcaster user of their choice, leaving the door open to unique social interactions and routes on ChooChoo's journey across BASE 🔵
+
+### Yoink Feature (Emergency Recovery)
+
+If ChooChoo gets stuck with an inactive holder, the community can recover it:
+
+- **48-hour cooldown**: After 48 hours of no movement, anyone can "yoink" the train
+- **Previous passenger protection**: Train cannot be yoinked to someone who has already been a passenger
+- **Automatic processing**: Yoink follows the same flow as normal transfers (mints ticket, sends notifications)
+
+### Admin Features
+
+Designated admins can:
+
+- **Set initial holder**: Set the initial current holder in Redis for a fresh mainnet deployment.
+- **Direct send**: Send ChooChoo directly to any Farcaster user by FID, bypassing in-play mechanics while still preserving all of the mechanics for future stops.
+- **Metadata management**: Update token metadata for any NFT (train or tickets) using IPFS hashes
+
 ## System Architecture
 
 ```mermaid
@@ -73,9 +110,10 @@ flowchart LR
   %% Backend
   subgraph "Backend (Vercel Serverless)"
     Orchestrator["/api/send-train"]
+    YoinkAPI["/api/yoink"]
+    AdminAPI["/api/admin-send-train"]
     Generator["Generator Package"]
-    InternalRead["/api/internal/next-stop/read"]
-    InternalExecute["/api/internal/next-stop/execute"]
+    InternalAPI["Internal APIs"]
   end
 
   %% External Services
@@ -83,6 +121,7 @@ flowchart LR
     Neynar["Neynar API"]
     Pinata["IPFS"]
     Farcaster["Farcaster Client"]
+    Redis["Redis Cache"]
   end
 
   %% BASE Network
@@ -92,60 +131,76 @@ flowchart LR
   end
 
   %% Main flow connections
-  FE -->|initiate| Orchestrator
-  Orchestrator -->|determine winner| Neynar
-  Orchestrator -->|get next tokenId| InternalNextStop
-  Orchestrator -->|compose image| Generator
-  Generator -->|upload| Pinata
-  InternalNextStop -->|write| Contract
-  Orchestrator -->|create cast| Farcaster
+  FE -->|normal journey| Orchestrator
+  FE -->|emergency recovery| YoinkAPI
+  FE -->|admin actions| AdminAPI
+
+  Orchestrator -->|select winner| Neynar
+  YoinkAPI -->|verify eligibility| Contract
+  AdminAPI -->|direct transfer| Contract
+
+  Orchestrator -->|generate NFT| Generator
+  Generator -->|upload metadata| Pinata
+
+  InternalAPI -->|execute transactions| Contract
+  Orchestrator -->|cache state| Redis
+
+  Orchestrator -->|announcements| Farcaster
+  YoinkAPI -->|yoink notifications| Farcaster
 
   %% Gas sponsorship
-  Paymaster -.->|pay gas| Contract
+  Paymaster -.->|sponsor gas| Contract
 
   %% View-only flows
-  FE -.->|read| Contract
+  FE -.->|read state| Contract
+  FE -.->|journey data| Redis
 ```
 
-**Flow Description:**
+**Key API Endpoints:**
 
-- The user who currently holds ChooChoo clicks the "Send Train" button in the **frontend mini-app**.
-- The frontend calls the `/api/send-train` **backend API endpoint**.
-- The `/api/send-train` endpoint orchestrates the entire flow:
-  1.  Fetches replies and reactions from **Neynar** to determine the winning user.
-  2.  Calls the internal `/api/internal/next-stop/read` endpoint to get the current `totalSupply` for the next `tokenId`.
-  3.  Invokes the **`generator` package** to compose a unique NFT image from the art layers.
-  4.  The **`generator` package** uploads the new image and the final metadata to **IPFS/Pinata**.
-  5.  The orchestrator calls the internal `/api/internal/next-stop/execute` endpoint with the winner's address and the new `tokenURI`.
-  6.  The internal endpoint executes the transaction on the **ChooChooTrain Contract** to move the train and mint the ticket.
-  7.  (Optional) Posts an update cast to Farcaster via the **Farcaster Client/Signer**.
-
-@todo: add failure handling
+- `/api/send-train`: Orchestrates normal journey transfers from cast reactions
+- `/api/yoink`: Handles emergency recovery of stuck trains (admin-only)
+- `/api/admin-send-train`: Direct transfers by admin FID selection
+- `/api/admin-set-ticket-data`: Admin metadata updates for any token
+- `/api/current-holder`: Returns current train holder information
+- `/api/journey`: Returns complete journey timeline with ticket data
 
 ---
 
 ## Smart Contract Design
 
-### How does the `ChooChooTrain` contract work?
+### Core Mechanics
 
-There is only one main train NFT (`tokenId: 0`) which can be transferred to new wallets using the `nextStop` function. When ChooChoo moves on to its next stop, the previous holder receives a "ticket" NFT as a souvenir (`tokenId > 0`).
+The `ChooChooTrain` contract manages the unique journey system:
 
-Each ticket can have unique traits and image data, which are referenced by IPFS URLs/hashes and written off-chain.
+- **Single train NFT**: Only one train (tokenId: 0) exists and moves between holders
+- **Journey tickets**: Previous holders receive unique ticket NFTs with custom metadata
+- **Admin controls**: Designated admins can execute transfers and emergency recovery
+- **Time-based recovery**: Built-in yoink mechanism prevents permanent sticking
 
-> Tickets are standard ERC721 tokens and can be transferred.
+### Key Functions
 
-### What if Choo-Choo goes to a dead wallet?
+- `nextStop(address to)`: Admin function to move train and mint ticket to previous holder
+- `nextStopWithTicketData(address to, string memory tokenURI, string memory image, string memory traits)`: Combined transfer with metadata setting
+- `yoink(address to)`: Emergency recovery after 48-hour cooldown (admin-only)
+- `isYoinkable()`: Returns eligibility status and reason for yoink attempts
+- `setTicketData(uint256 tokenId, ...)`: Update metadata for ticket NFTs
+- `setMainTokenURI(string memory _mainTokenURI)`: Update train NFT metadata (owner-only)
 
-If the train gets stuck, previous passengers can "yoink" the train after a certain time:
+### Safety Features
 
-- After **2 days** of no movement, the immediate previous passenger can yoink.
-- After **3 days** any previous passenger can yoink.
+- **Previous passenger protection**: Cannot send train to someone who already has a ticket
+- **Admin whitelist**: Only designated addresses can execute transfers
+- **Time-based recovery**: Prevents permanent sticking with timed yoink eligibility
+- **Metadata flexibility**: Admins can update any token's metadata post-mint
 
 ---
 
-### Traits & Image Generation
+## NFT Metadata & Generation
 
-The app's `generator` package generates the full metadata for each ticket, including traits, image, and other fields, as a JSON object. This JSON is uploaded to IPFS, returning the CID, and the resulting IPFS URL is written to the contract as the ticket's metadata (`tokenURI`).
+### Automated Generation
+
+The `generator` package creates unique ticket metadata:
 
 ```json
 {
@@ -160,30 +215,96 @@ The app's `generator` package generates the full metadata for each ticket, inclu
 }
 ```
 
+### Metadata Storage
+
+The contract stores convenience data for each ticket:
+
+- `tokenURI`: Full IPFS URL to metadata JSON (standard ERC-721)
+- `image`: Direct IPFS URL to image (for quick access)
+- `traits`: IPFS URL to traits JSON (for filtering/search)
+
+### IPFS Integration
+
+- **Pinata**: Uploads images and metadata to IPFS
+- **Automatic prefixing**: System handles `ipfs://` URL formatting
+- **Admin updates**: Metadata can be updated post-mint for corrections
+
 ---
 
-### TicketData Struct & Convenience Setters
+## Authentication & Security
 
-The contract includes a `TicketData` struct for each ticket, which stores:
+### Farcaster Integration
 
-- `tokenURI`: IPFS URL to the metadata JSON (for NFT marketplaces)
-- `image`: IPFS URL to the image (optional, for convenience)
-- `traits`: IPFS URL to a traits JSON (optional, for convenience)
+- **NextAuth.js**: Handles Farcaster authentication via Neynar
+- **Session management**: User sessions tied to Farcaster FID
+- **Address verification**: Links Farcaster accounts to verified Ethereum addresses
 
-These convenience fields allow offchain apps to access the image or traits directly from the contract, without needing to fetch and parse the metadata JSON.
+### Admin Access Control
 
-### Trait Display
+- **FID whitelist**: Only specific Farcaster FIDs can access admin functions
+- **Smart contract admins**: Contract-level admin addresses for transaction execution
+- **Internal API protection**: Backend routes secured with internal secrets
 
-NFT marketplaces (OpenSea, Blur, etc.) call the `tokenURI(tokenId)` function (as outlined by [ERC-721](https://eips.ethereum.org/EIPS/eip-721)) for each token and receive the IPFS CID for the metadata JSON. The JSON is fetched and used to display the image, name, and traits (from the `attributes` array) in their UI.
+### Gas Sponsorship
 
-### Minting Tickets with Custom Metadata
+- **Paymaster integration**: Users don't pay gas for train movements
+- **Admin-funded**: Admin private key pays for all contract interactions
+- **Base network**: Optimized for low-cost transactions
 
-To mint a ticket with custom metadata, generate the full metadata JSON (including traits), upload it to IPFS, and call the relevant contract functions using the resulting IPFS CID.
+---
 
-> Unlike The Worm, the contract does **not** perform any on-chain encoding or JSON assembly—all metadata is prepared off-chain and referenced by IPFS CID.
+## Development & Deployment
 
-## Route Authentication
+### Local Development
 
-The `/api/send-train` route is the primary endpoint for orchestrating the train's movement. It can be called by any user to initiate the process.
+```bash
+# Install dependencies
+pnpm install
 
-The `/api/internal/next-stop/read` and `/api/internal/next-stop/execute` routes are protected, internal-only endpoints that handle direct interaction with the smart contract. They can only be called by other backend services that provide the correct `INTERNAL_SECRET`. This prevents unauthorized users from directly reading contract state or executing transactions to move the train.
+# Start development servers
+pnpm dev
+
+# Run tests
+pnpm test
+
+# Build for production
+pnpm build
+```
+
+### Contract Development
+
+```bash
+# Navigate to contracts
+cd contracts/
+
+# Run tests
+forge test
+
+# Deploy (with environment setup)
+forge script script/Deploy.s.sol --broadcast
+
+# Copy ABI to app
+cd .. && pnpm run copy-abi
+```
+
+### Environment Variables
+
+```bash
+# Core API Keys
+NEYNAR_API_KEY=your_neynar_api_key
+PINATA_JWT=your_pinata_jwt_token
+CHOOCHOO_SIGNER_UUID=your_choochoo_signer_uuid
+
+# Smart Contract
+NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS=0x...
+ADMIN_PRIVATE_KEY=0x...
+
+# Internal Security
+INTERNAL_SECRET=your_internal_secret
+NEXTAUTH_SECRET=your_nextauth_secret
+
+# Database
+REDIS_URL=your_redis_url
+```
+
+All aboard!

@@ -47,4 +47,11 @@ export const CHOOCHOO_CAST_TEMPLATES = {
     `I'm riding @choochoo! 🚂\n\n` +
     `React to this cast to have a chance at being the next passenger, or comment and I just might chose you directly.\n\n` +
     `All aboard!`,
+
+  // [@choochoo] Cast sent when someone yoinks the train
+  YOINK_ANNOUNCEMENT: (username: string) =>
+    `YOINK! @${username} has boarded ChooChoo! 🚂💨\n\n` +
+    `After 48 hours of being stuck, ChooChoo is back on the rails! ` +
+    `The journey continues on Base! 🔵\n\n` +
+    `All aboard for the next adventure! 🎫`,
 } as const;

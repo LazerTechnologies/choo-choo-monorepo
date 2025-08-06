@@ -442,13 +442,7 @@
   {
     "type": "function",
     "name": "isYoinkable",
-    "inputs": [
-      {
-        "name": "caller",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
+    "inputs": [],
     "outputs": [
       {
         "name": "canYoink",
@@ -1588,17 +1582,6 @@
         "name": "tokenId",
         "type": "uint256",
         "internalType": "uint256"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "NotPreviousPassenger",
-    "inputs": [
-      {
-        "name": "caller",
-        "type": "address",
-        "internalType": "address"
       }
     ]
   },

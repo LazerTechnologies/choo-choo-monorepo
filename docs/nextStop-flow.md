@@ -74,6 +74,33 @@ This document describes how ChooChoo moves between Farcaster users using a micro
 4. Calls same internal microservices as normal flow
 5. Sends admin-style welcome notification
 
+#### `/api/yoink` (POST)
+
+**Purpose**: Emergency recovery of stuck trains after 48-hour cooldown
+**Authentication**: Requires Farcaster authentication (admin FID validation)
+**Process**:
+
+1. Validates admin FID against whitelist
+2. Checks yoink eligibility (48-hour cooldown, not previous passenger)
+3. Fetches user data and validates Ethereum address
+4. Executes `yoink` contract function to transfer train
+5. Generates NFT metadata for previous holder's ticket
+6. Calls `/api/internal/set-ticket-data` to set ticket metadata
+7. Sends yoink announcement cast from ChooChoo account
+8. Updates Redis state
+
+#### `/api/admin-set-ticket-data` (POST)
+
+**Purpose**: Admin function to update token metadata for any NFT
+**Authentication**: Admin FID validation
+**Body**: `{ tokenId: number, metadataHash: string }`
+**Process**:
+
+1. Validates admin FID against whitelist
+2. Formats IPFS URL from metadata hash (adds `ipfs://` prefix if needed)
+3. Calls `/api/internal/set-ticket-data` to update contract metadata
+4. Returns formatted token URI for confirmation
+
 #### `/api/current-holder` (GET)
 
 **Purpose**: Returns current ChooChoo holder information
@@ -147,10 +174,22 @@ This document describes how ChooChoo moves between Farcaster users using a micro
 2. Posts cast to specified channel (default: "base")
 3. Returns cast hash and metadata
 
+#### `/api/internal/set-ticket-data` (POST)
+
+**Purpose**: Internal endpoint for setting token metadata on the contract
+**Authentication**: Internal secret header
+**Body**: `{ tokenId: number, tokenURI: string, image: string, traits: string }`
+**Process**:
+
+1. Validates input parameters
+2. Calls `contractService.setTicketData` to update on-chain metadata
+3. Returns transaction hash and confirmation
+
 ### Data Flow
 
 ```mermaid
 flowchart TD
+    %% Normal Journey Flow
     User[Current Holder] --> Cast[Posts Pre-written Cast via CastingWidget]
     Cast --> UserAccount[User's Farcaster Account]
     UserAccount --> Redis[(Redis: current-cast-hash)]
@@ -167,28 +206,50 @@ flowchart TD
     Generator --> Pinata[IPFS/Pinata Upload]
 
     SendTrain --> MintToken[/api/internal/mint-token]
-    MintToken --> Contract[Smart Contract: nextStop]
+    MintToken --> Contract[Smart Contract: nextStopWithTicketData]
     MintToken --> Redis3[(Redis: Token Data)]
     MintToken --> Redis4[(Redis: Update current-holder)]
 
     SendTrain --> SendNotification[/api/internal/send-cast]
     SendNotification --> ChooChooAccount[ChooChoo Farcaster Account]
 
+    %% Admin Direct Send Flow
     Admin[Admin User] --> AdminSendTrain[/api/admin-send-train]
     AdminSendTrain --> DirectNeynar[Neynar API: Get User by FID]
     AdminSendTrain --> GenerateNFT
     AdminSendTrain --> MintToken
     AdminSendTrain --> SendNotification
+
+    %% Yoink Emergency Recovery Flow
+    AdminUser[Admin User] --> YoinkAPI[/api/yoink]
+    YoinkAPI --> CheckEligibility[Contract: isYoinkable]
+    YoinkAPI --> YoinkUserData[Neynar API: Get User by FID]
+    YoinkAPI --> YoinkContract[Contract: yoink]
+    YoinkAPI --> YoinkGenerateNFT[/api/internal/generate-nft]
+    YoinkGenerateNFT --> YoinkGenerator[Generator Package]
+    YoinkGenerator --> YoinkPinata[IPFS/Pinata Upload]
+    YoinkAPI --> SetTicketData[/api/internal/set-ticket-data]
+    SetTicketData --> UpdateContract[Contract: setTicketData]
+    YoinkAPI --> YoinkRedis[(Redis: Update State)]
+    YoinkAPI --> YoinkNotification[/api/internal/send-cast]
+    YoinkNotification --> YoinkChooChooAccount[ChooChoo Farcaster Account]
+
+    %% Admin Metadata Management Flow
+    AdminMeta[Admin User] --> AdminSetData[/api/admin-set-ticket-data]
+    AdminSetData --> AdminSetInternal[/api/internal/set-ticket-data]
+    AdminSetInternal --> AdminContract[Contract: setTicketData]
 ```
 
 ### Key Features
 
 1. **Microservice Architecture**: Each step is isolated for better error handling and testing
 2. **Proper NFT Distribution**: Previous holders get NFTs, current holder gets ChooChoo itself
-3. **Real-time Updates**: Timeline and current holder components update automatically
-4. **Social Integration**: Automatic cast notifications keep the community engaged
-5. **Admin Override**: Admins can manually send ChooChoo for testing or special events
-6. **Error Resilience**: Non-critical failures (like cast sending) don't break the core flow
+3. **Emergency Recovery**: 48-hour yoink mechanism prevents permanent train sticking
+4. **Admin Controls**: Direct sends, emergency recovery, and metadata management
+5. **Real-time Updates**: Timeline and current holder components update automatically
+6. **Social Integration**: Automatic cast notifications keep the community engaged
+7. **Metadata Flexibility**: Post-mint metadata updates for corrections and improvements
+8. **Error Resilience**: Non-critical failures (like cast sending) don't break the core flow
 
 ### Environment Variables
 
