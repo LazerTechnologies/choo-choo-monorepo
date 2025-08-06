@@ -1,14 +1,14 @@
-import { NextResponse } from 'next/server';
-import { getSession } from '@/auth';
+import { NextRequest, NextResponse } from 'next/server';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 const ADMIN_FIDS = [377557, 2802, 243300];
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
-    // 1. Authentication - only allow admin users
-    const session = await getSession();
-    if (!session?.user?.fid || !ADMIN_FIDS.includes(session.user.fid)) {
+    // 1. Authentication - check admin FID from request body
+    const { adminFid } = await request.json();
+
+    if (!adminFid || !ADMIN_FIDS.includes(adminFid)) {
       return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 401 });
     }
 

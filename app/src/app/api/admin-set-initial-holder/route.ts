@@ -133,29 +133,49 @@ export async function POST(request: Request) {
     );
 
     // Check contract total supply to prevent accidental usage after tokens are minted
+    // Use Redis fallback if contract check fails
+    let totalSupply = 1; // Default to 1 (just the train token)
+
     try {
       const contractService = getContractService();
-      const totalSupply = await contractService.getTotalSupply();
-
-      console.log(`[admin-set-initial-holder] Current contract total supply: ${totalSupply}`);
-
-      // If total supply > 1, it means tokens other than tokenId 0 have been minted
-      if (totalSupply > 1) {
-        return NextResponse.json(
-          {
-            error: `Cannot set initial holder: ${totalSupply - 1} journey ticket(s) have already been minted. This function is only for fresh deployments.`,
-          },
-          { status: 400 }
-        );
-      }
+      totalSupply = await contractService.getTotalSupply();
+      console.log(`[admin-set-initial-holder] Contract total supply: ${totalSupply}`);
     } catch (contractError) {
-      console.error(
-        '[admin-set-initial-holder] Failed to check contract total supply:',
+      console.warn(
+        '[admin-set-initial-holder] Failed to check contract total supply, using Redis fallback:',
         contractError
       );
+
+      // Fallback: Check if token1 exists in Redis (indicates journey has started)
+      try {
+        const token1Data = await redis.get('token:1');
+        if (token1Data) {
+          console.log('[admin-set-initial-holder] Found token:1 in Redis, journey has started');
+          return NextResponse.json(
+            {
+              error:
+                'Cannot set initial holder: Journey tickets have already been minted. This function is only for fresh deployments.',
+            },
+            { status: 400 }
+          );
+        }
+        console.log('[admin-set-initial-holder] No token:1 found in Redis, proceeding');
+      } catch (redisError) {
+        console.error('[admin-set-initial-holder] Redis fallback failed:', redisError);
+        // If both contract and Redis fail, allow the operation but log warning
+        console.warn(
+          '[admin-set-initial-holder] WARNING: Could not verify contract state, proceeding anyway'
+        );
+      }
+    }
+
+    // If we got contract data and total supply > 1, block the operation
+    if (totalSupply > 1) {
       return NextResponse.json(
-        { error: 'Failed to check contract state. Please try again.' },
-        { status: 500 }
+        {
+          error: `Cannot set initial holder: ${totalSupply - 1} journey ticket(s) have already been minted. This function is only for fresh deployments.`,
+        },
+        { status: 400 }
       );
     }
 

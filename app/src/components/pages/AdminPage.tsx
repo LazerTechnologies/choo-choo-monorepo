@@ -13,12 +13,17 @@ interface AdminPageProps {
   onTokenMinted?: () => void;
 }
 
-function TestBaseCast() {
+function TestBaseCast({ adminFid }: { adminFid?: number }) {
   const [result, setResult] = useState<{ success: boolean; cast?: { hash: string } } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleTestBaseCast() {
+    if (!adminFid) {
+      setError('Admin FID required');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setResult(null);
@@ -26,6 +31,7 @@ function TestBaseCast() {
       const res = await fetch('/api/test-base-cast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminFid }),
       });
       const data = await res.json();
 
@@ -556,7 +562,7 @@ export function AdminPage({ onTokenMinted }: AdminPageProps) {
     <div className="space-y-3 px-6 w-full max-w-md mx-auto">
       {/* Admin Test Sections */}
       <SetInitialHolder onTokenMinted={onTokenMinted} adminFid={currentUserFid} />
-      <TestBaseCast />
+      <TestBaseCast adminFid={currentUserFid} />
       <TestPinata />
       <TestAdminNextStop onTokenMinted={onTokenMinted} adminFid={currentUserFid} />
     </div>
