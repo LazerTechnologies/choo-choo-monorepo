@@ -190,6 +190,19 @@ export async function POST(request: Request) {
     );
 
     // Set the main token URI for the train (tokenId 0) on the contract
+    if (!CHOOCHOO_TRAIN_METADATA_URI) {
+      console.error(
+        '[admin-set-initial-holder] CHOOCHOO_TRAIN_METADATA_URI environment variable is required but not configured'
+      );
+      return NextResponse.json(
+        {
+          error:
+            'CHOOCHOO_TRAIN_METADATA_URI environment variable is required. Please configure it and try again.',
+        },
+        { status: 500 }
+      );
+    }
+
     try {
       const contractService = getContractService();
       const setMainTokenURITx = await contractService.setMainTokenURI(CHOOCHOO_TRAIN_METADATA_URI);
@@ -197,8 +210,14 @@ export async function POST(request: Request) {
         `[admin-set-initial-holder] Successfully set main token URI: ${setMainTokenURITx}`
       );
     } catch (err) {
-      console.warn('[admin-set-initial-holder] Failed to set main token URI (non-critical):', err);
-      // Don't fail the request for this
+      console.error('[admin-set-initial-holder] Failed to set main token URI:', err);
+      return NextResponse.json(
+        {
+          error:
+            'Failed to set main token URI on contract. Please check the contract service and try again.',
+        },
+        { status: 500 }
+      );
     }
 
     // Send journey begins announcement cast from ChooChoo account
