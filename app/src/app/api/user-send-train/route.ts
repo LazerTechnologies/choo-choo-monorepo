@@ -305,10 +305,15 @@ export async function POST(request: Request) {
 
     // 9. Clear the flags since the train has moved
     try {
-      await redis.del('hasCurrentUserCasted');
-      await redis.del('current-cast-hash');
+      await Promise.all([
+        redis.del('hasCurrentUserCasted'),
+        redis.del('current-cast-hash'),
+        redis.del('useRandomWinner'),
+        redis.del('winnerSelectionStart'),
+        redis.del('isPublicSendEnabled'),
+      ]);
       console.log(
-        '[user-send-train] Cleared user casted flag and cast hash after successful train movement'
+        '[user-send-train] Cleared user casted flag, cast hash, and winner selection flags after successful train movement'
       );
     } catch (err) {
       console.error('[user-send-train] Failed to clear flags (non-critical):', err);

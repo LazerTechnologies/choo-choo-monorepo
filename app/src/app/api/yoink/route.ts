@@ -196,10 +196,15 @@ export async function POST(request: NextRequest) {
         console.log(`[yoink] Updated current holder in Redis to: ${yoinkerData.username}`);
       }
 
-      // Clear any existing cast hash since holder changed
-      await redis.del('current-cast-hash');
-      await redis.del('hasCurrentUserCasted');
-      console.log('[yoink] Cleared cast flags after yoink');
+      // Clear any existing cast hash and winner selection flags since holder changed
+      await Promise.all([
+        redis.del('current-cast-hash'),
+        redis.del('hasCurrentUserCasted'),
+        redis.del('useRandomWinner'),
+        redis.del('winnerSelectionStart'),
+        redis.del('isPublicSendEnabled'),
+      ]);
+      console.log('[yoink] Cleared cast flags and winner selection flags after yoink');
     } catch (err) {
       console.warn('[yoink] Failed to update Redis (non-critical):', err);
     }

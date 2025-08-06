@@ -4,6 +4,7 @@ import { isAddress } from 'viem';
 import { getContractService } from '@/lib/services/contract';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
 import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
+import { redis } from '@/lib/kv';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
@@ -356,7 +357,24 @@ export async function POST(request: Request) {
       // Don't fail the request for cast sending issues
     }
 
-    // 8. Return combined result
+    // 8. Clear winner selection flags since the train has moved
+    try {
+      await Promise.all([
+        redis.del('current-cast-hash'),
+        redis.del('hasCurrentUserCasted'),
+        redis.del('useRandomWinner'),
+        redis.del('winnerSelectionStart'),
+        redis.del('isPublicSendEnabled'),
+      ]);
+      console.log(
+        '[admin-send-train] Cleared cast flags and winner selection flags after admin train movement'
+      );
+    } catch (err) {
+      console.error('[admin-send-train] Failed to clear flags (non-critical):', err);
+      // Don't fail the request for this
+    }
+
+    // 9. Return combined result
     console.log(
       `[admin-send-train] Successfully orchestrated admin train movement for token ${mintData.actualTokenId}`
     );

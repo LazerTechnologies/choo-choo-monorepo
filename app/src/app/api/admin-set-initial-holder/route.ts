@@ -5,8 +5,10 @@ import { redis } from '@/lib/kv';
 import { getContractService } from '@/lib/services/contract';
 import type { CurrentHolderData } from '@/types/nft';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
+import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
 
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
+const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
 // Admin FIDs (same as in useAdminAccess hook)
 const ADMIN_FIDS = [377557, 2802, 243300];
@@ -231,6 +233,45 @@ export async function POST(request: Request) {
     console.log(
       `[admin-set-initial-holder] Successfully set initial current holder: ${targetUser.username} (FID: ${targetUser.fid})`
     );
+
+    // Send journey begins announcement cast from ChooChoo account
+    try {
+      const journeyBeginsCastText = CHOOCHOO_CAST_TEMPLATES.JOURNEY_BEGINS(targetUser.username);
+
+      const castResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_APP_URL}/api/internal/send-cast`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-internal-secret': INTERNAL_SECRET || '',
+          },
+          body: JSON.stringify({
+            text: journeyBeginsCastText,
+            channel_id: 'base',
+          }),
+        }
+      );
+
+      if (castResponse.ok) {
+        const castData = await castResponse.json();
+        console.log(
+          `[admin-set-initial-holder] Successfully sent journey begins cast: ${castData.cast?.hash}`
+        );
+      } else {
+        const castErrorData = await castResponse.json();
+        console.warn(
+          '[admin-set-initial-holder] Failed to send journey begins cast (non-critical):',
+          castErrorData.error
+        );
+      }
+    } catch (err) {
+      console.warn(
+        '[admin-set-initial-holder] Failed to send journey begins cast (non-critical):',
+        err
+      );
+      // Don't fail the request for cast sending issues
+    }
 
     const response: SetInitialHolderResponse = {
       success: true,

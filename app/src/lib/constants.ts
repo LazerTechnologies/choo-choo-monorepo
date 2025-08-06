@@ -54,4 +54,18 @@ export const CHOOCHOO_CAST_TEMPLATES = {
     `After 48 hours of being stuck, ChooChoo is back on the rails! ` +
     `The journey continues on Base! 🔵\n\n` +
     `All aboard for the next adventure! 🎫`,
+
+  // [@choochoo] Cast sent when public send mode is enabled
+  PUBLIC_SEND_OPEN: () =>
+    `🚂 All aboard!\n\n` +
+    `Anyone can now go to the mini-app and pick a random user to receive ChooChoo! ` +
+    `The current passenger left it up to chance - who will be next? 🎲\n\n` +
+    `Don't miss your chance to join the journey! 🚂`,
+
+  // [@choochoo] Cast sent when the journey begins with initial holder
+  JOURNEY_BEGINS: (username: string) =>
+    `🚂 All aboard! The ChooChoo journey begins! 🎫\n\n` +
+    `@${username} is our first passenger and the journey across Base has officially started! ` +
+    `Watch for their announcement cast to see how you can be next.\n\n` +
+    `Learn more in the ChooChoo mini-app! 🔵`,
 } as const;
