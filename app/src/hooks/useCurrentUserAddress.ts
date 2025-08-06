@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useNeynarContext } from '@neynar/react';
+import { useMiniApp } from '@neynar/react';
 
 interface UseCurrentUserAddressResult {
   address: string | null;
@@ -11,18 +12,23 @@ interface UseCurrentUserAddressResult {
  * Hook to get the current authenticated user's verified Ethereum address
  */
 export function useCurrentUserAddress(): UseCurrentUserAddressResult {
-  const { data: session } = useSession();
+  const { user: neynarUser } = useNeynarContext();
+  const { context } = useMiniApp();
   const [address, setAddress] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchUserAddress() {
-      console.log('[useCurrentUserAddress] Session data:', session);
-      console.log('[useCurrentUserAddress] User FID:', session?.user?.fid);
+      // Get FID from either Neynar auth user or MiniApp context
+      const currentUserFid = neynarUser?.fid || context?.user?.fid;
 
-      if (!session?.user?.fid) {
-        console.log('[useCurrentUserAddress] No FID in session, skipping address fetch');
+      console.log('[useCurrentUserAddress] Neynar user:', neynarUser);
+      console.log('[useCurrentUserAddress] MiniApp context user:', context?.user);
+      console.log('[useCurrentUserAddress] Current user FID:', currentUserFid);
+
+      if (!currentUserFid) {
+        console.log('[useCurrentUserAddress] No FID found, skipping address fetch');
         setAddress(null);
         setIsLoading(false);
         setError(null);
@@ -33,7 +39,7 @@ export function useCurrentUserAddress(): UseCurrentUserAddressResult {
       setError(null);
 
       try {
-        const url = `/api/users/address?fid=${session.user.fid}`;
+        const url = `/api/users/address?fid=${currentUserFid}`;
         console.log('[useCurrentUserAddress] Fetching from:', url);
         const response = await fetch(url);
 
@@ -61,7 +67,7 @@ export function useCurrentUserAddress(): UseCurrentUserAddressResult {
     }
 
     fetchUserAddress();
-  }, [session]);
+  }, [neynarUser, context?.user]);
 
   return { address, isLoading, error };
 }

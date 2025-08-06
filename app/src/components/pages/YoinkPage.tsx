@@ -6,14 +6,18 @@ import { Typography } from '@/components/base/Typography';
 import { useYoinkCountdown } from '@/hooks/useYoinkCountdown';
 import { useYoinkFlow } from '@/hooks/useYoinkFlow';
 import { useCurrentUserAddress } from '@/hooks/useCurrentUserAddress';
-import { useSession } from 'next-auth/react';
+import { useNeynarContext } from '@neynar/react';
+import { useMiniApp } from '@neynar/react';
 import { useEffect } from 'react';
 
 export function YoinkPage() {
-  const { data: session } = useSession();
+  const { user: neynarUser } = useNeynarContext();
+  const { context } = useMiniApp();
   const countdownState = useYoinkCountdown();
   const { address, isLoading: addressLoading, error: addressError } = useCurrentUserAddress();
   const { yoinkTrain, isLoading, isSuccess, isError, error, reset, loadingText } = useYoinkFlow();
+
+  const currentUserFid = neynarUser?.fid || context?.user?.fid;
 
   // Handle success and error states
   useEffect(() => {
@@ -39,7 +43,7 @@ export function YoinkPage() {
     }
 
     try {
-      console.log(`User FID ${session?.user?.fid || 'unknown'} is yoinking ChooChoo! 🚂💨`);
+      console.log(`User FID ${currentUserFid || 'unknown'} is yoinking ChooChoo! 🚂💨`);
       await yoinkTrain(address);
     } catch (err) {
       console.error('Yoink failed:', err);
@@ -91,7 +95,7 @@ export function YoinkPage() {
                   ⚠️ No verified Ethereum address found
                 </Typography>
                 <Typography variant="small" className="!text-white font-comic mt-1">
-                  FID: {session?.user?.fid || 'Not found'}
+                  FID: {currentUserFid || 'Not found'}
                 </Typography>
               </div>
             ) : (
