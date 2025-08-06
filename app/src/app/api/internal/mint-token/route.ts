@@ -210,6 +210,9 @@ export async function POST(request: Request) {
       // Don't fail the request for this
     }
 
+    // Use the same timestamp for both token data and current holder to ensure consistency
+    const transferTimestamp = new Date().toISOString();
+
     // Store comprehensive token data in Redis (this will be called by orchestrator)
     try {
       const metadataHash = fullTokenURI.replace('ipfs://', '');
@@ -260,7 +263,7 @@ export async function POST(request: Request) {
         holderDisplayName: nftRecipientData.displayName,
         holderPfpUrl: nftRecipientData.pfpUrl,
         transactionHash: txHash,
-        timestamp: new Date().toISOString(),
+        timestamp: transferTimestamp,
         attributes: finalAttributes,
         sourceType: 'send-train',
         sourceCastHash,
@@ -286,7 +289,7 @@ export async function POST(request: Request) {
         displayName: newHolderData.displayName,
         pfpUrl: newHolderData.pfpUrl,
         address: newHolderAddress,
-        timestamp: new Date().toISOString(),
+        timestamp: transferTimestamp, // Use the same timestamp
       };
       await redis.set('current-holder', JSON.stringify(currentHolderData));
       console.log(

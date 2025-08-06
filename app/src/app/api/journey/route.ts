@@ -49,19 +49,35 @@ export async function GET() {
     // Transform token data into journey items with duration calculation
     const journeyItems: JourneyItem[] = validTokens.map((token, index) => {
       // Calculate duration (time this holder had the train)
-      const currentTime = new Date(token.timestamp);
-      let nextTime: Date;
+      const holderStartTime = new Date(token.timestamp);
+      let holderEndTime: Date;
 
-      if (index < validTokens.length - 1) {
-        // Not the last token, use next token's timestamp
-        nextTime = new Date(validTokens[index + 1].timestamp);
+      if (index === 0) {
+        // First token in array (highest tokenId = current holder), use current time
+        holderEndTime = new Date();
       } else {
-        // Last token (current holder), use current time
-        nextTime = new Date();
+        // Previous holder - use the timestamp of when the next person got the train
+        // Since tokens are sorted by tokenId descending, the previous token in array
+        // has the timestamp of when this holder lost the train
+        holderEndTime = new Date(validTokens[index - 1].timestamp);
       }
 
-      const durationMs = nextTime.getTime() - currentTime.getTime();
-      const duration = formatDuration(durationMs);
+      const durationMs = holderEndTime.getTime() - holderStartTime.getTime();
+
+      // Log negative durations for debugging
+      if (durationMs < 0) {
+        console.warn(
+          `[journey] Negative duration detected for token ${token.tokenId}: ${durationMs}ms`,
+          {
+            tokenId: token.tokenId,
+            holderStartTime: holderStartTime.toISOString(),
+            holderEndTime: holderEndTime.toISOString(),
+            durationMs,
+          }
+        );
+      }
+
+      const duration = formatDuration(Math.max(0, durationMs)); // Ensure non-negative
 
       return {
         tokenId: token.tokenId,
@@ -101,6 +117,11 @@ export async function GET() {
  * Format duration in milliseconds to human-readable string
  */
 function formatDuration(ms: number): string {
+  // Handle negative or very small values
+  if (ms < 0) {
+    return '0s';
+  }
+
   const seconds = Math.floor(ms / 1000);
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
@@ -112,7 +133,9 @@ function formatDuration(ms: number): string {
     return `${hours}h ${minutes % 60}m`;
   } else if (minutes > 0) {
     return `${minutes}m ${seconds % 60}s`;
-  } else {
+  } else if (seconds > 0) {
     return `${seconds}s`;
+  } else {
+    return 'just now';
   }
 }

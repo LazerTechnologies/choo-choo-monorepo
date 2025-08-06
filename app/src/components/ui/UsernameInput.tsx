@@ -168,7 +168,11 @@ export function UsernameInput({
           onChange={(e) => setSearchTerm(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={disabled || loading}
-          className={cn('w-full pr-10', error && 'border-red-500', loading && 'opacity-75')}
+          className={cn(
+            'w-full pr-10 !text-black dark:!text-black',
+            error && 'border-red-500',
+            loading && 'opacity-75'
+          )}
         />
 
         {loading && (
