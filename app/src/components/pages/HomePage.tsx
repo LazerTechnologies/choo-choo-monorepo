@@ -122,18 +122,11 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
           {!hasCurrentUserCasted ? (
             <>
               <Typography
-                variant="h3"
-                className="text-center mb-4 text-gray-900 dark:text-gray-100 font-comic"
-              >
-                Pick Next Passenger
-              </Typography>
-              <Typography
                 variant="body"
                 className="text-center mb-4 text-gray-900 dark:text-gray-100 font-comic"
               >
-                You&apos;re the current passenger! Send out a cast to let everyone know that
-                ChooChoo is about to be on the move. Once people start reacting, you&apos;ll be able
-                to randomly select a winner and send ChooChoo to their wallet.
+                You&apos;re the current passenger! Send out a cast to let everyone know. After,
+                you&apos;ll be able to choose where ChooChoo goes next.
               </Typography>
               <div className="w-full flex justify-center">
                 <CastingWidget onCastSent={refreshStatus} />

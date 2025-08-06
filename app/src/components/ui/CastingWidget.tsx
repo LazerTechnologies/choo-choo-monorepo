@@ -92,7 +92,7 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
           </div>
         </div>
 
-        <div className="bg-purple-600 p-3 rounded-lg border border-white">
+        <div className="bg-purple-700 p-3 rounded-lg border border-white">
           <Typography variant="body" className="!text-white whitespace-pre-line">
             {CHOOCHOO_CAST_TEMPLATES.USER_NEW_PASSENGER_CAST()}
           </Typography>
