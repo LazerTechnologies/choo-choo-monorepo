@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import Image from 'next/image';
 import { Card } from '@/components/base/Card';
 import { Button } from '@/components/base/Button';
-import { Input } from '@/components/base/Input';
 import { Typography } from '@/components/base/Typography';
+import { UsernameInput } from '@/components/ui/UsernameInput';
 import axios from 'axios';
 
 interface UserNextStopWidgetProps {
@@ -12,7 +13,12 @@ interface UserNextStopWidgetProps {
 }
 
 export function UserNextStopWidget({ onTokenMinted }: UserNextStopWidgetProps) {
-  const [fid, setFid] = useState('');
+  const [selectedUser, setSelectedUser] = useState<{
+    fid: number;
+    username: string;
+    displayName: string;
+    pfpUrl: string;
+  } | null>(null);
   const [result, setResult] = useState<{
     winner: {
       address: string;
@@ -29,9 +35,8 @@ export function UserNextStopWidget({ onTokenMinted }: UserNextStopWidgetProps) {
   const [error, setError] = useState<string | null>(null);
 
   const handleSendChooChoo = useCallback(async () => {
-    const fidNumber = parseInt(fid.trim());
-    if (!fid.trim() || isNaN(fidNumber) || fidNumber <= 0) {
-      setError('Please enter a valid Farcaster FID');
+    if (!selectedUser) {
+      setError('Please select a user');
       return;
     }
 
@@ -41,7 +46,7 @@ export function UserNextStopWidget({ onTokenMinted }: UserNextStopWidgetProps) {
 
     try {
       const res = await axios.post('/api/user-send-train', {
-        targetFid: fidNumber,
+        targetFid: selectedUser.fid,
       });
 
       if (res.data.success) {
@@ -60,7 +65,7 @@ export function UserNextStopWidget({ onTokenMinted }: UserNextStopWidgetProps) {
     } finally {
       setLoading(false);
     }
-  }, [fid, onTokenMinted]);
+  }, [selectedUser, onTokenMinted]);
 
   return (
     <Card className="p-4">
@@ -77,29 +82,41 @@ export function UserNextStopWidget({ onTokenMinted }: UserNextStopWidgetProps) {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Farcaster FID (Optional)
-          </label>
-          <Input
-            type="number"
-            placeholder="Enter FID to manually select next passenger"
-            value={fid}
-            onChange={(e) => setFid(e.target.value)}
-            className="w-full"
-            min="1"
+          <UsernameInput
+            label="Select Next Passenger (Optional)"
+            placeholder="Enter username..."
+            onUserSelect={setSelectedUser}
             disabled={loading}
+            helperText="Leave empty if you want to wait for reactions and let the community choose randomly."
+            className="w-full"
           />
-          <div className="text-xs text-gray-500 mt-1">
-            Leave empty if you want to wait for reactions and let the community choose randomly.
-          </div>
+          {selectedUser && (
+            <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded border">
+              <div className="flex items-center gap-2">
+                <Image
+                  src={selectedUser.pfpUrl}
+                  alt={`${selectedUser.username} avatar`}
+                  width={24}
+                  height={24}
+                  className="w-6 h-6 rounded-full"
+                />
+                <span className="text-sm font-medium">@{selectedUser.username}</span>
+                <span className="text-xs text-gray-500">({selectedUser.displayName})</span>
+              </div>
+            </div>
+          )}
         </div>
 
         <Button
           onClick={handleSendChooChoo}
-          disabled={loading || !fid.trim()}
+          disabled={loading || !selectedUser}
           className="w-full bg-purple-500 hover:bg-purple-600 text-white"
         >
-          {loading ? 'Sending ChooChoo...' : '🚂 Send ChooChoo to This User'}
+          {loading
+            ? 'Sending ChooChoo...'
+            : selectedUser
+              ? `🚂 Send ChooChoo to @${selectedUser.username}`
+              : 'Send ChooChoo'}
         </Button>
 
         {error && (

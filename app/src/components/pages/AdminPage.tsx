@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import Image from 'next/image';
 import { Card } from '@/components/base/Card';
 import { Button } from '@/components/base/Button';
 import { Input } from '@/components/base/Input';
 import { Typography } from '@/components/base/Typography';
+import { UsernameInput } from '@/components/ui/UsernameInput';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 import { useChooChoo } from '@/hooks/useChooChoo';
 import type { PinataUploadResult } from '@/types/nft';
@@ -141,7 +143,12 @@ function SetInitialHolder({
   onTokenMinted?: () => void;
   adminFid?: number;
 }) {
-  const [fid, setFid] = useState('');
+  const [selectedUser, setSelectedUser] = useState<{
+    fid: number;
+    username: string;
+    displayName: string;
+    pfpUrl: string;
+  } | null>(null);
   const [result, setResult] = useState<{
     fid: number;
     username: string;
@@ -165,9 +172,8 @@ function SetInitialHolder({
       return;
     }
 
-    const fidNumber = parseInt(fid.trim());
-    if (!fid.trim() || isNaN(fidNumber) || fidNumber <= 0) {
-      setError('Please enter a valid Farcaster FID');
+    if (!selectedUser) {
+      setError('Please select a user');
       return;
     }
 
@@ -186,7 +192,7 @@ function SetInitialHolder({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          targetFid: fidNumber,
+          targetFid: selectedUser.fid,
           adminFid: adminFid,
         }),
       });
@@ -205,7 +211,7 @@ function SetInitialHolder({
     } finally {
       setLoading(false);
     }
-  }, [fid, adminFid, onTokenMinted, isDisabled]);
+  }, [selectedUser, adminFid, onTokenMinted, isDisabled]);
 
   return (
     <Card className={`my-8 !border-white ${isDisabled ? '!bg-gray-400' : '!bg-purple-800'}`}>
@@ -226,33 +232,44 @@ function SetInitialHolder({
       <Card.Content>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Farcaster FID
-            </label>
-            <Input
-              type="number"
-              placeholder="377557"
-              value={fid}
-              onChange={(e) => setFid(e.target.value)}
-              className="w-full !bg-white !text-black border-gray-300 focus:border-orange-500"
-              min="1"
+            <UsernameInput
+              label="Select Initial Holder"
+              placeholder="Search for a user by username..."
+              onUserSelect={setSelectedUser}
               disabled={isDisabled || isLoadingSupply}
+              helperText="Enter the user who should be the initial current holder."
+              className="w-full"
             />
-            <div className="text-xs text-gray-500 mt-1">
-              Enter the FID of the user who should be the initial current holder.
-            </div>
+            {selectedUser && (
+              <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded border">
+                <div className="flex items-center gap-2">
+                  <Image
+                    src={selectedUser.pfpUrl}
+                    alt={`${selectedUser.username} avatar`}
+                    width={24}
+                    height={24}
+                    className="w-6 h-6 rounded-full"
+                  />
+                  <span className="text-sm font-medium">@{selectedUser.username}</span>
+                  <span className="text-xs text-gray-500">({selectedUser.displayName})</span>
+                  <span className="text-xs text-gray-400 ml-auto">FID: {selectedUser.fid}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <Button
             onClick={handleSetInitialHolder}
-            disabled={loading || !fid.trim() || isDisabled || isLoadingSupply}
+            disabled={loading || !selectedUser || isDisabled || isLoadingSupply}
             isLoading={loading || isLoadingSupply}
             className={`w-full text-white border-white ${
               isDisabled ? 'bg-gray-500 cursor-not-allowed' : 'bg-purple-800 hover:bg-purple-900'
             }`}
             variant="default"
           >
-            Set Initial Holder
+            {selectedUser
+              ? `Set @${selectedUser.username} as Initial Holder`
+              : 'Set Initial Holder'}
           </Button>
         </div>
 
@@ -465,7 +482,12 @@ function TestAdminNextStop({
   onTokenMinted?: () => void;
   adminFid?: number;
 }) {
-  const [fid, setFid] = useState('');
+  const [selectedUser, setSelectedUser] = useState<{
+    fid: number;
+    username: string;
+    displayName: string;
+    pfpUrl: string;
+  } | null>(null);
   const [result, setResult] = useState<{
     winner: {
       address: string;
@@ -482,9 +504,8 @@ function TestAdminNextStop({
   const [error, setError] = useState<string | null>(null);
 
   const handleExecuteNextStop = useCallback(async () => {
-    const fidNumber = parseInt(fid.trim());
-    if (!fid.trim() || isNaN(fidNumber) || fidNumber <= 0) {
-      setError('Please enter a valid Farcaster FID');
+    if (!selectedUser) {
+      setError('Please select a user');
       return;
     }
 
@@ -503,7 +524,7 @@ function TestAdminNextStop({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          targetFid: fidNumber,
+          targetFid: selectedUser.fid,
           adminFid: adminFid,
         }),
       });
@@ -522,7 +543,7 @@ function TestAdminNextStop({
     } finally {
       setLoading(false);
     }
-  }, [fid, adminFid, onTokenMinted]);
+  }, [selectedUser, adminFid, onTokenMinted]);
 
   return (
     <Card className="my-8 !bg-purple-600 !border-white">
@@ -536,30 +557,40 @@ function TestAdminNextStop({
       <Card.Content>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Farcaster FID
-            </label>
-            <Input
-              type="number"
-              placeholder="377557"
-              value={fid}
-              onChange={(e) => setFid(e.target.value)}
-              className="w-full !bg-white !text-black border-gray-300 focus:border-purple-500"
-              min="1"
+            <UsernameInput
+              label="Select User to Receive ChooChoo"
+              placeholder="Search for a user by username..."
+              onUserSelect={setSelectedUser}
+              disabled={loading}
+              helperText="Enter the user who should receive ChooChoo next."
+              className="w-full"
             />
-            <div className="text-xs text-gray-500 mt-1">
-              Enter the Farcaster ID (FID) of the user who should receive ChooChoo next.
-            </div>
+            {selectedUser && (
+              <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded border">
+                <div className="flex items-center gap-2">
+                  <Image
+                    src={selectedUser.pfpUrl}
+                    alt={`${selectedUser.username} avatar`}
+                    width={24}
+                    height={24}
+                    className="w-6 h-6 rounded-full"
+                  />
+                  <span className="text-sm font-medium">@{selectedUser.username}</span>
+                  <span className="text-xs text-gray-500">({selectedUser.displayName})</span>
+                  <span className="text-xs text-gray-400 ml-auto">FID: {selectedUser.fid}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           <Button
             onClick={handleExecuteNextStop}
-            disabled={loading || !fid.trim()}
+            disabled={loading || !selectedUser}
             isLoading={loading}
             className="w-full bg-purple-600 text-white border-white hover:bg-purple-700"
             variant="default"
           >
-            Send ChooChoo
+            {selectedUser ? `Send ChooChoo to @${selectedUser.username}` : 'Send ChooChoo'}
           </Button>
         </div>
 
