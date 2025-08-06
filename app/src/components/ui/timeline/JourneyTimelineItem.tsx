@@ -27,6 +27,15 @@ export function JourneyTimelineItem({
   // Truncate address to show first 6 and last 4 characters
   const truncatedAddress = `${address.slice(0, 6)}...${address.slice(-4)}`;
 
+  // Format date to MM/DD/YY
+  const formatDate = (dateString: string): string => {
+    const dateObj = new Date(dateString);
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const year = String(dateObj.getFullYear()).slice(-2);
+    return `${month}/${day}/${year}`;
+  };
+
   return (
     <>
       <Card className="w-full !bg-purple-500 !border-white" style={{ backgroundColor: '#a855f7' }}>
@@ -80,7 +89,7 @@ export function JourneyTimelineItem({
               </div>
 
               <div className="flex items-center justify-between text-xs !text-white opacity-60">
-                <span className="font-comic text-xs">{date}</span>
+                <span className="font-comic text-xs">{formatDate(date)}</span>
                 <span className="font-mono text-xs">Held {duration}</span>
               </div>
             </div>
