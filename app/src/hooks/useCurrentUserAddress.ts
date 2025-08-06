@@ -18,7 +18,11 @@ export function useCurrentUserAddress(): UseCurrentUserAddressResult {
 
   useEffect(() => {
     async function fetchUserAddress() {
+      console.log('[useCurrentUserAddress] Session data:', session);
+      console.log('[useCurrentUserAddress] User FID:', session?.user?.fid);
+
       if (!session?.user?.fid) {
+        console.log('[useCurrentUserAddress] No FID in session, skipping address fetch');
         setAddress(null);
         setIsLoading(false);
         setError(null);
@@ -29,19 +33,26 @@ export function useCurrentUserAddress(): UseCurrentUserAddressResult {
       setError(null);
 
       try {
-        const response = await fetch(`/api/users/address?fid=${session.user.fid}`);
+        const url = `/api/users/address?fid=${session.user.fid}`;
+        console.log('[useCurrentUserAddress] Fetching from:', url);
+        const response = await fetch(url);
+
+        console.log('[useCurrentUserAddress] Response status:', response.status);
 
         if (!response.ok) {
           if (response.status === 404) {
             throw new Error('No verified Ethereum address found for your account');
           }
           const data = await response.json().catch(() => ({}));
+          console.error('[useCurrentUserAddress] API error response:', data);
           throw new Error(data.error || 'Failed to fetch address');
         }
 
         const data = await response.json();
+        console.log('[useCurrentUserAddress] Successfully got address:', data.address);
         setAddress(data.address);
       } catch (err) {
+        console.error('[useCurrentUserAddress] Error fetching address:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch address');
         setAddress(null);
       } finally {
@@ -50,7 +61,7 @@ export function useCurrentUserAddress(): UseCurrentUserAddressResult {
     }
 
     fetchUserAddress();
-  }, [session?.user?.fid]);
+  }, [session]);
 
   return { address, isLoading, error };
 }

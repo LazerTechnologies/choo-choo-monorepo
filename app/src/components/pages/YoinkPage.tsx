@@ -86,9 +86,14 @@ export function YoinkPage() {
                 Address error: {addressError}
               </Typography>
             ) : !address ? (
-              <Typography variant="body" className="!text-yellow-300 font-comic">
-                ⚠️ No verified Ethereum address found
-              </Typography>
+              <div>
+                <Typography variant="body" className="!text-yellow-300 font-comic">
+                  ⚠️ No verified Ethereum address found
+                </Typography>
+                <Typography variant="small" className="!text-white font-comic mt-1">
+                  FID: {session?.user?.fid || 'Not found'}
+                </Typography>
+              </div>
             ) : (
               <Typography variant="body" className="!text-white font-comic">
                 {countdownState.isAvailable
