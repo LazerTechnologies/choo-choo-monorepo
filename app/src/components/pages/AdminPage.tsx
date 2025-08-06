@@ -680,6 +680,7 @@ function TestAdminNextStop({
 
 function AppPauseToggle({ adminFid }: { adminFid?: number }) {
   const [isPaused, setIsPaused] = useState(false);
+  const [pendingState, setPendingState] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -707,49 +708,63 @@ function AppPauseToggle({ adminFid }: { adminFid?: number }) {
     fetchPauseState();
   }, []);
 
-  const handleTogglePause = useCallback(
-    async (checked: boolean) => {
+  const handleSwitchToggle = useCallback(
+    (checked: boolean) => {
       if (!adminFid) {
         setError('You must be signed in to use admin functions');
         return;
       }
-
-      setLoading(true);
+      setPendingState(checked);
       setError(null);
-
-      try {
-        const response = await fetch('/api/admin-app-pause', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            isPaused: checked,
-            adminFid: adminFid,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (response.ok && data.success) {
-          setIsPaused(checked);
-        } else {
-          setError(data.error || 'Failed to update pause state');
-          // Revert the switch if the API call failed
-          // (the switch will update based on the server state)
-        }
-      } catch (err) {
-        console.error('Error updating pause state:', err);
-        setError('Failed to update pause state');
-      } finally {
-        setLoading(false);
-      }
     },
     [adminFid]
   );
 
+  const handleConfirmChange = useCallback(async () => {
+    if (!adminFid || pendingState === null) {
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/admin-app-pause', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isPaused: pendingState,
+          adminFid: adminFid,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setIsPaused(pendingState);
+        setPendingState(null);
+      } else {
+        setError(data.error || 'Failed to update pause state');
+      }
+    } catch (err) {
+      console.error('Error updating pause state:', err);
+      setError('Failed to update pause state');
+    } finally {
+      setLoading(false);
+    }
+  }, [adminFid, pendingState]);
+
+  const handleCancelChange = useCallback(() => {
+    setPendingState(null);
+    setError(null);
+  }, []);
+
+  const currentDisplayState = pendingState !== null ? pendingState : isPaused;
+
   return (
     <Card className="my-8 !bg-red-100 !border-red-300 dark:!bg-red-900/20 dark:!border-red-700">
       <Card.Header>
-        <Card.Title className="text-red-800 dark:text-red-300">⚠️ App Maintenance Mode</Card.Title>
+        <Card.Title className="text-red-800 dark:text-red-300">🚧 App Maintenance 🚧</Card.Title>
         <Card.Description className="text-red-700 dark:text-red-400">
           Toggle this to pause the app for maintenance. When enabled, users will see a maintenance
           page instead of the normal app.
@@ -759,29 +774,71 @@ function AppPauseToggle({ adminFid }: { adminFid?: number }) {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <label className="text-sm font-medium text-red-800 dark:text-red-300">
-                {isPaused ? 'App is PAUSED' : 'App is ACTIVE'}
+              <label className="text-sm font-medium text-white">
+                App is{' '}
+                <span
+                  className={
+                    currentDisplayState ? 'text-red-500 font-bold' : 'text-green-500 font-bold'
+                  }
+                >
+                  {currentDisplayState ? 'PAUSED' : 'ACTIVE'}
+                </span>
               </label>
-              <div className="text-xs text-red-600 dark:text-red-400">
-                {isPaused ? 'Users will see the maintenance page' : 'App is running normally'}
+              <div className="text-xs text-blue-400">
+                {currentDisplayState
+                  ? 'Users will see the maintenance page'
+                  : 'App is running normally'}
               </div>
             </div>
             <Switch
-              checked={isPaused}
-              onCheckedChange={handleTogglePause}
+              checked={currentDisplayState}
+              onCheckedChange={handleSwitchToggle}
               disabled={loading || isLoadingStatus || !adminFid}
-              className="data-[state=checked]:bg-red-600 data-[state=unchecked]:bg-green-500"
+              className="data-[state=checked]:bg-purple-600 data-[state=unchecked]:bg-purple-400"
             />
           </div>
 
+          {pendingState !== null && (
+            <div className="space-y-2 p-3 bg-red-50 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800">
+              <div className="text-sm font-medium text-red-800 dark:text-red-300">
+                {pendingState ? '⚠️ Confirm App Pause' : '✅ Confirm App Resume'}
+              </div>
+              <div className="text-xs text-red-700 dark:text-red-400">
+                {pendingState
+                  ? 'This will pause the app for all users. Are you sure?'
+                  : 'This will resume normal app operation. Are you sure?'}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleConfirmChange}
+                  disabled={loading}
+                  isLoading={loading}
+                  size="sm"
+                  className={`${pendingState ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
+                >
+                  {pendingState ? 'Pause App' : 'Resume App'}
+                </Button>
+                <Button
+                  onClick={handleCancelChange}
+                  disabled={loading}
+                  size="sm"
+                  variant="outline"
+                  className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+
           {isLoadingStatus && (
-            <div className="text-xs text-red-600 p-2 bg-red-50 dark:bg-red-900/20 rounded">
+            <div className="text-xs text-purple-600 p-2 bg-purple-50 dark:bg-purple-900/20 rounded">
               Loading pause state...
             </div>
           )}
 
-          {loading && (
-            <div className="text-xs text-red-600 p-2 bg-red-50 dark:bg-red-900/20 rounded">
+          {loading && !pendingState && (
+            <div className="text-xs text-purple-600 p-2 bg-purple-50 dark:bg-purple-900/20 rounded">
               Updating...
             </div>
           )}
@@ -792,7 +849,7 @@ function AppPauseToggle({ adminFid }: { adminFid?: number }) {
             </div>
           )}
 
-          {isPaused && (
+          {isPaused && pendingState === null && (
             <div className="text-xs text-red-800 dark:text-red-200 p-2 bg-red-200 dark:bg-red-900/40 rounded font-medium">
               🚨 The app is currently in maintenance mode!
             </div>
