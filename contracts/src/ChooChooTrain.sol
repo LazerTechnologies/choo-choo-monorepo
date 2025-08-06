@@ -107,17 +107,21 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
 
     // ========== CONSTRUCTOR ========== //
     /**
-     * @notice Deploys the ChooChooTrain contract and mints the original train to the deployer.
+     * @notice Deploys the ChooChooTrain contract and mints the original train to the initial holder.
+     * @param trustedForwarder The address of the trusted forwarder for meta-transactions.
+     * @param initialHolder The address that will receive the initial train NFT (tokenId 0).
      */
-    constructor(address trustedForwarder)
-        ERC721("ChooChooTrain", "CHOOCHOO")
+    constructor(address trustedForwarder, address initialHolder)
+        ERC721("ChooChoo on Base", "CHOOCHOO")
         Ownable(msg.sender)
         ERC2771Context(trustedForwarder)
     {
-        _safeMint(msg.sender, 0);
+        if (initialHolder == address(0) || initialHolder == DEAD_ADDRESS) {
+            revert TransferToInvalidAddress(initialHolder);
+        }
+
+        _safeMint(initialHolder, 0);
         lastTransferTimestamp = block.timestamp;
-        hasBeenPassenger[msg.sender] = true;
-        trainJourney.push(msg.sender);
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
         admins.push(msg.sender);
@@ -125,7 +129,7 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
 
     // ========== TRANSFER LOGIC ========== //
     /**
-     * @notice Moves the train (tokenId 0) to the next passenger and stamps a ticket for the current passenger.
+     * @notice Moves the train (tokenId 0) to the next passenger and stamps a ticket for the current passenger. Current passenger is added to the historic train journey.
      * @dev Replacement for transfer/propagate. Only admins can move the train.
      * @param to The address of the next passenger.
      */
@@ -137,11 +141,13 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
         if (hasBeenPassenger[to]) {
             revert AlreadyRodeTrain(to);
         }
+
+        hasBeenPassenger[from] = true;
+        trainJourney.push(from);
+
         previousPassenger = from;
         lastTransferTimestamp = block.timestamp;
-        hasBeenPassenger[to] = true;
         _safeTransfer(from, to, 0, "");
-        trainJourney.push(to);
         emit TrainDeparted(from, to, block.timestamp);
         _stampTicket(from);
     }
@@ -165,14 +171,14 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
             revert AlreadyRodeTrain(to);
         }
 
-        // Store the token ID that will be minted
         uint256 futureTicketId = nextTicketId;
+
+        hasBeenPassenger[from] = true;
+        trainJourney.push(from);
 
         previousPassenger = from;
         lastTransferTimestamp = block.timestamp;
-        hasBeenPassenger[to] = true;
         _safeTransfer(from, to, 0, "");
-        trainJourney.push(to);
         emit TrainDeparted(from, to, block.timestamp);
         _stampTicket(from);
 
@@ -470,11 +476,13 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
         if (hasBeenPassenger[to]) {
             revert AlreadyRodeTrain(to);
         }
+
+        hasBeenPassenger[from] = true;
+        trainJourney.push(from);
+
         previousPassenger = from;
         lastTransferTimestamp = block.timestamp;
-        hasBeenPassenger[to] = true;
         _safeTransfer(from, to, 0, "");
-        trainJourney.push(to);
         emit TrainDeparted(from, to, block.timestamp);
         _stampTicket(from);
         emit Yoink(_msgSender(), to, block.timestamp);

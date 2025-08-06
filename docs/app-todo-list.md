@@ -12,6 +12,16 @@ this allows the current holder to choose whether or not the public can pick a wi
 
 - [ ] make sure existing endpoints (`send-train`, `yoink`, `admin-send-train`, `user-send-train`) clear or set these new flags to preserve the flow for future users
 
+## fixes
+
+- [ ] the journey timeline items are showing as negative numbers, something is up with the calculation, should determine the held time when the data is moved from current to previous holder, and then append it to redis so it doesn't have to be calculated on the fly
+
+## home pages
+
+- [ ] update the FAQ questions and text
+- [ ] update the description on the homepage
+- [ ] get final design notes from yon et al.
+
 ## other
 
 - [ ] update the FID input on the home page for the current user to a username selection input (see Neynar docs for how to)

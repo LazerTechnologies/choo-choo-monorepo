@@ -6,6 +6,11 @@
         "name": "trustedForwarder",
         "type": "address",
         "internalType": "address"
+      },
+      {
+        "name": "initialHolder",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "nonpayable"

@@ -25,27 +25,26 @@ contract ChooChooTrainTest is Test {
 
     function setUp() public {
         vm.prank(owner);
-        train = new ChooChooTrain(address(0));
+        train = new ChooChooTrain(address(0), owner);
     }
 
     function testInitialState() public view {
         assertEq(train.ownerOf(0), owner);
         assertEq(train.balanceOf(owner), 1);
-        assertEq(train.trainJourney(0), owner);
-        assertTrue(train.hasBeenPassenger(owner));
+        assertFalse(train.hasBeenPassenger(owner));
+        assertEq(train.getTrainJourneyLength(), 0);
     }
 
     function testNextStopTransfersTrainAndStampsTicket() public {
         vm.prank(owner); // owner is admin by default
         train.nextStop(passenger1);
         assertEq(train.ownerOf(0), passenger1);
-        assertEq(train.balanceOf(owner), 1); // owner has ticket
-        assertEq(train.trainJourney(1), passenger1);
-        assertTrue(train.hasBeenPassenger(passenger1));
-        // Ticket NFT for owner (but no metadata yet)
+        assertEq(train.balanceOf(owner), 1); // owner should have ticket
+        assertEq(train.trainJourney(0), owner);
+        assertEq(train.getTrainJourneyLength(), 1);
+        assertTrue(train.hasBeenPassenger(owner));
+        assertFalse(train.hasBeenPassenger(passenger1));
         assertEq(train.ownerOf(1), owner);
-
-        // Check that ticket has no metadata initially
         (string memory tUri, string memory tImg, string memory tTraits) = train.ticketData(1);
         assertEq(tUri, "");
         assertEq(tImg, "");
@@ -72,10 +71,11 @@ contract ChooChooTrainTest is Test {
 
         // Check train moved
         assertEq(train.ownerOf(0), passenger1);
-        assertEq(train.trainJourney(1), passenger1);
-        assertTrue(train.hasBeenPassenger(passenger1));
+        assertEq(train.trainJourney(0), owner);
+        assertEq(train.getTrainJourneyLength(), 1);
+        assertTrue(train.hasBeenPassenger(owner));
+        assertFalse(train.hasBeenPassenger(passenger1));
 
-        // Check ticket was minted to previous holder with metadata
         assertEq(train.ownerOf(1), owner);
         (string memory tUri,,) = train.ticketData(1);
         assertEq(tUri, tokenURI);
@@ -137,11 +137,14 @@ contract ChooChooTrainTest is Test {
     function testGetTrainJourneySlice() public {
         // Create some journey history
         vm.prank(owner);
-        train.nextStop(passenger1);
+        train.nextStop(passenger1); // owner completes journey
         vm.prank(owner);
-        train.nextStop(passenger2);
+        train.nextStop(passenger2); // passenger1 completes journey
         vm.prank(owner);
-        train.nextStop(passenger3);
+        train.nextStop(passenger3); // passenger2 completes journey
+
+        // Journey should be: [owner, passenger1, passenger2]
+        assertEq(train.getTrainJourneyLength(), 3);
 
         // Test slice function
         address[] memory slice = train.getTrainJourneySlice(1, 3);
@@ -163,7 +166,7 @@ contract ChooChooTrainTest is Test {
             train.getTrainStatus();
 
         assertEq(holder, owner);
-        assertEq(totalStops, 1); // initial deployment counts as first stop
+        assertEq(totalStops, 0); // no completed journeys yet
         assertTrue(lastMoveTime > 0);
         assertFalse(canBeYoinked); // no time passed yet
         assertEq(nextTicketId_, 1);
@@ -171,11 +174,11 @@ contract ChooChooTrainTest is Test {
         // Move train and check again
         vm.warp(block.timestamp + 3 days);
         vm.prank(owner);
-        train.nextStop(passenger1);
+        train.nextStop(passenger1); // owner completes journey
 
         (holder, totalStops, lastMoveTime, canBeYoinked, nextTicketId_) = train.getTrainStatus();
         assertEq(holder, passenger1);
-        assertEq(totalStops, 2);
+        assertEq(totalStops, 1); // owner completed their journey
         assertFalse(canBeYoinked); // just moved, so no yoink available yet
         assertEq(nextTicketId_, 2); // next ticket will be ID 2
 
@@ -186,12 +189,13 @@ contract ChooChooTrainTest is Test {
     }
 
     function testHasRiddenTrain() public {
-        assertTrue(train.hasRiddenTrain(owner)); // owner started with train
+        assertFalse(train.hasRiddenTrain(owner)); // owner hasn't completed journey yet
         assertFalse(train.hasRiddenTrain(passenger1));
 
         vm.prank(owner);
-        train.nextStop(passenger1);
-        assertTrue(train.hasRiddenTrain(passenger1));
+        train.nextStop(passenger1); // owner completes journey
+        assertTrue(train.hasRiddenTrain(owner)); // now owner has completed journey
+        assertFalse(train.hasRiddenTrain(passenger1)); // passenger1 hasn't completed journey yet
     }
 
     function testGetTotalTickets() public {
@@ -262,10 +266,8 @@ contract ChooChooTrainTest is Test {
     }
 
     function testYoinkEligibilityAndAction() public {
-        // Move train to passenger1
         vm.prank(owner);
         train.nextStop(passenger1);
-        // Move train to passenger2
         vm.prank(owner); // only admin can move train
         train.nextStop(passenger2);
 
@@ -290,7 +292,8 @@ contract ChooChooTrainTest is Test {
         vm.prank(owner);
         train.yoink(passenger3);
         assertEq(train.ownerOf(0), passenger3);
-        assertTrue(train.hasBeenPassenger(passenger3));
+        assertTrue(train.hasBeenPassenger(passenger2));
+        assertFalse(train.hasBeenPassenger(passenger3));
 
         // Check that previous holder got a ticket
         assertEq(train.ownerOf(3), passenger2); // passenger2 gets ticket ID 3
@@ -360,7 +363,8 @@ contract ChooChooTrainTest is Test {
         train.yoink(passenger2);
 
         assertEq(train.ownerOf(0), passenger2);
-        assertTrue(train.hasBeenPassenger(passenger2));
+        assertTrue(train.hasBeenPassenger(passenger1));
+        assertFalse(train.hasBeenPassenger(passenger2));
         assertEq(train.ownerOf(2), passenger1); // passenger1 gets ticket ID 2
     }
 
@@ -517,5 +521,22 @@ contract ChooChooTrainTest is Test {
         vm.prank(owner);
         vm.expectRevert(bytes("Token does not exist"));
         train.setTicketData(999, "ipfs://test", "ipfs://img", "ipfs://traits");
+    }
+
+    function testConstructorValidatesInitialHolder() public {
+        // Test zero address rejection
+        vm.expectRevert(abi.encodeWithSignature("TransferToInvalidAddress(address)", address(0)));
+        new ChooChooTrain(address(0), address(0));
+
+        // Test dead address rejection
+        vm.expectRevert(abi.encodeWithSignature("TransferToInvalidAddress(address)", dead));
+        new ChooChooTrain(address(0), dead);
+
+        // Test valid address works
+        ChooChooTrain validTrain = new ChooChooTrain(address(0), passenger1);
+        assertEq(validTrain.ownerOf(0), passenger1);
+        // Initial holder is not yet considered a passenger until they complete their journey
+        assertFalse(validTrain.hasBeenPassenger(passenger1));
+        assertEq(validTrain.getTrainJourneyLength(), 0);
     }
 }
