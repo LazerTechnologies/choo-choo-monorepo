@@ -15,3 +15,4 @@ this allows the current holder to choose whether or not the public can pick a wi
 ## other
 
 - [ ] update the FID input on the home page for the current user to a username selection input (see Neynar docs for how to)
+- [ ] create a `UsernameInput` component that can be reused on the home page and on the admin page where FID is now being used

@@ -45,9 +45,10 @@ function TestPinata() {
   return (
     <Card className="my-8 !bg-purple-600 !border-white">
       <Card.Header>
-        <Card.Title>Test Pinata (Generator)</Card.Title>
+        <Card.Title>Generate tokenURI</Card.Title>
         <Card.Description>
-          Generate a new NFT using the generator package and upload to Pinata for testing purposes.
+          Generate a random NFT image using the generator package along with it&apos;s accompanying
+          metadata and upload to Pinata in the event a token needs to be manually updated.
         </Card.Description>
       </Card.Header>
       <Card.Content>
@@ -59,7 +60,7 @@ function TestPinata() {
             className="w-full bg-purple-600 text-white border-white hover:bg-purple-700"
             variant="default"
           >
-            Generate & Upload NFT
+            Generate
           </Button>
 
           {loading && (
@@ -251,7 +252,7 @@ function SetInitialHolder({
             }`}
             variant="default"
           >
-            🎯 Set Initial Holder
+            Set Initial Holder
           </Button>
         </div>
 
@@ -418,7 +419,7 @@ function SetTicketMetadata({ adminFid }: { adminFid?: number }) {
             className="w-full bg-purple-600 text-white border-white hover:bg-purple-700"
             variant="default"
           >
-            🎫 Set Token Metadata
+            Set tokenURI
           </Button>
         </div>
 
@@ -558,7 +559,7 @@ function TestAdminNextStop({
             className="w-full bg-purple-600 text-white border-white hover:bg-purple-700"
             variant="default"
           >
-            🚂 Send ChooChoo to User
+            Send ChooChoo
           </Button>
         </div>
 
