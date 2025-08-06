@@ -101,10 +101,13 @@ export function CastDisplayWidget({ castHash, className = '' }: CastDisplayWidge
 
   if (loading) {
     return (
-      <Card className={`p-4 ${className}`}>
+      <Card
+        className={`p-4 !bg-purple-500 !border-white ${className}`}
+        style={{ backgroundColor: '#a855f7' }}
+      >
         <div className="animate-pulse">
-          <div className="h-4 bg-gray-300 rounded w-3/4 mb-2"></div>
-          <div className="h-3 bg-gray-300 rounded w-1/2"></div>
+          <div className="h-4 bg-purple-300 rounded w-3/4 mb-2"></div>
+          <div className="h-3 bg-purple-300 rounded w-1/2"></div>
         </div>
       </Card>
     );
@@ -112,8 +115,11 @@ export function CastDisplayWidget({ castHash, className = '' }: CastDisplayWidge
 
   if (error || !castData) {
     return (
-      <Card className={`p-4 ${className}`}>
-        <Typography variant="body" className="text-red-500">
+      <Card
+        className={`p-4 !bg-purple-500 !border-white ${className}`}
+        style={{ backgroundColor: '#a855f7' }}
+      >
+        <Typography variant="body" className="!text-white">
           {error || 'Cast not found'}
         </Typography>
       </Card>
@@ -126,14 +132,17 @@ export function CastDisplayWidget({ castHash, className = '' }: CastDisplayWidge
   }));
 
   return (
-    <Card className={`p-4 ${className}`}>
+    <Card
+      className={`p-4 !bg-purple-500 !border-white ${className}`}
+      style={{ backgroundColor: '#a855f7' }}
+    >
       <div className="space-y-3">
-        <Typography variant="h4" className="text-gray-900 dark:text-gray-100 font-comic">
+        <Typography variant="h4" className="!text-white font-comic">
           Current Announcement Cast
         </Typography>
 
         <div
-          className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          className="border border-white rounded-lg overflow-hidden cursor-pointer hover:bg-purple-600 transition-colors"
           onClick={() => {
             const castUrl = `https://warpcast.com/${castData.author.username}/${castHash.slice(0, 10)}`;
             window.open(castUrl, '_blank');

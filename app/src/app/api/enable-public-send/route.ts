@@ -2,14 +2,13 @@ import { NextResponse } from 'next/server';
 import { redis } from '@/lib/kv';
 import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
 
-const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
-
 export async function POST() {
   try {
     // Enable public send
     await redis.set('isPublicSendEnabled', 'true');
 
     // Send the PUBLIC_SEND_OPEN cast
+    const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
     const castResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/send-cast`, {
       method: 'POST',
       headers: {
@@ -18,7 +17,6 @@ export async function POST() {
       },
       body: JSON.stringify({
         text: CHOOCHOO_CAST_TEMPLATES.PUBLIC_SEND_OPEN(),
-        channel_id: 'base',
       }),
     });
 

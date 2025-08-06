@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useNeynarContext } from '@neynar/react';
 import { Card } from '@/components/base/Card';
 import { Button } from '@/components/base/Button';
 import { Typography } from '@/components/base/Typography';
@@ -23,6 +24,7 @@ interface WinnerSelectionState {
 
 export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetProps) {
   const { toast } = useToast();
+  const { user } = useNeynarContext();
 
   const [state, setState] = useState<WinnerSelectionState>({
     useRandomWinner: false,
@@ -70,9 +72,6 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
         key: 'isPublicSendEnabled',
         value: 'true',
       });
-
-      // Send the PUBLIC_SEND_OPEN cast via a new endpoint that handles this
-      await axios.post('/api/enable-public-send');
 
       setState((prev) => ({
         ...prev,
@@ -127,32 +126,26 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
       });
 
       if (checked) {
-        // Set winner selection start time (30 minutes from now)
-        const startTime = new Date(Date.now() + 30 * 60 * 1000).toISOString();
-        await Promise.all([
-          axios.post('/api/redis', {
-            action: 'write',
-            key: 'winnerSelectionStart',
-            value: startTime,
-          }),
-          axios.post('/api/redis', {
-            action: 'write',
-            key: 'isPublicSendEnabled',
-            value: 'false',
-          }),
-        ]);
+        // Enable random winner mode via backend endpoint (handles Redis + cast)
+        if (user?.username) {
+          const response = await axios.post('/api/enable-random-winner', {
+            username: user.username,
+          });
 
-        setState((prev) => ({
-          ...prev,
-          useRandomWinner: true,
-          winnerSelectionStart: startTime,
-          isPublicSendEnabled: false,
-        }));
+          if (response.data.success) {
+            setState((prev) => ({
+              ...prev,
+              useRandomWinner: true,
+              winnerSelectionStart: response.data.winnerSelectionStart,
+              isPublicSendEnabled: false,
+            }));
 
-        toast({
-          description:
-            '🎲 Random winner mode enabled! Public sending will be available in 30 minutes.',
-        });
+            toast({
+              description:
+                '🎲 Random winner mode enabled! Public sending will be available in 30 minutes.',
+            });
+          }
+        }
       } else {
         // Clear timer and disable public send
         await Promise.all([
@@ -259,7 +252,7 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
               checked={state.useRandomWinner}
               onCheckedChange={handleToggleRandomWinner}
               disabled={loading}
-              className="data-[state=checked]:bg-purple-700 data-[state=unchecked]:bg-purple-300 border-white"
+              className="data-[state=checked]:bg-purple-800 data-[state=unchecked]:bg-purple-200 border-purple-900 data-[state=checked]:border-purple-900 data-[state=unchecked]:border-purple-400"
             />
           </div>
 
