@@ -70,7 +70,7 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
   }
 
   return (
-    <Card className="p-4">
+    <Card className="p-4 !bg-purple-500 !border-white" style={{ backgroundColor: '#a855f7' }}>
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           {user.pfp_url && (
@@ -83,20 +83,17 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
             />
           )}
           <div>
-            <Typography variant="body" className="font-semibold">
+            <Typography variant="body" className="font-semibold !text-white">
               {user.display_name}
             </Typography>
-            <Typography variant="small" className="text-gray-600">
+            <Typography variant="small" className="!text-white">
               @{user.username}
             </Typography>
           </div>
         </div>
 
-        <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border">
-          <Typography
-            variant="body"
-            className="text-gray-700 dark:text-gray-300 whitespace-pre-line"
-          >
+        <div className="bg-purple-600 p-3 rounded-lg border border-white">
+          <Typography variant="body" className="!text-white whitespace-pre-line">
             {CHOOCHOO_CAST_TEMPLATES.USER_NEW_PASSENGER_CAST()}
           </Typography>
         </div>
@@ -105,7 +102,8 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
           <Button
             onClick={handlePublishCast}
             disabled={isPublishing}
-            className="bg-purple-500 hover:bg-purple-600 text-white px-8 py-2"
+            className="!text-white hover:!text-white !bg-purple-500 !border-2 !border-white px-8 py-2"
+            style={{ backgroundColor: '#a855f7' }}
           >
             {isPublishing ? 'Sending Cast...' : 'Send Cast'}
           </Button>
