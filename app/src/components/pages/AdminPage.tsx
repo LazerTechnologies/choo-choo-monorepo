@@ -13,83 +13,6 @@ interface AdminPageProps {
   onTokenMinted?: () => void;
 }
 
-function TestBaseCast({ adminFid }: { adminFid?: number }) {
-  const [result, setResult] = useState<{ success: boolean; cast?: { hash: string } } | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function handleTestBaseCast() {
-    if (!adminFid) {
-      setError('Admin FID required');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setResult(null);
-    try {
-      const res = await fetch('/api/test-base-cast', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adminFid }),
-      });
-      const data = await res.json();
-
-      if (res.ok && data.success) {
-        setResult(data);
-      } else {
-        setError(data.error || 'Cast failed');
-      }
-    } catch (err) {
-      console.error('Error testing base cast:', err);
-      setError('Cast failed');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <Card className="my-8 !bg-green-600 !border-white">
-      <Card.Header>
-        <Card.Title>Test Base Channel Cast</Card.Title>
-        <Card.Description>
-          Send a test cast to the Base channel to verify channel configuration is working.
-        </Card.Description>
-      </Card.Header>
-      <Card.Content>
-        <div className="space-y-3">
-          <Button
-            onClick={handleTestBaseCast}
-            disabled={loading}
-            isLoading={loading}
-            className="w-full bg-green-600 text-white border-white hover:bg-green-700"
-            variant="default"
-          >
-            Send Test Cast to Base
-          </Button>
-
-          {loading && (
-            <div className="text-xs text-gray-300 p-2 bg-green-700/50 rounded">Sending cast...</div>
-          )}
-
-          {error && <div className="text-xs text-red-300 p-2 bg-red-900/20 rounded">{error}</div>}
-
-          {result && (
-            <div className="text-xs space-y-2 border-t border-gray-300 dark:border-gray-600 pt-3 mt-3">
-              <div className="text-green-300 font-semibold">✅ Cast sent successfully!</div>
-              {result.cast?.hash && (
-                <div className="text-gray-300">
-                  Cast Hash: <span className="font-mono">{result.cast.hash}</span>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </Card.Content>
-    </Card>
-  );
-}
-
 function TestPinata() {
   const [result, setResult] = useState<(PinataUploadResult & { message?: string }) | null>(null);
   const [loading, setLoading] = useState(false);
@@ -562,7 +485,6 @@ export function AdminPage({ onTokenMinted }: AdminPageProps) {
     <div className="space-y-3 px-6 w-full max-w-md mx-auto">
       {/* Admin Test Sections */}
       <SetInitialHolder onTokenMinted={onTokenMinted} adminFid={currentUserFid} />
-      <TestBaseCast adminFid={currentUserFid} />
       <TestPinata />
       <TestAdminNextStop onTokenMinted={onTokenMinted} adminFid={currentUserFid} />
     </div>

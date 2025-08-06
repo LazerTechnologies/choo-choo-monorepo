@@ -148,9 +148,11 @@ export async function POST(request: Request) {
 
       // Fallback: Check if token1 exists in Redis (indicates journey has started)
       try {
-        const token1Data = await redis.get('token:1');
+        const token1Data = await redis.get('token1');
         if (token1Data) {
-          console.log('[admin-set-initial-holder] Found token:1 in Redis, journey has started');
+          console.log(
+            '[admin-set-initial-holder] Found `token1` in Redis, journey has already started'
+          );
           return NextResponse.json(
             {
               error:
@@ -159,7 +161,7 @@ export async function POST(request: Request) {
             { status: 400 }
           );
         }
-        console.log('[admin-set-initial-holder] No token:1 found in Redis, proceeding');
+        console.log('[admin-set-initial-holder] No `token1` found in Redis, proceeding');
       } catch (redisError) {
         console.error('[admin-set-initial-holder] Redis fallback failed:', redisError);
         // If both contract and Redis fail, allow the operation but log warning
