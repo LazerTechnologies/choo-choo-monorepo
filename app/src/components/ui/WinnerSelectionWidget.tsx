@@ -239,33 +239,35 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
         <CastDisplayWidget castHash={state.currentCastHash} />
       )}
 
-      <Card className="p-4">
+      <Card className="p-4 !bg-purple-500 !border-white" style={{ backgroundColor: '#a855f7' }}>
         <div className="space-y-4">
-          <Typography variant="h4" className="text-gray-900 dark:text-gray-100 font-comic">
+          <Typography variant="h4" className="!text-white font-comic">
             Choose Selection Method
           </Typography>
 
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <Typography variant="body" className="font-medium">
+              <Typography variant="body" className="font-medium !text-white">
                 Leave it to chance?
               </Typography>
-              <Typography variant="body" className="text-sm text-gray-600 dark:text-gray-300">
-                Toggle on to let anyone pick a random winner, or keep off to manually select
+              <Typography variant="body" className="text-sm !text-white">
+                Toggle on to let anyone pick a random reactor to your cast to receive ChooChoo next
+                after 30 minutes, or manually select someone below.
               </Typography>
             </div>
             <Switch
               checked={state.useRandomWinner}
               onCheckedChange={handleToggleRandomWinner}
               disabled={loading}
+              className="data-[state=checked]:bg-purple-700 data-[state=unchecked]:bg-purple-300 border-white"
             />
           </div>
 
           {state.useRandomWinner ? (
             <div className="space-y-4">
               {state.winnerSelectionStart && !state.isPublicSendEnabled && (
-                <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded">
-                  <Typography variant="body" className="text-sm">
+                <div className="p-3 bg-purple-700 border border-white rounded">
+                  <Typography variant="body" className="text-sm !text-white">
                     ⏱️ Public sending will be enabled in: <strong>{timeRemaining}</strong>
                   </Typography>
                 </div>
@@ -274,7 +276,8 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
               <Button
                 onClick={handleRandomSend}
                 disabled={loading || !state.isPublicSendEnabled}
-                className="w-full bg-purple-500 hover:bg-purple-600 text-white"
+                className="w-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white"
+                style={{ backgroundColor: '#a855f7' }}
               >
                 {loading
                   ? 'Selecting Winner...'
@@ -284,7 +287,7 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
               </Button>
 
               {!state.isPublicSendEnabled && (
-                <Typography variant="body" className="text-xs text-gray-500 text-center">
+                <Typography variant="body" className="text-xs !text-white text-center">
                   Button will be enabled for everyone once the timer expires
                 </Typography>
               )}
@@ -303,7 +306,8 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
               <Button
                 onClick={handleManualSend}
                 disabled={loading || !selectedUser}
-                className="w-full bg-purple-500 hover:bg-purple-600 text-white"
+                className="w-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white"
+                style={{ backgroundColor: '#a855f7' }}
               >
                 {loading
                   ? 'Sending ChooChoo...'
