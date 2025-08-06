@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Tab } from '@/components/Home';
+import type { Tab } from '@/types/app';
 import { Typography } from '@/components/base/Typography';
 import { Button } from '@/components/base/Button';
 import { Card } from '@/components/base/Card';
@@ -14,12 +14,7 @@ interface FooterProps {
   onYoinkClick?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = ({
-  activeTab,
-  setActiveTab,
-  showWallet = false,
-  onYoinkClick,
-}) => {
+export const Footer: React.FC<FooterProps> = ({ activeTab, setActiveTab }) => {
   const countdownState = useYoinkCountdown();
   const { user: neynarAuthUser } = useNeynarContext();
   const { context } = useMiniApp();
@@ -64,21 +59,34 @@ export const Footer: React.FC<FooterProps> = ({
             </Button>
           )}
 
-          {showWallet && (
-            <Button
-              onClick={onYoinkClick}
-              variant="reverse"
-              className="flex flex-col items-center justify-center w-full h-full !text-white hover:!text-gray-400 !bg-purple-500 !border-2 !border-white"
-              style={{ backgroundColor: '#a855f7' }}
-            >
-              <Typography variant="small" className="!text-white text-xs">
-                Yoink
-              </Typography>
-              <Typography variant="small" className="!text-white text-xs mt-0.5">
-                {countdownState.isLoading ? '...' : countdownState.clockFormat}
-              </Typography>
-            </Button>
-          )}
+          <Button
+            onClick={() => setActiveTab('yoink')}
+            variant={activeTab === 'yoink' ? 'default' : 'noShadow'}
+            className={`flex flex-col items-center justify-center w-full h-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white ${
+              activeTab === 'yoink' ? '' : 'opacity-70 hover:opacity-100'
+            }`}
+            style={{ backgroundColor: '#a855f7' }}
+          >
+            <Typography variant="small" className="!text-white text-xs">
+              Yoink
+            </Typography>
+            <Typography variant="small" className="!text-white text-xs mt-0.5">
+              {countdownState.isLoading ? '...' : countdownState.clockFormat}
+            </Typography>
+          </Button>
+
+          <Button
+            onClick={() => setActiveTab('faq')}
+            variant={activeTab === 'faq' ? 'default' : 'noShadow'}
+            className={`flex items-center justify-center w-full h-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white ${
+              activeTab === 'faq' ? '' : 'opacity-70 hover:opacity-100'
+            }`}
+            style={{ backgroundColor: '#a855f7' }}
+          >
+            <Typography variant="small" className="!text-white">
+              FAQ
+            </Typography>
+          </Button>
         </div>
       </Card>
     </div>

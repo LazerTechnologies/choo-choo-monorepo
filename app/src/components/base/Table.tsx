@@ -44,7 +44,10 @@ const TableFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <tfoot
     ref={ref}
-    className={cn('border-t border-t-border bg-main font-base [&>tr]:last:border-b-0', className)}
+    className={cn(
+      'border-t border-t-border bg-purple-500 font-base [&>tr]:last:border-b-0',
+      className
+    )}
     {...props}
   />
 ));
@@ -55,7 +58,7 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
     <tr
       ref={ref}
       className={cn(
-        'border-b border-border dark:border-darkBorder text-text transition-colors bg-main font-base hover:bg-primary/50 hover:text-primary-foreground data-[state=selected]:bg-white dark:data-[state=selected]:bg-secondaryBlack data-[state=selected]:text-text dark:data-[state=selected]:text-darkText',
+        'border-b border-border dark:border-darkBorder text-text transition-colors bg-purple-500 font-base hover:bg-purple-400 hover:text-primary-foreground data-[state=selected]:bg-white dark:data-[state=selected]:bg-secondaryBlack data-[state=selected]:text-text dark:data-[state=selected]:text-darkText',
         className
       )}
       {...props}
