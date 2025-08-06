@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getSession } from '@/auth';
+import { ADMIN_FIDS } from '@/lib/constants';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
@@ -27,16 +27,6 @@ interface AdminSetTicketDataResponse {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const session = await getSession();
-    if (!session?.user?.fid) {
-      console.error('[admin-set-ticket-data] Unauthorized: No valid session');
-      return NextResponse.json(
-        { error: 'Unauthorized - Authentication required' },
-        { status: 401 }
-      );
-    }
-
     // Parse and validate request body
     let body;
     try {
@@ -57,13 +47,10 @@ export async function POST(request: NextRequest) {
 
     const { tokenId, tokenURI, image, traits, adminFid } = validation.data;
 
-    // Verify that the authenticated user matches the admin FID
-    if (session.user.fid !== adminFid) {
-      console.error('[admin-set-ticket-data] FID mismatch: session FID does not match admin FID');
-      return NextResponse.json(
-        { error: 'Unauthorized - Invalid admin credentials' },
-        { status: 403 }
-      );
+    // Check if user is admin
+    if (!ADMIN_FIDS.includes(adminFid)) {
+      console.error(`[admin-set-ticket-data] Unauthorized: FID ${adminFid} is not an admin`);
+      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 403 });
     }
 
     console.log(

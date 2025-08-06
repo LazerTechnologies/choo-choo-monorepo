@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getContractService } from '@/lib/services/contract';
-import { getSession } from '@/auth';
 import { redis } from '@/lib/kv';
 import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
 
@@ -18,29 +17,25 @@ const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
  */
 export async function POST(request: NextRequest) {
   try {
-    // 1. Authentication - only allow authenticated Farcaster users
-    const session = await getSession();
-    if (!session?.user?.fid) {
-      console.error('[yoink] 🔒 Unauthorized: Must call from within Farcaster');
-      return NextResponse.json(
-        { error: '🔒 Unauthorized - Farcaster authentication required' },
-        { status: 401 }
-      );
-    }
+    console.log('[yoink] 🫡 Yoink request received');
 
-    console.log(`[yoink] 🫡 Authenticated yoink request from FID: ${session.user.fid}`);
-
-    // 2. Parse request body
+    // 1. Parse request body
     let targetAddress: string;
+    let userFid: number;
     try {
       const body = await request.json();
       targetAddress = body.targetAddress;
+      userFid = body.userFid;
 
       if (!targetAddress) {
         return NextResponse.json(
           { error: 'targetAddress is required in request body' },
           { status: 400 }
         );
+      }
+
+      if (!userFid) {
+        return NextResponse.json({ error: 'userFid is required in request body' }, { status: 400 });
       }
 
       // Basic address validation
@@ -52,7 +47,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
-    // 3. Check yoink eligibility on contract
+    // 2. Check yoink eligibility on contract
     let contractService;
     try {
       contractService = getContractService();
@@ -70,7 +65,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to check yoink eligibility' }, { status: 500 });
     }
 
-    // 4. Check if target address has already ridden the train
+    // 3. Check if target address has already ridden the train
     try {
       const hasRidden = await contractService.hasRiddenTrain(targetAddress as `0x${string}`);
       if (hasRidden) {
@@ -113,7 +108,7 @@ export async function POST(request: NextRequest) {
     let yoinkerData = null;
     try {
       const userResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL}/api/user?fid=${session.user.fid}`
+        `${process.env.NEXT_PUBLIC_APP_URL}/api/user?fid=${userFid}`
       );
       if (userResponse.ok) {
         const userData = await userResponse.json();
@@ -132,7 +127,7 @@ export async function POST(request: NextRequest) {
       console.warn('[yoink] Failed to get yoinker data (non-critical):', err);
     }
 
-    // 7. Get next token ID for the ticket that will be minted
+    // 6. Get next token ID for the ticket that will be minted
     let totalSupply, tokenId;
     try {
       totalSupply = await contractService.getTotalSupply();
@@ -189,7 +184,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 10. Update Redis with new holder data
+    // 9. Update Redis with new holder data
     try {
       if (yoinkerData) {
         await redis.set('current-holder', JSON.stringify(yoinkerData));
@@ -209,7 +204,7 @@ export async function POST(request: NextRequest) {
       console.warn('[yoink] Failed to update Redis (non-critical):', err);
     }
 
-    // 11. If we have NFT data, set it on the contract
+    // 10. If we have NFT data, set it on the contract
     if (nftData?.tokenURI && currentHolderData) {
       try {
         const setDataResponse = await fetch(
@@ -239,7 +234,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 12. Send announcement casts
+    // 11. Send announcement casts
     try {
       if (yoinkerData?.username) {
         // Send yoink announcement cast

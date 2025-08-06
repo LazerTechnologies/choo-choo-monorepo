@@ -34,7 +34,7 @@ export const CHOOCHOO_CAST_TEMPLATES = {
   // [@choochoo] Cast sent to previous holder when their ticket is minted
   TICKET_ISSUED: (previousHolderUsername: string, tokenId: number, ipfsImageHash: string) =>
     `🎫 Ticket #${tokenId} has been minted by the conductor and delivered to @${previousHolderUsername} to commemorate their ride. All aboard for the next stop!\n\n` +
-    `${process.env.NEXT_PUBLIC_PINATA_GATEWAY}/${ipfsImageHash}`,
+    `https://${process.env.NEXT_PUBLIC_PINATA_GATEWAY}/ipfs/${ipfsImageHash}`,
 
   // [@choochoo] Generic journey announcement
   JOURNEY_CONTINUES: () =>

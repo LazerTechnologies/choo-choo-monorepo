@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { getContractService } from '@/lib/services/contract';
-import { getSession } from '@/auth';
 import { redis } from '@/lib/kv';
 import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
 
@@ -18,19 +17,9 @@ const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
  */
 export async function POST() {
   try {
-    // 1. Authentication - only allow authenticated Farcaster users
-    const session = await getSession();
-    if (!session?.user?.fid) {
-      console.error('[send-train] 🔒 Unauthorized: Must call from within Farcaster');
-      return NextResponse.json(
-        { error: '🔒 Unauthorized - Farcaster authentication required' },
-        { status: 401 }
-      );
-    }
+    console.log('[send-train] 🫡 Public random winner selection request');
 
-    console.log(`[send-train] 🫡 Authenticated request from FID: ${session.user.fid}`);
-
-    // 2. Get current cast hash from Redis
+    // 1. Get current cast hash from Redis
     let castHash;
     try {
       castHash = await redis.get('current-cast-hash');
@@ -50,7 +39,7 @@ export async function POST() {
 
     console.log(`[send-train] Starting orchestration for cast: ${castHash}`);
 
-    // 3. Select winner from Farcaster reactions using the current cast hash
+    // 2. Select winner from Farcaster reactions using the current cast hash
     let winnerResponse;
     try {
       winnerResponse = await fetch(
@@ -156,7 +145,7 @@ export async function POST() {
       );
     }
 
-    // 6. Mint token on contract
+    // 5. Mint token on contract
     let mintResponse;
     try {
       mintResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/mint-token`, {
@@ -195,7 +184,7 @@ export async function POST() {
       );
     }
 
-    // 7. Clear the flags since the train has moved
+    // 6. Clear the flags since the train has moved
     try {
       await Promise.all([
         redis.del('current-cast-hash'),
@@ -212,7 +201,7 @@ export async function POST() {
       // Don't fail the request for this
     }
 
-    // 8. Send announcement casts from ChooChoo account
+    // 7. Send announcement casts from ChooChoo account
     try {
       // 8a. Send welcome cast to new holder
       const welcomeCastText = CHOOCHOO_CAST_TEMPLATES.WELCOME_PASSENGER(winnerData.winner.username);
@@ -279,7 +268,7 @@ export async function POST() {
       // Don't fail the request for cast sending issues
     }
 
-    // 9. Return combined result
+    // 8. Return combined result
     console.log(
       `[send-train] Successfully orchestrated train movement for token ${mintData.actualTokenId}`
     );
