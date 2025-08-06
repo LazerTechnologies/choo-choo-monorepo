@@ -22,6 +22,11 @@
     "set-data:dry-run": "forge script script/SetData.s.sol:SetData --fork-url $BASE_RPC_URL -vvvv --sig 'setAll()'",
     "yoink:sepolia": "forge script script/Yoink.s.sol:YoinkScript --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast -vvvv",
     "yoink:mainnet": "forge script script/Yoink.s.sol:YoinkScript --rpc-url $BASE_RPC_URL --broadcast -vvvv",
-    "yoink:dry-run": "forge script script/Yoink.s.sol:YoinkScript --fork-url $BASE_RPC_URL -vvvv"
+    "yoink:dry-run": "forge script script/Yoink.s.sol:YoinkScript --fork-url $BASE_RPC_URL -vvvv",
+    "fix-main-token-uri:sepolia": "forge script script/FixMainTokenURI.s.sol:FixMainTokenURI --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast -vvvv",
+    "fix-main-token-uri:mainnet": "forge script script/FixMainTokenURI.s.sol:FixMainTokenURI --rpc-url $BASE_RPC_URL --broadcast -vvvv",
+    "fix-main-token-uri:dry-run": "forge script script/FixMainTokenURI.s.sol:FixMainTokenURI --fork-url $BASE_RPC_URL -vvvv",
+    "check-main-token-uri:sepolia": "forge script script/CheckMainTokenURI.s.sol:CheckMainTokenURI --rpc-url $BASE_SEPOLIA_RPC_URL",
+    "check-main-token-uri:mainnet": "forge script script/CheckMainTokenURI.s.sol:CheckMainTokenURI --rpc-url $BASE_RPC_URL"
   }
 }

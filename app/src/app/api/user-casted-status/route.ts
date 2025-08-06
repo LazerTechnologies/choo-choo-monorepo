@@ -1,19 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/auth';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. Authentication - only allow authenticated Farcaster users
-    const session = await getSession();
-    if (!session?.user?.fid) {
-      return NextResponse.json(
-        { error: 'Unauthorized - Farcaster authentication required' },
-        { status: 401 }
-      );
-    }
-
     const { hasCurrentUserCasted } = await request.json();
 
     if (typeof hasCurrentUserCasted !== 'boolean') {
@@ -51,15 +41,6 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    // 1. Authentication - only allow authenticated Farcaster users
-    const session = await getSession();
-    if (!session?.user?.fid) {
-      return NextResponse.json(
-        { error: 'Unauthorized - Farcaster authentication required' },
-        { status: 401 }
-      );
-    }
-
     // Call the internal get endpoint
     const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/get-user-casted`, {
       method: 'GET',
