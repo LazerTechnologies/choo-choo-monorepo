@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import { useState } from 'react';
 import sdk from '@farcaster/frame-sdk';
-import { useMiniApp, NeynarAuthButton, useNeynarContext } from '@neynar/react';
+import { useMiniApp } from '@neynar/react';
 import { Typography } from '@/components/base/Typography';
 import { Card } from '@/components/base/Card';
 
@@ -14,7 +14,6 @@ type HeaderProps = {
 
 export function Header({ neynarUser }: HeaderProps) {
   const { context } = useMiniApp();
-  const { user: neynarAuthUser } = useNeynarContext();
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [hasClickedPfp, setHasClickedPfp] = useState(false);
 
@@ -26,7 +25,6 @@ export function Header({ neynarUser }: HeaderProps) {
       >
         <div className="flex items-center justify-end relative">
           <div className="flex items-center gap-2">
-            <NeynarAuthButton />
             {context?.user && (
               <button
                 className="transition-all hover:translate-y-0.5 focus:outline-none"
@@ -81,11 +79,6 @@ export function Header({ neynarUser }: HeaderProps) {
                     {neynarUser && (
                       <Typography variant="small" className="!text-white block opacity-70">
                         Neynar Score: {neynarUser.score}
-                      </Typography>
-                    )}
-                    {neynarAuthUser && (
-                      <Typography variant="small" className="!text-white block opacity-70">
-                        Neynar Auth: ✓ {neynarAuthUser.display_name}
                       </Typography>
                     )}
                   </div>

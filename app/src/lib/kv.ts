@@ -285,3 +285,47 @@ export async function initializeKV(): Promise<void> {
     throw error;
   }
 }
+
+// Signer Management for Farcaster
+export interface SignerInfo {
+  fid: number;
+  signerUuid: string;
+  status: 'pending' | 'approved';
+  createdAt: number;
+  approvedAt?: number;
+}
+
+// Add signer key to existing KEYS constant
+const SIGNER_KEYS = {
+  // Signer info by FID (since users only use app once)
+  SIGNER: (fid: number) => `choochoo:signer:${fid}`,
+} as const;
+
+// Signer Functions
+export async function setSignerInfo(signerInfo: SignerInfo): Promise<void> {
+  await redis.setex(
+    SIGNER_KEYS.SIGNER(signerInfo.fid),
+    TTL.TOKEN_METADATA,
+    JSON.stringify(signerInfo)
+  );
+}
+
+export async function getSignerInfo(fid: number): Promise<SignerInfo | null> {
+  const signer = await redis.get(SIGNER_KEYS.SIGNER(fid));
+  return signer ? JSON.parse(signer as string) : null;
+}
+
+export async function updateSignerStatus(
+  fid: number,
+  status: 'pending' | 'approved'
+): Promise<void> {
+  const existingSigner = await getSignerInfo(fid);
+  if (existingSigner) {
+    const updatedSigner: SignerInfo = {
+      ...existingSigner,
+      status,
+      ...(status === 'approved' && { approvedAt: Date.now() }),
+    };
+    await setSignerInfo(updatedSigner);
+  }
+}

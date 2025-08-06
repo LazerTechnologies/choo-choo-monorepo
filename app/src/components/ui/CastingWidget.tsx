@@ -4,11 +4,13 @@ import { useState } from 'react';
 import { useNeynarContext } from '@neynar/react';
 import { useMiniApp } from '@neynar/react';
 import { useCurrentHolder } from '@/hooks/useCurrentHolder';
+import { useSignerManager } from '@/hooks/useSignerManager';
 import { useToast } from '@/hooks/useToast';
 import axios, { AxiosError } from 'axios';
 import { Button } from '@/components/base/Button';
 import { Card } from '@/components/base/Card';
 import { Typography } from '@/components/base/Typography';
+import { SignerApprovalModal } from '@/components/ui/SignerApprovalModal';
 import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
 import Image from 'next/image';
 
@@ -24,25 +26,54 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
   const { user } = useNeynarContext();
   const { context } = useMiniApp();
   const { isCurrentHolder, loading } = useCurrentHolder();
+  const {
+    hasApprovedSigner,
+    signerUuid,
+    signerApprovalUrl,
+    loading: signerLoading,
+    createSigner,
+  } = useSignerManager();
   const { toast } = useToast();
   const [isPublishing, setIsPublishing] = useState(false);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
 
-  // Check if user has the ability to cast (needs Neynar auth signer)
-  const canCast = !!user?.signer_uuid;
   const currentUserFid = user?.fid || context?.user?.fid;
 
+  const handleApprove = async () => {
+    try {
+      await createSigner();
+      setShowApprovalModal(true);
+    } catch (error) {
+      console.error('Failed to create signer:', error);
+      toast({
+        description: 'Failed to create signer. Please try again.',
+      });
+    }
+  };
+
+  const handleApprovalComplete = async () => {
+    // The approval is already marked by the modal or polling
+    // Just refresh the status and show success message
+    setShowApprovalModal(false);
+
+    toast({
+      description: 'Signer approved successfully! You can now send casts.',
+    });
+  };
+
   const handlePublishCast = async () => {
-    if (!user?.signer_uuid) {
-      alert('Please sign in with Neynar to publish casts');
+    if (!hasApprovedSigner || !signerUuid) {
+      toast({
+        description: 'Please approve ChooChoo as a signer first.',
+      });
       return;
     }
 
     setIsPublishing(true);
     try {
-      await axios.post<{ message: string }>('/api/cast', {
-        signerUuid: user.signer_uuid,
+      await axios.post<{ message: string }>('/api/user-cast', {
+        signer_uuid: signerUuid,
         text: CHOOCHOO_CAST_TEMPLATES.USER_NEW_PASSENGER_CAST(),
-        isUserCast: true,
       });
 
       // Set flag in Redis to indicate current user has casted
@@ -73,9 +104,22 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
     }
   };
 
-  // Only show cast widget for the current holder who has casting ability
+  // Only show cast widget for the current holder
   if (!currentUserFid || loading || !isCurrentHolder) {
     return null;
+  }
+
+  // Show loading state while checking signer status
+  if (signerLoading) {
+    return (
+      <Card className="p-4 !bg-purple-500 !border-white" style={{ backgroundColor: '#a855f7' }}>
+        <div className="flex justify-center">
+          <Typography variant="body" className="!text-white">
+            Checking signer status...
+          </Typography>
+        </div>
+      </Card>
+    );
   }
 
   return (
@@ -107,21 +151,33 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
           </Typography>
         </div>
 
+        {!hasApprovedSigner && (
+          <div className="bg-yellow-100 border border-yellow-400 p-3 rounded-lg mb-4">
+            <Typography variant="small" className="!text-yellow-800 text-center">
+              ⚠️ Approve ChooChoo as a signer to continue
+            </Typography>
+          </div>
+        )}
+
         <div className="flex justify-center">
           <Button
-            onClick={handlePublishCast}
+            onClick={hasApprovedSigner ? handlePublishCast : handleApprove}
             disabled={isPublishing}
             className="!text-white hover:!text-white !bg-purple-500 !border-2 !border-white px-8 py-2"
             style={{ backgroundColor: '#a855f7' }}
           >
-            {isPublishing
-              ? 'Sending Cast...'
-              : canCast
-                ? 'Send Cast'
-                : 'Send Cast (Sign in Required)'}
+            {isPublishing ? 'Sending Cast...' : hasApprovedSigner ? 'Send Cast' : 'Approve'}
           </Button>
         </div>
       </div>
+
+      <SignerApprovalModal
+        isOpen={showApprovalModal}
+        onClose={() => setShowApprovalModal(false)}
+        approvalUrl={signerApprovalUrl || ''}
+        onApprovalComplete={handleApprovalComplete}
+        userFid={currentUserFid}
+      />
     </Card>
   );
 }
