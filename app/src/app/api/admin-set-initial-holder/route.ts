@@ -132,27 +132,29 @@ export async function POST(request: Request) {
       `[admin-set-initial-holder] Admin ${adminFid} attempting to set initial holder to FID ${targetFid}`
     );
 
-    // Check contract total supply to prevent accidental usage after tokens are minted
-    // Use Redis fallback if contract check fails
-    let totalSupply = 1; // Default to 1 (just the train token)
+    let totalTickets = 0;
+    let journeyLength = 1;
+    let contractCheckSucceeded = false;
+    let redisCheckSucceeded = false;
 
     try {
       const contractService = getContractService();
-      totalSupply = await contractService.getTotalSupply();
-      console.log(`[admin-set-initial-holder] Contract total supply: ${totalSupply}`);
-    } catch (contractError) {
-      console.warn(
-        '[admin-set-initial-holder] Failed to check contract total supply, using Redis fallback:',
-        contractError
-      );
+      totalTickets = await contractService.getTotalTickets();
+      journeyLength = await contractService.getTrainJourneyLength();
 
-      // Fallback: Check if token1 exists in Redis (indicates journey has started)
+      contractCheckSucceeded = true;
+      console.log(
+        `[admin-set-initial-holder] Contract check succeeded. Tickets: ${totalTickets}, Journey length: ${journeyLength}`
+      );
+    } catch (contractError) {
+      console.log('[admin-set-initial-holder] Contract check failed, trying Redis fallback');
+      console.error('[admin-set-initial-holder] Contract error details:', contractError);
+
       try {
         const token1Data = await redis.get('token1');
+        redisCheckSucceeded = true;
         if (token1Data) {
-          console.log(
-            '[admin-set-initial-holder] Found `token1` in Redis, journey has already started'
-          );
+          console.log('[admin-set-initial-holder] Redis check: Found token1, journey has started');
           return NextResponse.json(
             {
               error:
@@ -161,21 +163,27 @@ export async function POST(request: Request) {
             { status: 400 }
           );
         }
-        console.log('[admin-set-initial-holder] No `token1` found in Redis, proceeding');
+        console.log('[admin-set-initial-holder] Redis check: No token1 found, proceeding');
       } catch (redisError) {
-        console.error('[admin-set-initial-holder] Redis fallback failed:', redisError);
-        // If both contract and Redis fail, allow the operation but log warning
-        console.warn(
-          '[admin-set-initial-holder] WARNING: Could not verify contract state, proceeding anyway'
-        );
+        console.error('[admin-set-initial-holder] Redis check failed:', redisError);
+
+        // If both contract and Redis fail, return error
+        if (!contractCheckSucceeded && !redisCheckSucceeded) {
+          console.error(
+            '[admin-set-initial-holder] CRITICAL: Both contract and Redis checks failed'
+          );
+          return NextResponse.json(
+            { error: 'Failed to determine journey status. Please try again later.' },
+            { status: 500 }
+          );
+        }
       }
     }
 
-    // If we got contract data and total supply > 1, block the operation
-    if (totalSupply > 1) {
+    if (contractCheckSucceeded && (totalTickets > 0 || journeyLength > 1)) {
       return NextResponse.json(
         {
-          error: `Cannot set initial holder: ${totalSupply - 1} journey ticket(s) have already been minted. This function is only for fresh deployments.`,
+          error: `Cannot set initial holder: ${totalTickets} ticket(s) have been minted and train has made ${journeyLength} stop(s). This function is only for fresh deployments.`,
         },
         { status: 400 }
       );

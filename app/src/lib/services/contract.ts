@@ -3,7 +3,11 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { base, baseSepolia } from 'wagmi/chains';
 import ChooChooTrainAbiJson from '@/abi/ChooChooTrain.abi.json';
 
+// Type-safe ABI for ChooChoo Train contract
 const ChooChooTrainAbi = ChooChooTrainAbiJson as Abi;
+
+// Export the typed ABI for use in other parts of the application
+export { ChooChooTrainAbi };
 
 // @todo: utilize paymaster for contract execution
 interface ContractConfig {
@@ -56,17 +60,24 @@ export class ContractService {
   }
 
   /**
+   * Create a typed contract instance for type-safe function calls
+   */
+  private createTypedContract() {
+    const publicClient = this.createPublicClient();
+
+    return getContract({
+      address: this.config.address,
+      abi: ChooChooTrainAbi,
+      client: publicClient,
+    });
+  }
+
+  /**
    * Read the current total supply from the contract
    */
   async getTotalSupply(): Promise<number> {
-    const publicClient = this.createPublicClient();
-
-    const totalSupply = await publicClient.readContract({
-      address: this.config.address,
-      abi: ChooChooTrainAbi,
-      functionName: 'totalSupply',
-    });
-
+    const contract = this.createTypedContract();
+    const totalSupply = await contract.read.totalSupply();
     return Number(totalSupply);
   }
 
@@ -74,14 +85,8 @@ export class ContractService {
    * Get the current train holder address
    */
   async getCurrentTrainHolder(): Promise<Address> {
-    const publicClient = this.createPublicClient();
-
-    const holder = await publicClient.readContract({
-      address: this.config.address,
-      abi: ChooChooTrainAbi,
-      functionName: 'getCurrentTrainHolder',
-    });
-
+    const contract = this.createTypedContract();
+    const holder = await contract.read.getCurrentTrainHolder();
     return holder as Address;
   }
 
@@ -89,13 +94,8 @@ export class ContractService {
    * Get comprehensive train status information
    */
   async getTrainStatus(): Promise<TrainStatus> {
-    const publicClient = this.createPublicClient();
-
-    const status = await publicClient.readContract({
-      address: this.config.address,
-      abi: ChooChooTrainAbi,
-      functionName: 'getTrainStatus',
-    });
+    const contract = this.createTypedContract();
+    const status = await contract.read.getTrainStatus();
 
     const [holder, totalStops, lastMoveTime, canBeYoinked, nextTicketId] = status as [
       Address,
@@ -118,52 +118,42 @@ export class ContractService {
    * Check if an address has ridden the train before
    */
   async hasRiddenTrain(address: Address): Promise<boolean> {
-    const publicClient = this.createPublicClient();
-
-    const hasRidden = await publicClient.readContract({
-      address: this.config.address,
-      abi: ChooChooTrainAbi,
-      functionName: 'hasRiddenTrain',
-      args: [address],
-    });
-
+    const contract = this.createTypedContract();
+    const hasRidden = await contract.read.hasRiddenTrain([address]);
     return hasRidden as boolean;
   }
 
   /**
-   * Get the total number of tickets minted
+   * Get the total number of tickets minted (excluding train token)
    */
   async getTotalTickets(): Promise<number> {
-    const publicClient = this.createPublicClient();
-
-    const totalTickets = await publicClient.readContract({
-      address: this.config.address,
-      abi: ChooChooTrainAbi,
-      functionName: 'getTotalTickets',
-    });
-
+    const contract = this.createTypedContract();
+    const totalTickets = await contract.read.getTotalTickets();
     return Number(totalTickets);
+  }
+
+  /**
+   * Get the train journey length (number of stops made)
+   */
+  async getTrainJourneyLength(): Promise<number> {
+    const contract = this.createTypedContract();
+    const journeyLength = await contract.read.getTrainJourneyLength();
+    return Number(journeyLength);
   }
 
   /**
    * Get list of admin addresses
    */
   async getAdmins(): Promise<Address[]> {
-    const publicClient = this.createPublicClient();
-
-    const admins = await publicClient.readContract({
-      address: this.config.address,
-      abi: ChooChooTrainAbi,
-      functionName: 'getAdmins',
-    });
-
+    const contract = this.createTypedContract();
+    const admins = await contract.read.getAdmins();
     return admins as Address[];
   }
 
   /**
    * Execute the nextStopWithTicketData function on the contract
    * This is the new function that moves the train and sets ticket metadata in one transaction
-   * @todo: use coinbase paymaster instead of admin private key
+   * @todo: use coinbase paymaster to cover gas costs
    */
   async executeNextStop(recipient: Address, tokenURI: string): Promise<`0x${string}`> {
     if (!this.config.adminPrivateKey) {
@@ -232,24 +222,29 @@ export class ContractService {
   }
 
   /**
-   * Get contract information and status
+   * Get contract information and status using typed contract calls
    */
   async getContractInfo() {
     try {
-      const [totalSupply, currentHolder, totalTickets, admins] = await Promise.all([
-        this.getTotalSupply(),
-        this.getCurrentTrainHolder(),
-        this.getTotalTickets(),
-        this.getAdmins(),
+      const contract = this.createTypedContract();
+
+      // Use typed contract calls - now with full intellisense and compile-time safety!
+      const [totalSupply, currentHolder, totalTickets, journeyLength, admins] = await Promise.all([
+        contract.read.totalSupply(),
+        contract.read.getCurrentTrainHolder(),
+        contract.read.getTotalTickets(),
+        contract.read.getTrainJourneyLength(),
+        contract.read.getAdmins(),
       ]);
 
       return {
         address: this.config.address,
-        totalSupply,
-        totalTickets,
-        nextTokenId: totalSupply + 1,
+        totalSupply: Number(totalSupply),
+        totalTickets: Number(totalTickets),
+        journeyLength: Number(journeyLength),
+        nextTokenId: Number(totalSupply) + 1,
         currentHolder,
-        adminCount: admins.length,
+        adminCount: (admins as Address[]).length,
         network: this.chain.name,
         healthy: true,
       };

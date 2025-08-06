@@ -189,6 +189,14 @@ After implementing these changes:
 - Backend already handles 48-hour cooldowns
 - These contract changes align the contract with existing backend logic
 
+## Integration Checks
+
+- [ ] forge build
+- [ ] use the root level script to copy the built ABI to `/app/abi/`
+- [ ] update ABI references in `/app/src/lib/services/contract.ts`
+- [ ] update hooks that use contract
+- [ ] make sure API isn't calling any depricated methods
+
 ## Summary
 
 The main issue is that the contract has complex yoink logic that doesn't match the simplified admin-controlled system implemented in the backend. These changes will align the contract with the actual system architecture where admins have full control over train movement, including yoink operations.

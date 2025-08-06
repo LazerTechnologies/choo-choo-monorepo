@@ -207,7 +207,7 @@ function SetInitialHolder({
   }, [fid, adminFid, onTokenMinted, isDisabled]);
 
   return (
-    <Card className={`my-8 !border-white ${isDisabled ? '!bg-gray-400' : '!bg-orange-500'}`}>
+    <Card className={`my-8 !border-white ${isDisabled ? '!bg-gray-400' : '!bg-purple-800'}`}>
       <Card.Header>
         <Card.Title>Set Initial Holder</Card.Title>
         <Card.Description>
@@ -247,7 +247,7 @@ function SetInitialHolder({
             disabled={loading || !fid.trim() || isDisabled || isLoadingSupply}
             isLoading={loading || isLoadingSupply}
             className={`w-full text-white border-white ${
-              isDisabled ? 'bg-gray-500 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700'
+              isDisabled ? 'bg-gray-500 cursor-not-allowed' : 'bg-purple-800 hover:bg-purple-900'
             }`}
             variant="default"
           >
@@ -263,7 +263,7 @@ function SetInitialHolder({
 
         {isLoadingSupply && !hasJourneyTickets && (
           <div className="text-xs text-blue-600 mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded">
-            Checking contract state...
+            Checking...
           </div>
         )}
 
