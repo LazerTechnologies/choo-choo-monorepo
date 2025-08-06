@@ -5,7 +5,7 @@ import { redis } from '@/lib/kv';
 import { getContractService } from '@/lib/services/contract';
 import type { CurrentHolderData } from '@/types/nft';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
-import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
+import { CHOOCHOO_CAST_TEMPLATES, CHOOCHOO_TRAIN_METADATA_URI } from '@/lib/constants';
 
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
@@ -233,6 +233,18 @@ export async function POST(request: Request) {
     console.log(
       `[admin-set-initial-holder] Successfully set initial current holder: ${targetUser.username} (FID: ${targetUser.fid})`
     );
+
+    // Set the main token URI for the train (tokenId 0) on the contract
+    try {
+      const contractService = getContractService();
+      const setMainTokenURITx = await contractService.setMainTokenURI(CHOOCHOO_TRAIN_METADATA_URI);
+      console.log(
+        `[admin-set-initial-holder] Successfully set main token URI: ${setMainTokenURITx}`
+      );
+    } catch (err) {
+      console.warn('[admin-set-initial-holder] Failed to set main token URI (non-critical):', err);
+      // Don't fail the request for this
+    }
 
     // Send journey begins announcement cast from ChooChoo account
     try {

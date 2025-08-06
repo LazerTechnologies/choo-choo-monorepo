@@ -21,6 +21,10 @@ export const CHOOCHOO_TRAIN_ADDRESS = (() => {
   return address as `0x${string}`;
 })();
 
+// ChooChoo Train Metadata
+export const CHOOCHOO_TRAIN_METADATA_URI =
+  'ipfs://bafybeib7jkoiz4syrc7oxksatd2lytef5h2beomkbp6qxm6eqkdei6f65q';
+
 // ChooChoo Cast Templates
 export const CHOOCHOO_CAST_TEMPLATES = {
   // [@choochoo] Cast sent to previous holder when their ticket is minted

@@ -339,6 +339,47 @@ export class ContractService {
   }
 
   /**
+   * Set the main token URI for the train (tokenId 0)
+   */
+  async setMainTokenURI(tokenURI: string): Promise<string> {
+    if (!this.config.adminPrivateKey) {
+      throw new Error('Missing ADMIN_PRIVATE_KEY for setting main token URI');
+    }
+
+    try {
+      const account = privateKeyToAccount(this.config.adminPrivateKey);
+      const walletClient = createWalletClient({
+        account,
+        chain: this.chain,
+        transport: http(this.config.rpcUrl),
+      });
+
+      const contract = getContract({
+        address: this.config.address,
+        abi: ChooChooTrainAbi,
+        client: walletClient,
+      });
+
+      const hash = await contract.write.setMainTokenURI([tokenURI]);
+      console.log(`[ContractService] setMainTokenURI transaction hash: ${hash}`);
+      return hash;
+    } catch (error) {
+      // Enhanced error handling for setMainTokenURI-specific restrictions
+      if (error instanceof Error) {
+        if (
+          error.message.includes('OwnableUnauthorizedAccount') ||
+          error.message.includes('caller is not the owner')
+        ) {
+          throw new Error(
+            'Owner role required: The current private key does not have owner permissions on the contract'
+          );
+        }
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Get contract information and status using typed contract calls
    */
   async getContractInfo() {

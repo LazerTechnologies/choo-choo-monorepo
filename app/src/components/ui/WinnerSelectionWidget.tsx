@@ -7,7 +7,6 @@ import { Typography } from '@/components/base/Typography';
 import { Switch } from '@/components/base/Switch';
 import { CastDisplayWidget } from './CastDisplayWidget';
 import { UsernameInput } from './UsernameInput';
-import { useMiniApp } from '@neynar/react';
 import { useToast } from '@/hooks/useToast';
 import axios from 'axios';
 
@@ -64,6 +63,30 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
     }
   }, []);
 
+  const handleEnablePublicSend = useCallback(async () => {
+    try {
+      await axios.post('/api/redis', {
+        action: 'write',
+        key: 'isPublicSendEnabled',
+        value: 'true',
+      });
+
+      // Send the PUBLIC_SEND_OPEN cast via a new endpoint that handles this
+      await axios.post('/api/enable-public-send');
+
+      setState((prev) => ({
+        ...prev,
+        isPublicSendEnabled: true,
+      }));
+
+      toast({
+        description: '🚂 Public sending is now enabled! Anyone can select the next passenger.',
+      });
+    } catch (error) {
+      console.error('Error enabling public send:', error);
+    }
+  }, [toast]);
+
   // Calculate time remaining
   useEffect(() => {
     if (!state.winnerSelectionStart) return;
@@ -87,7 +110,7 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [state.winnerSelectionStart, state.isPublicSendEnabled]);
+  }, [state.winnerSelectionStart, state.isPublicSendEnabled, handleEnablePublicSend]);
 
   // Fetch state on component mount
   useEffect(() => {
@@ -152,30 +175,6 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleEnablePublicSend = async () => {
-    try {
-      await axios.post('/api/redis', {
-        action: 'write',
-        key: 'isPublicSendEnabled',
-        value: 'true',
-      });
-
-      // Send the PUBLIC_SEND_OPEN cast via a new endpoint that handles this
-      await axios.post('/api/enable-public-send');
-
-      setState((prev) => ({
-        ...prev,
-        isPublicSendEnabled: true,
-      }));
-
-      toast({
-        description: '🚂 Public sending is now enabled! Anyone can select the next passenger.',
-      });
-    } catch (error) {
-      console.error('Error enabling public send:', error);
     }
   };
 
