@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useNeynarContext } from '@neynar/react';
 import { useCurrentHolder } from '@/hooks/useCurrentHolder';
+import { useToast } from '@/hooks/useToast';
 import axios, { AxiosError } from 'axios';
 import { Button } from '@/components/base/Button';
 import { Card } from '@/components/base/Card';
@@ -14,9 +15,14 @@ interface ErrorRes {
   message: string;
 }
 
-export function CastingWidget() {
+interface CastingWidgetProps {
+  onCastSent?: () => void;
+}
+
+export function CastingWidget({ onCastSent }: CastingWidgetProps) {
   const { user } = useNeynarContext();
   const { isCurrentHolder, loading } = useCurrentHolder();
+  const { toast } = useToast();
   const [isPublishing, setIsPublishing] = useState(false);
 
   const handlePublishCast = async () => {
@@ -29,7 +35,27 @@ export function CastingWidget() {
         text: CHOOCHOO_CAST_TEMPLATES.USER_NEW_PASSENGER_CAST(),
         isUserCast: true,
       });
-      alert('Cast published successfully!');
+
+      // Set flag in Redis to indicate current user has casted
+      await axios.post('/api/user-casted-status', {
+        hasCurrentUserCasted: true,
+      });
+
+      toast({
+        description: (
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <div className="font-comic text-sm font-semibold text-white">
+                Cast published successfully!
+              </div>
+              <div className="text-xs text-white/90 mt-1">
+                You can now wait for reactions or manually select the next passenger.
+              </div>
+            </div>
+          </div>
+        ),
+      });
+      onCastSent?.(); // Notify parent to refresh state
     } catch (err) {
       const { message } = (err as AxiosError).response?.data as ErrorRes;
       alert(message || 'Failed to publish cast');

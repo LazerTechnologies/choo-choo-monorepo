@@ -5,8 +5,10 @@ import { Button } from '@/components/base/Button';
 import { Typography } from '@/components/base/Typography';
 import { CurrentHolderItem } from '@/components/ui/timeline/CurrentHolderItem';
 import { CastingWidget } from '@/components/ui/CastingWidget';
+import { UserNextStopWidget } from '@/components/ui/UserNextStopWidget';
 import { JourneyTimeline } from '@/components/ui/timeline';
 import { useCurrentHolder } from '@/hooks/useCurrentHolder';
+import { useUserCastedStatus } from '@/hooks/useUserCastedStatus';
 import { useSoundPlayer } from '@/hooks/useSoundPlayer';
 import { APP_NAME } from '@/lib/constants';
 import Image from 'next/image';
@@ -19,6 +21,7 @@ interface HomePageProps {
 export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
   const { context } = useMiniApp();
   const { isCurrentHolder, loading: isHolderLoading } = useCurrentHolder();
+  const { hasCurrentUserCasted, loading: isCastedLoading, refreshStatus } = useUserCastedStatus();
   const { playChooChoo } = useSoundPlayer();
 
   return (
@@ -65,26 +68,36 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
         <CurrentHolderItem refreshOnMintTrigger={timelineRefreshTrigger} />
       </div>
 
-      {/* Casting Widget - Only show if user is signed in and is current holder */}
-      {context?.user && !isHolderLoading && isCurrentHolder && (
+      {/* Casting Widget or Manual Selection - Only show if user is signed in and is current holder */}
+      {context?.user && !isHolderLoading && !isCastedLoading && isCurrentHolder && (
         <div className="w-full max-w-md mx-auto mb-8 flex flex-col items-center justify-center">
-          <Typography
-            variant="h3"
-            className="text-center mb-4 text-gray-900 dark:text-gray-100 font-comic"
-          >
-            Pick Next Passenger
-          </Typography>
-          <Typography
-            variant="body"
-            className="text-center mb-4 text-gray-900 dark:text-gray-100 font-comic"
-          >
-            You&apos;re the current passenger! Send out a cast to let everyone know that ChooChoo is
-            about to be on the move. Once people start reacting, you&apos;ll be able to randomly
-            select a winner and send ChooChoo to their wallet.
-          </Typography>
-          <div className="w-full flex justify-center">
-            <CastingWidget />
-          </div>
+          {!hasCurrentUserCasted ? (
+            <>
+              <Typography
+                variant="h3"
+                className="text-center mb-4 text-gray-900 dark:text-gray-100 font-comic"
+              >
+                Pick Next Passenger
+              </Typography>
+              <Typography
+                variant="body"
+                className="text-center mb-4 text-gray-900 dark:text-gray-100 font-comic"
+              >
+                You&apos;re the current passenger! Send out a cast to let everyone know that
+                ChooChoo is about to be on the move. Once people start reacting, you&apos;ll be able
+                to randomly select a winner and send ChooChoo to their wallet.
+              </Typography>
+              <div className="w-full flex justify-center">
+                <CastingWidget onCastSent={refreshStatus} />
+              </div>
+            </>
+          ) : (
+            <UserNextStopWidget
+              onTokenMinted={() => {
+                refreshStatus();
+              }}
+            />
+          )}
         </div>
       )}
 

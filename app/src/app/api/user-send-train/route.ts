@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAddress } from 'viem';
 import { getContractService } from '@/lib/services/contract';
+import { getSession } from '@/auth';
+import { redis } from '@/lib/kv';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
 import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
 
@@ -9,17 +11,15 @@ const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
 
 // Validation schema
-const adminSendTrainBodySchema = z.object({
+const userSendTrainBodySchema = z.object({
   targetFid: z.number().positive('Target FID must be positive'),
-  adminFid: z.number().positive('Admin FID must be positive'),
 });
 
-interface AdminSendTrainRequest {
+interface UserSendTrainRequest {
   targetFid: number;
-  adminFid: number;
 }
 
-interface AdminSendTrainResponse {
+interface UserSendTrainResponse {
   success: boolean;
   winner: {
     address: string;
@@ -93,28 +93,70 @@ async function fetchUserByFid(fid: number): Promise<{
       pfpUrl: user.pfp_url,
     };
   } catch (error) {
-    console.error('[admin-send-train] Failed to fetch user data:', error);
+    console.error('[user-send-train] Failed to fetch user data:', error);
     throw error;
   }
 }
 
 /**
- * POST /api/admin-send-train
+ * POST /api/user-send-train
  *
- * Admin version of send-train that works with just a FID instead of requiring a cast hash.
- * Orchestrates the next stop for the ChooChoo train journey for admin testing.
- * Only accessible by authenticated admin users.
+ * User version of send-train that works with just a FID instead of requiring a cast hash.
+ * Orchestrates the next stop for the ChooChoo train journey for current holders.
+ * Only accessible by current holders who have already sent a cast.
  *
- * @param request - The HTTP request object with body containing { fid: number }.
+ * @param request - The HTTP request object with body containing { targetFid: number }.
  * @returns 200 with { success: true, winner, tokenId, txHash, tokenURI } on success, or 400/500 with error message.
  */
 export async function POST(request: Request) {
   try {
-    // 1. Parse and validate request body
-    let body: AdminSendTrainRequest;
+    // 1. Authentication - only allow authenticated Farcaster users
+    const session = await getSession();
+    if (!session?.user?.fid) {
+      console.error('[user-send-train] 🔒 Unauthorized: Must call from within Farcaster');
+      return NextResponse.json(
+        { error: '🔒 Unauthorized - Farcaster authentication required' },
+        { status: 401 }
+      );
+    }
+
+    // 2. Check if user is current holder
+    const currentHolderResponse = await fetch(
+      `${process.env.NEXT_PUBLIC_APP_URL}/api/current-holder`
+    );
+
+    if (!currentHolderResponse.ok) {
+      return NextResponse.json(
+        { error: 'Failed to verify current holder status' },
+        { status: 500 }
+      );
+    }
+
+    const currentHolderData = await currentHolderResponse.json();
+    if (
+      !currentHolderData.hasCurrentHolder ||
+      currentHolderData.currentHolder.fid !== session.user.fid
+    ) {
+      return NextResponse.json(
+        { error: 'Only the current holder can manually send ChooChoo' },
+        { status: 403 }
+      );
+    }
+
+    // 3. Check if user has casted
+    const hasCurrentUserCasted = await redis.get('hasCurrentUserCasted');
+    if (hasCurrentUserCasted !== 'true') {
+      return NextResponse.json(
+        { error: 'You must send a cast first before manually selecting the next passenger' },
+        { status: 400 }
+      );
+    }
+
+    // 4. Parse and validate request body
+    let body: UserSendTrainRequest;
     try {
       const rawBody = await request.json();
-      const parsed = adminSendTrainBodySchema.safeParse(rawBody);
+      const parsed = userSendTrainBodySchema.safeParse(rawBody);
 
       if (!parsed.success) {
         return NextResponse.json(
@@ -127,26 +169,19 @@ export async function POST(request: Request) {
         );
       }
 
-      body = parsed.data as AdminSendTrainRequest;
+      body = parsed.data as UserSendTrainRequest;
     } catch (err) {
-      console.error('[admin-send-train] Error parsing request body:', err);
+      console.error('[user-send-train] Error parsing request body:', err);
       return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
     }
 
-    const { targetFid, adminFid } = body;
-
-    // 2. Admin check - only allow specific admin FIDs
-    const adminFids = [377557, 2802, 243300];
-    if (!adminFids.includes(adminFid)) {
-      console.error(`[admin-send-train] 🔒 Forbidden: FID ${adminFid} is not an admin`);
-      return NextResponse.json({ error: '🔒 Forbidden - Admin access required' }, { status: 403 });
-    }
+    const { targetFid } = body;
 
     console.log(
-      `[admin-send-train] 🛡️ Admin request from FID: ${adminFid} for target FID: ${targetFid}`
+      `[user-send-train] 🚂 User request from FID: ${session.user.fid} for target FID: ${targetFid}`
     );
 
-    // 3. Fetch user data from Neynar
+    // 5. Fetch user data from Neynar
     let winnerData;
     try {
       winnerData = await fetchUserByFid(targetFid);
@@ -157,7 +192,7 @@ export async function POST(request: Request) {
         );
       }
     } catch (err) {
-      console.error('[admin-send-train] Failed to fetch user data:', err);
+      console.error('[user-send-train] Failed to fetch user data:', err);
       return NextResponse.json(
         {
           error: `Failed to fetch user data: ${err instanceof Error ? err.message : 'Unknown error'}`,
@@ -166,44 +201,28 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log(`[admin-send-train] Found user: ${winnerData.username} (${winnerData.address})`);
+    console.log(`[user-send-train] Found user: ${winnerData.username} (${winnerData.address})`);
 
-    // 4. Get current holder (who will receive the NFT as their journey ticket)
-    let currentHolderData = null;
-    try {
-      const currentHolderResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL}/api/current-holder`
-      );
-      if (currentHolderResponse.ok) {
-        const data = await currentHolderResponse.json();
-        if (data.hasCurrentHolder) {
-          currentHolderData = {
-            username: data.currentHolder.username,
-            fid: data.currentHolder.fid,
-            displayName: data.currentHolder.displayName,
-            pfpUrl: data.currentHolder.pfpUrl,
-          };
-          console.log(
-            `[admin-send-train] Current holder: ${currentHolderData.username} (FID: ${currentHolderData.fid}) will receive NFT`
-          );
-        }
-      }
-    } catch (err) {
-      console.warn('[admin-send-train] Failed to get current holder (non-critical):', err);
-    }
+    // Get current holder data for NFT minting
+    const currentHolder = {
+      username: currentHolderData.currentHolder.username,
+      fid: currentHolderData.currentHolder.fid,
+      displayName: currentHolderData.currentHolder.displayName,
+      pfpUrl: currentHolderData.currentHolder.pfpUrl,
+    };
 
-    // 5. Get next token ID
+    // 6. Get next token ID
     let contractService, totalSupply, tokenId;
     try {
       contractService = getContractService();
       totalSupply = await contractService.getTotalSupply();
       tokenId = totalSupply + 1;
     } catch (err) {
-      console.error('[admin-send-train] Failed to get contract state:', err);
+      console.error('[user-send-train] Failed to get contract state:', err);
       return NextResponse.json({ error: 'Failed to get contract state' }, { status: 500 });
     }
 
-    // 5. Generate NFT with winner's username
+    // 7. Generate NFT with winner's username
     let generateResponse;
     try {
       generateResponse = await fetch(
@@ -226,21 +245,21 @@ export async function POST(request: Request) {
         throw new Error(`NFT generation failed: ${errorData.error || 'Unknown error'}`);
       }
     } catch (err) {
-      console.error('[admin-send-train] Failed to generate NFT:', err);
+      console.error('[user-send-train] Failed to generate NFT:', err);
       return NextResponse.json({ error: 'Failed to generate NFT' }, { status: 500 });
     }
 
     const nftData = await generateResponse.json();
 
     if (!nftData.success) {
-      console.error('[admin-send-train] NFT generation returned failure:', nftData.error);
+      console.error('[user-send-train] NFT generation returned failure:', nftData.error);
       return NextResponse.json(
         { error: nftData.error || 'Failed to generate NFT' },
         { status: 500 }
       );
     }
 
-    // 6. Mint token on contract
+    // 8. Mint token on contract
     let mintResponse;
     try {
       mintResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/mint-token`, {
@@ -259,9 +278,9 @@ export async function POST(request: Request) {
             displayName: winnerData.displayName,
             pfpUrl: winnerData.pfpUrl,
           },
-          previousHolderData: currentHolderData, // Previous holder gets the NFT ticket
-          sourceCastHash: undefined, // No cast hash for admin flow
-          totalEligibleReactors: 1, // Admin selected, so only 1 "eligible" user
+          previousHolderData: currentHolder, // Previous holder gets the NFT ticket
+          sourceCastHash: undefined, // No cast hash for user manual selection
+          totalEligibleReactors: 1, // Manually selected, so only 1 "eligible" user
         }),
       });
 
@@ -270,23 +289,34 @@ export async function POST(request: Request) {
         throw new Error(`Token minting failed: ${errorData.error || 'Unknown error'}`);
       }
     } catch (err) {
-      console.error('[admin-send-train] Failed to mint token:', err);
+      console.error('[user-send-train] Failed to mint token:', err);
       return NextResponse.json({ error: 'Failed to mint token' }, { status: 500 });
     }
 
     const mintData = await mintResponse.json();
 
     if (!mintData.success) {
-      console.error('[admin-send-train] Token minting returned failure:', mintData.error);
+      console.error('[user-send-train] Token minting returned failure:', mintData.error);
       return NextResponse.json(
         { error: mintData.error || 'Failed to mint token' },
         { status: 500 }
       );
     }
 
-    // 7. Send announcement casts from ChooChoo account
+    // 9. Clear the flags since the train has moved
     try {
-      // 7a. Send welcome cast to new holder
+      await redis.del('hasCurrentUserCasted');
+      await redis.del('current-cast-hash');
+      console.log(
+        '[user-send-train] Cleared user casted flag and cast hash after successful train movement'
+      );
+    } catch (err) {
+      console.error('[user-send-train] Failed to clear flags (non-critical):', err);
+    }
+
+    // 10. Send announcement casts from ChooChoo account
+    try {
+      // 10a. Send welcome cast to new holder
       const welcomeCastText = CHOOCHOO_CAST_TEMPLATES.WELCOME_PASSENGER(winnerData.username);
 
       const welcomeCastResponse = await fetch(
@@ -306,62 +336,60 @@ export async function POST(request: Request) {
 
       if (welcomeCastResponse.ok) {
         const castData = await welcomeCastResponse.json();
-        console.log(`[admin-send-train] Successfully sent welcome cast: ${castData.cast?.hash}`);
+        console.log(`[user-send-train] Successfully sent welcome cast: ${castData.cast?.hash}`);
       } else {
         const errorData = await welcomeCastResponse.json();
         console.warn(
-          '[admin-send-train] Failed to send welcome cast (non-critical):',
+          '[user-send-train] Failed to send welcome cast (non-critical):',
           errorData.error
         );
       }
 
-      // 7b. Send ticket issued cast for previous holder (if they exist)
-      if (currentHolderData?.username) {
-        const ticketCastText = CHOOCHOO_CAST_TEMPLATES.TICKET_ISSUED(
-          currentHolderData.username,
-          mintData.actualTokenId,
-          nftData.imageHash
-        );
+      // 10b. Send ticket issued cast for previous holder
+      const ticketCastText = CHOOCHOO_CAST_TEMPLATES.TICKET_ISSUED(
+        currentHolder.username,
+        mintData.actualTokenId,
+        nftData.imageHash
+      );
 
-        const ticketCastResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_APP_URL}/api/internal/send-cast`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'x-internal-secret': INTERNAL_SECRET || '',
-            },
-            body: JSON.stringify({
-              text: ticketCastText,
-              parent: 'https://onchainsummer.xyz', // Post in the Base channel
-            }),
-          }
-        );
-
-        if (ticketCastResponse.ok) {
-          const ticketCastData = await ticketCastResponse.json();
-          console.log(
-            `[admin-send-train] Successfully sent ticket cast: ${ticketCastData.cast?.hash}`
-          );
-        } else {
-          const ticketErrorData = await ticketCastResponse.json();
-          console.warn(
-            '[admin-send-train] Failed to send ticket cast (non-critical):',
-            ticketErrorData.error
-          );
+      const ticketCastResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_APP_URL}/api/internal/send-cast`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-internal-secret': INTERNAL_SECRET || '',
+          },
+          body: JSON.stringify({
+            text: ticketCastText,
+            parent: 'https://onchainsummer.xyz', // Post in the Base channel
+          }),
         }
+      );
+
+      if (ticketCastResponse.ok) {
+        const ticketCastData = await ticketCastResponse.json();
+        console.log(
+          `[user-send-train] Successfully sent ticket cast: ${ticketCastData.cast?.hash}`
+        );
+      } else {
+        const ticketErrorData = await ticketCastResponse.json();
+        console.warn(
+          '[user-send-train] Failed to send ticket cast (non-critical):',
+          ticketErrorData.error
+        );
       }
     } catch (err) {
-      console.warn('[admin-send-train] Failed to send announcement casts (non-critical):', err);
+      console.warn('[user-send-train] Failed to send announcement casts (non-critical):', err);
       // Don't fail the request for cast sending issues
     }
 
-    // 8. Return combined result
+    // 11. Return combined result
     console.log(
-      `[admin-send-train] Successfully orchestrated admin train movement for token ${mintData.actualTokenId}`
+      `[user-send-train] Successfully orchestrated user train movement for token ${mintData.actualTokenId}`
     );
 
-    const response: AdminSendTrainResponse = {
+    const response: UserSendTrainResponse = {
       success: true,
       winner: winnerData,
       tokenId: mintData.actualTokenId,
@@ -371,7 +399,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error('[admin-send-train] Admin orchestration failed:', error);
-    return NextResponse.json({ error: 'Failed to process admin train movement' }, { status: 500 });
+    console.error('[user-send-train] User orchestration failed:', error);
+    return NextResponse.json({ error: 'Failed to process user train movement' }, { status: 500 });
   }
 }

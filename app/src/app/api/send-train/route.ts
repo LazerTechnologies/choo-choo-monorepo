@@ -195,12 +195,15 @@ export async function POST() {
       );
     }
 
-    // 7. Clear the current cast hash since the train has moved
+    // 7. Clear the flags since the train has moved
     try {
       await redis.del('current-cast-hash');
-      console.log('[send-train] Cleared current cast hash after successful train movement');
+      await redis.del('hasCurrentUserCasted');
+      console.log(
+        '[send-train] Cleared current cast hash and user casted flag after successful train movement'
+      );
     } catch (err) {
-      console.error('[send-train] Failed to clear cast hash (non-critical):', err);
+      console.error('[send-train] Failed to clear flags (non-critical):', err);
       // Don't fail the request for this
     }
 
@@ -219,7 +222,7 @@ export async function POST() {
           },
           body: JSON.stringify({
             text: welcomeCastText,
-            channel_id: 'base', // Post in the Base channel
+            parent: 'https://onchainsummer.xyz', // Post in the Base channel
           }),
         }
       );
@@ -250,7 +253,7 @@ export async function POST() {
             },
             body: JSON.stringify({
               text: ticketCastText,
-              channel_id: 'base', // Post in the Base channel
+              parent: 'https://onchainsummer.xyz', // Post in the Base channel
             }),
           }
         );
