@@ -26,12 +26,13 @@ This document describes how ChooChoo moves between Farcaster users using a micro
 
 ### Normal User Journey
 
-1. **Current holder posts cast**: Using the CastingWidget, current holder creates a cast announcing ChooChoo is ready to move
-2. **Community engagement**: Other users reply to the cast to get in line for the next ride
-3. **Winner selection**: Any user can trigger the selection process after replies accumulate
-4. **Automatic orchestration**: Backend selects winner, mints NFT to previous holder, transfers ChooChoo to winner
-5. **Social notification**: ChooChoo account posts welcome message tagging the new holder
-6. **Cycle continues**: New holder can now post their own cast to continue the journey
+1. **Current holder posts cast**: Using the CastingWidget, current holder sends a pre-written announcement cast ("I'm riding @choochoo! 🚂...") from their own account
+2. **Cast hash storage**: The user's cast hash is automatically stored in Redis as the active cast for reactions
+3. **Community engagement**: Other users react to or reply to the holder's cast to get in line for the next ride
+4. **Winner selection**: Any user can trigger the selection process after reactions accumulate
+5. **Automatic orchestration**: Backend selects winner from reactions to the user's cast, mints NFT to previous holder, transfers ChooChoo to winner
+6. **Social notification**: ChooChoo account posts welcome message tagging the new holder
+7. **Cycle continues**: New holder can now post their own cast to continue the journey
 
 ### Admin Journey
 
@@ -52,12 +53,12 @@ This document describes how ChooChoo moves between Farcaster users using a micro
 **Authentication**: Requires Farcaster authentication
 **Process**:
 
-1. Gets current cast hash from Redis
-2. Calls `/api/internal/select-winner` to pick winner from cast reactions
+1. Gets current cast hash from Redis (hash of user's announcement cast)
+2. Calls `/api/internal/select-winner` to pick winner from reactions to the user's cast
 3. Gets current holder (who will receive NFT ticket)
 4. Calls `/api/internal/generate-nft` to create unique NFT
 5. Calls `/api/internal/mint-token` to mint NFT to previous holder and update current holder
-6. Calls `/api/internal/send-cast` to send welcome notification
+6. Calls `/api/internal/send-cast` to send welcome notification from ChooChoo account
 7. Clears cast hash from Redis
 
 #### `/api/admin-send-train` (POST)
@@ -150,12 +151,13 @@ This document describes how ChooChoo moves between Farcaster users using a micro
 
 ```mermaid
 flowchart TD
-    User[Current Holder] --> Cast[Posts Cast via CastingWidget]
-    Cast --> Redis[(Redis: current-cast-hash)]
+    User[Current Holder] --> Cast[Posts Pre-written Cast via CastingWidget]
+    Cast --> UserAccount[User's Farcaster Account]
+    UserAccount --> Redis[(Redis: current-cast-hash)]
 
     Trigger[Any User] --> SendTrain[/api/send-train]
     SendTrain --> SelectWinner[/api/internal/select-winner]
-    SelectWinner --> Neynar[Neynar API: Get Reactions]
+    SelectWinner --> Neynar[Neynar API: Get Reactions to User Cast]
 
     SendTrain --> GetHolder[Get Current Holder]
     GetHolder --> Redis2[(Redis: current-holder)]

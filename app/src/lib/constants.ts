@@ -23,31 +23,28 @@ export const CHOOCHOO_TRAIN_ADDRESS = (() => {
 
 // ChooChoo Cast Templates
 export const CHOOCHOO_CAST_TEMPLATES = {
-  // Normal cast sent after a winner is selected from reactions
-  NORMAL_ARRIVAL: (username: string, tokenId: number) =>
-    `All aboard! @${username} is on the ChooChoo! 🎫\n\n` +
-    `Ticket #${tokenId} has been minted and delivered to their wallet. ` +
-    `The journey continues...\n\n` +
-    `Who will be the next passenger? Reply to this cast to get in line!`,
+  // [@choochoo] Cast sent to previous holder when their ticket is minted
+  TICKET_ISSUED: (previousHolderUsername: string, tokenId: number, ipfsImageHash: string) =>
+    `🎫 Ticket #${tokenId} has been minted by the conductor and delivered to @${previousHolderUsername} to commemorate their ride. All aboard for the next stop!\n\n` +
+    `${process.env.NEXT_PUBLIC_PINATA_GATEWAY}/${ipfsImageHash}`,
 
-  // Admin cast sent when admin manually sends ChooChoo to someone
-  ADMIN_ARRIVAL: (username: string, tokenId: number) =>
-    `🚂✨ Special delivery! ChooChoo has been sent to @${username}! 🎫\n\n` +
-    `Ticket #${tokenId} has been minted by the conductor and delivered to their wallet. ` +
-    `All aboard for the next stop!\n\n` +
-    `Reply to this cast to join the journey! 🚋`,
-
-  // Generic journey announcement
+  // [@choochoo] Generic journey announcement
   JOURNEY_CONTINUES: () =>
     `🚂 The ChooChoo journey continues across Base! 🔵\n\n` +
     `Every stop is a new adventure, every passenger gets a unique ticket NFT. ` +
     `Where will ChooChoo go next?\n\n` +
     `Join the ride by replying to cast announcements! 🚋`,
 
-  // Welcome message for new passengers
+  // [@choochoo] Sent to new passenger when they get ChooChoo
   WELCOME_PASSENGER: (username: string) =>
     `🚂 Welcome aboard, @${username}! 🎫\n\n` +
     `You're now part of the ChooChoo journey on Base! ` +
     `Head to the ChooChoo app to let your friends know.\n\n` +
     `Thanks for riding with us! 🔵`,
+
+  // [@user] Cast sent by current holder to announce they have ChooChoo
+  USER_NEW_PASSENGER_CAST: () =>
+    `I'm riding @choochoo! 🚂\n\n` +
+    `React to this cast to have a chance at being the next passenger, or comment and I just might chose you directly.\n\n` +
+    `All aboard!`,
 } as const;

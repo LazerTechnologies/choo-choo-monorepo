@@ -284,11 +284,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // 7. Send admin announcement cast from ChooChoo account
+    // 7. Send announcement casts from ChooChoo account
     try {
-      const castText = CHOOCHOO_CAST_TEMPLATES.WELCOME_PASSENGER(winnerData.username);
+      // 7a. Send welcome cast to new holder
+      const welcomeCastText = CHOOCHOO_CAST_TEMPLATES.WELCOME_PASSENGER(winnerData.username);
 
-      const castResponse = await fetch(
+      const welcomeCastResponse = await fetch(
         `${process.env.NEXT_PUBLIC_APP_URL}/api/internal/send-cast`,
         {
           method: 'POST',
@@ -297,27 +298,61 @@ export async function POST(request: Request) {
             'x-internal-secret': INTERNAL_SECRET || '',
           },
           body: JSON.stringify({
-            text: castText,
+            text: welcomeCastText,
             channel_id: 'base', // Post in the Base channel
           }),
         }
       );
 
-      if (castResponse.ok) {
-        const castData = await castResponse.json();
-        console.log(
-          `[admin-send-train] Successfully sent admin announcement cast: ${castData.cast?.hash}`
-        );
+      if (welcomeCastResponse.ok) {
+        const castData = await welcomeCastResponse.json();
+        console.log(`[admin-send-train] Successfully sent welcome cast: ${castData.cast?.hash}`);
       } else {
-        const errorData = await castResponse.json();
+        const errorData = await welcomeCastResponse.json();
         console.warn(
-          '[admin-send-train] Failed to send announcement cast (non-critical):',
+          '[admin-send-train] Failed to send welcome cast (non-critical):',
           errorData.error
         );
-        // Don't fail the request for cast sending issues
+      }
+
+      // 7b. Send ticket issued cast for previous holder (if they exist)
+      if (currentHolderData?.username) {
+        const ticketCastText = CHOOCHOO_CAST_TEMPLATES.TICKET_ISSUED(
+          currentHolderData.username,
+          mintData.actualTokenId,
+          nftData.imageHash
+        );
+
+        const ticketCastResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_APP_URL}/api/internal/send-cast`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-internal-secret': INTERNAL_SECRET || '',
+            },
+            body: JSON.stringify({
+              text: ticketCastText,
+              channel_id: 'base', // Post in the Base channel
+            }),
+          }
+        );
+
+        if (ticketCastResponse.ok) {
+          const ticketCastData = await ticketCastResponse.json();
+          console.log(
+            `[admin-send-train] Successfully sent ticket cast: ${ticketCastData.cast?.hash}`
+          );
+        } else {
+          const ticketErrorData = await ticketCastResponse.json();
+          console.warn(
+            '[admin-send-train] Failed to send ticket cast (non-critical):',
+            ticketErrorData.error
+          );
+        }
       }
     } catch (err) {
-      console.warn('[admin-send-train] Failed to send announcement cast (non-critical):', err);
+      console.warn('[admin-send-train] Failed to send announcement casts (non-critical):', err);
       // Don't fail the request for cast sending issues
     }
 

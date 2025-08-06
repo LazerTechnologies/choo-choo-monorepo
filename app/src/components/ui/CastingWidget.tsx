@@ -7,7 +7,7 @@ import axios, { AxiosError } from 'axios';
 import { Button } from '@/components/base/Button';
 import { Card } from '@/components/base/Card';
 import { Typography } from '@/components/base/Typography';
-import { Textarea } from '@/components/base/Textarea';
+import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
 import Image from 'next/image';
 
 interface ErrorRes {
@@ -17,20 +17,19 @@ interface ErrorRes {
 export function CastingWidget() {
   const { user } = useNeynarContext();
   const { isCurrentHolder, loading } = useCurrentHolder();
-  const [text, setText] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
 
   const handlePublishCast = async () => {
-    if (!user?.signer_uuid || !text.trim()) return;
+    if (!user?.signer_uuid) return;
 
     setIsPublishing(true);
     try {
       await axios.post<{ message: string }>('/api/cast', {
         signerUuid: user.signer_uuid,
-        text: text.trim(),
+        text: CHOOCHOO_CAST_TEMPLATES.USER_NEW_PASSENGER_CAST(),
+        isUserCast: true,
       });
       alert('Cast published successfully!');
-      setText('');
     } catch (err) {
       const { message } = (err as AxiosError).response?.data as ErrorRes;
       alert(message || 'Failed to publish cast');
@@ -67,25 +66,22 @@ export function CastingWidget() {
           </div>
         </div>
 
-        <Textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="What's happening?"
-          rows={4}
-          className="resize-none"
-          maxLength={320}
-        />
-
-        <div className="flex justify-between items-center">
-          <Typography variant="small" className="text-gray-500">
-            {text.length}/320 characters
+        <div className="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border">
+          <Typography
+            variant="body"
+            className="text-gray-700 dark:text-gray-300 whitespace-pre-line"
+          >
+            {CHOOCHOO_CAST_TEMPLATES.USER_NEW_PASSENGER_CAST()}
           </Typography>
+        </div>
+
+        <div className="flex justify-center">
           <Button
             onClick={handlePublishCast}
-            disabled={!text.trim() || isPublishing}
-            className="bg-purple-500 hover:bg-purple-600 text-white"
+            disabled={isPublishing}
+            className="bg-purple-500 hover:bg-purple-600 text-white px-8 py-2"
           >
-            {isPublishing ? 'Publishing...' : 'Cast'}
+            {isPublishing ? 'Sending Cast...' : 'Send Cast'}
           </Button>
         </div>
       </div>

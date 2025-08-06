@@ -9,9 +9,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ message: 'Neynar API key is not configured' }, { status: 500 });
   }
 
-  const { signerUuid, text } = (await request.json()) as {
+  const { signerUuid, text, isUserCast } = (await request.json()) as {
     signerUuid: string;
     text: string;
+    isUserCast?: boolean;
   };
 
   if (!signerUuid || !text) {
@@ -30,8 +31,12 @@ export async function POST(request: NextRequest) {
     });
 
     // Store cast hash in Redis for future reference
+    // User casts are what people react to for ChooChoo selection
     if (response.cast?.hash) {
       await redis.set('current-cast-hash', response.cast.hash);
+      console.log(
+        `[cast-api] Stored cast hash in Redis: ${response.cast.hash} (isUserCast: ${!!isUserCast})`
+      );
     }
 
     return NextResponse.json(
