@@ -252,7 +252,7 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
               checked={state.useRandomWinner}
               onCheckedChange={handleToggleRandomWinner}
               disabled={loading}
-              className="data-[state=checked]:bg-purple-800 data-[state=unchecked]:bg-purple-200 border-purple-900 data-[state=checked]:border-purple-900 data-[state=unchecked]:border-purple-400"
+              className="data-[state=checked]:bg-purple-800 data-[state=unchecked]:bg-purple-600 data-[state=checked]:border-purple-900 data-[state=unchecked]:border-purple-700"
             />
           </div>
 

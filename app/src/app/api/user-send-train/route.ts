@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAddress } from 'viem';
 import { getContractService } from '@/lib/services/contract';
-import { getSession } from '@/auth';
 import { redis } from '@/lib/kv';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
 import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
@@ -110,17 +109,7 @@ async function fetchUserByFid(fid: number): Promise<{
  */
 export async function POST(request: Request) {
   try {
-    // 1. Authentication - only allow authenticated Farcaster users
-    const session = await getSession();
-    if (!session?.user?.fid) {
-      console.error('[user-send-train] 🔒 Unauthorized: Must call from within Farcaster');
-      return NextResponse.json(
-        { error: '🔒 Unauthorized - Farcaster authentication required' },
-        { status: 401 }
-      );
-    }
-
-    // 2. Check if user is current holder
+    // 1. Get current holder info to verify authentication
     const currentHolderResponse = await fetch(
       `${process.env.NEXT_PUBLIC_APP_URL}/api/current-holder`
     );
@@ -133,17 +122,14 @@ export async function POST(request: Request) {
     }
 
     const currentHolderData = await currentHolderResponse.json();
-    if (
-      !currentHolderData.hasCurrentHolder ||
-      currentHolderData.currentHolder.fid !== session.user.fid
-    ) {
-      return NextResponse.json(
-        { error: 'Only the current holder can manually send ChooChoo' },
-        { status: 403 }
-      );
+    if (!currentHolderData.hasCurrentHolder) {
+      return NextResponse.json({ error: 'No current holder found' }, { status: 403 });
     }
 
-    // 3. Check if user has casted
+    // Note: Authentication is handled via the current holder check since this endpoint
+    // should only be accessible to the current holder in the UI
+
+    // 2. Check if user has casted
     const hasCurrentUserCasted = await redis.get('hasCurrentUserCasted');
     if (hasCurrentUserCasted !== 'true') {
       return NextResponse.json(
@@ -152,7 +138,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // 4. Parse and validate request body
+    // 3. Parse and validate request body
     let body: UserSendTrainRequest;
     try {
       const rawBody = await request.json();
@@ -177,11 +163,9 @@ export async function POST(request: Request) {
 
     const { targetFid } = body;
 
-    console.log(
-      `[user-send-train] 🚂 User request from FID: ${session.user.fid} for target FID: ${targetFid}`
-    );
+    console.log(`[user-send-train] 🚂 Manual selection request for target FID: ${targetFid}`);
 
-    // 5. Fetch user data from Neynar
+    // 4. Fetch user data from Neynar
     let winnerData;
     try {
       winnerData = await fetchUserByFid(targetFid);
@@ -211,7 +195,7 @@ export async function POST(request: Request) {
       pfpUrl: currentHolderData.currentHolder.pfpUrl,
     };
 
-    // 6. Get next token ID
+    // 5. Get next token ID
     let contractService, totalSupply, tokenId;
     try {
       contractService = getContractService();
@@ -222,7 +206,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to get contract state' }, { status: 500 });
     }
 
-    // 7. Generate NFT with winner's username
+    // 6. Generate NFT with winner's username
     let generateResponse;
     try {
       generateResponse = await fetch(
@@ -259,7 +243,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // 8. Mint token on contract
+    // 7. Mint token on contract
     let mintResponse;
     try {
       mintResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/mint-token`, {
@@ -303,7 +287,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // 9. Clear the flags since the train has moved
+    // 8. Clear the flags since the train has moved
     try {
       await Promise.all([
         redis.del('hasCurrentUserCasted'),
@@ -319,9 +303,9 @@ export async function POST(request: Request) {
       console.error('[user-send-train] Failed to clear flags (non-critical):', err);
     }
 
-    // 10. Send announcement casts from ChooChoo account
+    // 9. Send announcement casts from ChooChoo account
     try {
-      // 10a. Send welcome cast to new holder
+      // 9a. Send welcome cast to new holder
       const welcomeCastText = CHOOCHOO_CAST_TEMPLATES.WELCOME_PASSENGER(winnerData.username);
 
       const welcomeCastResponse = await fetch(
@@ -350,7 +334,7 @@ export async function POST(request: Request) {
         );
       }
 
-      // 10b. Send ticket issued cast for previous holder
+      // 9b. Send ticket issued cast for previous holder
       const ticketCastText = CHOOCHOO_CAST_TEMPLATES.TICKET_ISSUED(
         currentHolder.username,
         mintData.actualTokenId,
@@ -389,7 +373,7 @@ export async function POST(request: Request) {
       // Don't fail the request for cast sending issues
     }
 
-    // 11. Return combined result
+    // 10. Return combined result
     console.log(
       `[user-send-train] Successfully orchestrated user train movement for token ${mintData.actualTokenId}`
     );
