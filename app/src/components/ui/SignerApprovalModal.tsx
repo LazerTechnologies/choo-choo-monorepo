@@ -45,35 +45,52 @@ export function SignerApprovalModal({
     if (!isOpen || !userFid) return;
 
     setIsPolling(true);
-    const pollInterval = setInterval(async () => {
-      try {
-        const response = await fetch(`/api/signer/check?fid=${userFid}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.hasApprovedSigner) {
-            setIsPolling(false);
-            clearInterval(pollInterval);
-            onApprovalComplete?.();
-          }
-        }
-      } catch (error) {
-        console.error('Error polling signer status:', error);
-      }
-    }, 3000); // Poll every 3 seconds
 
-    // Stop polling after 5 minutes
-    const timeout = setTimeout(
-      () => {
+    // Wait 5 seconds before starting to poll (give user time to approve)
+    const startDelay = setTimeout(() => {
+      const pollInterval = setInterval(async () => {
+        try {
+          // First try to mark as approved (in case user already approved)
+          await fetch('/api/signer/approve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fid: userFid }),
+          });
+
+          // Then check status
+          const response = await fetch(`/api/signer/check?fid=${userFid}`);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.hasApprovedSigner) {
+              setIsPolling(false);
+              clearInterval(pollInterval);
+              onApprovalComplete?.();
+            }
+          }
+        } catch (error) {
+          console.error('Error polling signer status:', error);
+        }
+      }, 3000); // Poll every 3 seconds
+
+      // Stop polling after 5 minutes
+      const timeout = setTimeout(
+        () => {
+          setIsPolling(false);
+          clearInterval(pollInterval);
+        },
+        5 * 60 * 1000
+      );
+
+      return () => {
         setIsPolling(false);
         clearInterval(pollInterval);
-      },
-      5 * 60 * 1000
-    );
+        clearTimeout(timeout);
+      };
+    }, 5000);
 
     return () => {
       setIsPolling(false);
-      clearInterval(pollInterval);
-      clearTimeout(timeout);
+      clearTimeout(startDelay);
     };
   }, [isOpen, userFid, onApprovalComplete]);
 
@@ -101,24 +118,6 @@ export function SignerApprovalModal({
     window.open(approvalUrl, '_blank');
   };
 
-  const handleComplete = async () => {
-    if (userFid) {
-      try {
-        // Mark signer as approved when user manually confirms
-        await fetch('/api/signer/approve', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ fid: userFid }),
-        });
-      } catch (error) {
-        console.error('Error marking signer as approved:', error);
-      }
-    }
-
-    onApprovalComplete?.();
-    onClose();
-  };
-
   if (!isOpen) return null;
 
   return (
@@ -131,27 +130,25 @@ export function SignerApprovalModal({
         style={{ backgroundColor: '#a855f7' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-6">
-          <Typography variant="h2" className="font-comic font-bold mb-4 !text-white text-center">
+        <div className="p-4">
+          <Typography variant="h3" className="font-comic font-bold mb-3 !text-white text-center">
             Approve ChooChoo
           </Typography>
 
-          <Typography variant="body" className="!text-white mb-6 text-center">
-            To send casts, you need to approve ChooChoo as a signer in Warpcast.
+          <Typography variant="small" className="!text-white mb-4 text-center">
+            Approve ChooChoo as a signer in Warpcast to send casts.
           </Typography>
 
           {isPolling && (
-            <div className="bg-blue-100 border border-blue-400 p-3 rounded-lg mb-4">
-              <Typography variant="small" className="!text-blue-800 text-center">
-                🔄 Waiting for approval... This will close automatically once approved.
-              </Typography>
-            </div>
+            <Typography variant="small" className="!text-blue-200 text-center mb-3">
+              🔄 Waiting for approval...
+            </Typography>
           )}
 
           {isMobile ? (
-            <div className="space-y-4">
-              <Typography variant="body" className="!text-white text-center">
-                Tap the button below to open Warpcast and approve the app:
+            <div className="space-y-3">
+              <Typography variant="small" className="!text-white text-center">
+                Tap to open Warpcast:
               </Typography>
 
               <div className="flex justify-center">
@@ -164,25 +161,18 @@ export function SignerApprovalModal({
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              <Typography variant="body" className="!text-white text-center">
-                Scan this QR code with your mobile device to approve in Warpcast:
+            <div className="space-y-3">
+              <Typography variant="small" className="!text-white text-center">
+                Scan with your mobile device:
               </Typography>
 
-              <div className="flex justify-center bg-white p-4 rounded-lg">
-                <QRCodeSVG value={approvalUrl} size={200} />
+              <div className="flex justify-center bg-white p-3 rounded-lg">
+                <QRCodeSVG value={approvalUrl} size={150} />
               </div>
             </div>
           )}
 
-          <div className="mt-6 space-y-3">
-            <Button
-              onClick={handleComplete}
-              className="w-full !text-white hover:!text-white !bg-purple-700 !border-2 !border-white"
-            >
-              I&apos;ve Approved the App
-            </Button>
-
+          <div className="mt-4">
             <Button
               onClick={onClose}
               variant="secondary"

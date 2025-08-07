@@ -14,6 +14,7 @@ export async function POST(request: Request) {
     const signedKey = await getSignedKey();
 
     // Store signer info in Redis with pending status
+    // Will be marked as approved after user approves in Warpcast
     await setSignerInfo({
       fid: parseInt(fid),
       signerUuid: signedKey.signer_uuid,
