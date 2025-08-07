@@ -74,6 +74,7 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
       await axios.post<{ message: string }>('/api/user-cast', {
         signer_uuid: signerUuid,
         text: CHOOCHOO_CAST_TEMPLATES.USER_NEW_PASSENGER_CAST(),
+        fid: currentUserFid,
       });
 
       // Set flag in Redis to indicate current user has casted
