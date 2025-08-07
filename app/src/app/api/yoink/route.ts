@@ -250,7 +250,7 @@ export async function POST(request: NextRequest) {
             },
             body: JSON.stringify({
               text: yoinkCastText,
-              parent: 'https://onchainsummer.xyz', // Post in the Base channel
+              // channel_id: 'base', // @todo: if we want to add a channel to the cast
             }),
           }
         );
@@ -282,7 +282,7 @@ export async function POST(request: NextRequest) {
               body: JSON.stringify({
                 text: ticketCastText,
                 embeds: [{ url: imageUrl }],
-                parent: 'https://onchainsummer.xyz', // Post in the Base channel
+                // channel_id: 'base', // @note: if we want to add a channel to the cast
               }),
             }
           );

@@ -234,7 +234,7 @@ export async function POST(request: Request) {
           },
           body: JSON.stringify({
             text: journeyBeginsCastText,
-            channel_id: 'base',
+            // channel_id: 'base', // @note: if we want to add a channel to the cast
           }),
         }
       );
