@@ -1,3 +1,4 @@
+// @todo: can remove thid file when we go to production
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAddress, type Address } from 'viem';

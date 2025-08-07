@@ -16,30 +16,36 @@ interface AdminPageProps {
   onTokenMinted?: () => void;
 }
 
-function TestPinata() {
+function AdminGenerate({ adminFid }: { adminFid?: number }) {
   const [result, setResult] = useState<(PinataUploadResult & { message?: string }) | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleUploadToPinata() {
+  async function handleGenerateNFT() {
+    if (!adminFid) {
+      setError('Admin access required');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setResult(null);
     try {
-      const res = await fetch('/api/test-pinata', {
+      const res = await fetch('/api/admin-generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminFid }),
       });
       const data = await res.json();
 
       if (res.ok) {
         setResult(data);
       } else {
-        setError(data.error || 'Upload failed');
+        setError(data.error || 'Generation failed');
       }
     } catch (err) {
-      console.error('Error uploading to Pinata:', err);
-      setError('Upload failed');
+      console.error('Error generating NFT:', err);
+      setError('Generation failed');
     } finally {
       setLoading(false);
     }
@@ -57,8 +63,8 @@ function TestPinata() {
       <Card.Content>
         <div className="space-y-3">
           <Button
-            onClick={handleUploadToPinata}
-            disabled={loading}
+            onClick={handleGenerateNFT}
+            disabled={loading || !adminFid}
             isLoading={loading}
             className="w-full bg-purple-600 text-white border-white hover:bg-purple-700"
             variant="default"
@@ -67,7 +73,7 @@ function TestPinata() {
           </Button>
 
           {loading && (
-            <div className="text-xs text-gray-300 p-2 bg-purple-700/50 rounded">Uploading...</div>
+            <div className="text-xs text-gray-300 p-2 bg-purple-700/50 rounded">Generating...</div>
           )}
 
           {error && <div className="text-xs text-red-300 p-2 bg-red-900/20 rounded">{error}</div>}
@@ -887,7 +893,7 @@ export function AdminPage({ onTokenMinted }: AdminPageProps) {
     <div className="space-y-3 px-6 w-full max-w-md mx-auto">
       {/* Admin Test Sections */}
       <SetInitialHolder onTokenMinted={onTokenMinted} adminFid={currentUserFid} />
-      <TestPinata />
+      <AdminGenerate adminFid={currentUserFid} />
       <SetTicketMetadata adminFid={currentUserFid} />
       <TestAdminNextStop onTokenMinted={onTokenMinted} adminFid={currentUserFid} />
       {/* App Pause Toggle - at the bottom with warning styling */}

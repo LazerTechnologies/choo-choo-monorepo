@@ -1,4 +1,3 @@
-// @todo: delete this file once `send-train` is working
 import { NextResponse } from 'next/server';
 import { redis } from '@/lib/kv';
 import {
@@ -8,10 +7,33 @@ import {
   collectionName,
 } from 'generator';
 import { getContractService } from '@/lib/services/contract';
+import { ADMIN_FIDS } from '@/lib/constants';
 import type { PinataUploadResult, TokenURI } from '@/types/nft';
 
-export async function POST() {
+interface AdminGenerateRequest {
+  adminFid: number;
+}
+
+export async function POST(request: Request) {
   try {
+    // Parse and validate request body for admin authentication
+    let body: AdminGenerateRequest;
+    try {
+      body = await request.json();
+    } catch (err) {
+      console.error('[admin-generate] Error parsing request body:', err);
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const { adminFid } = body;
+
+    // Validate admin access
+    if (!adminFid || !ADMIN_FIDS.includes(adminFid)) {
+      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
+    }
+
+    console.log(`[admin-generate] Admin ${adminFid} generating test NFT`);
+
     // Get the next token ID from contract (same as real tokens would get)
     let testTokenId;
     try {
@@ -19,11 +41,11 @@ export async function POST() {
       const totalSupply = await contractService.getTotalSupply();
       testTokenId = totalSupply + 1;
     } catch (err) {
-      console.error('[test-pinata] Failed to get contract total supply, using fallback:', err);
+      console.error('[admin-generate] Failed to get contract total supply, using fallback:', err);
       testTokenId = 1; // Fallback to token 1
     }
 
-    console.log('[test-pinata] Generating NFT image using generator package...');
+    console.log('[admin-generate] Generating NFT image using generator package...');
 
     // 1. Generate the unique NFT image and attributes using the generator
     let imageBuffer, attributes;
@@ -31,9 +53,9 @@ export async function POST() {
       const result = await composeImage();
       imageBuffer = result.imageBuffer;
       attributes = result.attributes;
-      console.log('[test-pinata] Successfully generated image with attributes:', attributes);
+      console.log('[admin-generate] Successfully generated image with attributes:', attributes);
     } catch (err) {
-      console.error('[test-pinata] Failed to compose NFT image:', err);
+      console.error('[admin-generate] Failed to compose NFT image:', err);
       throw new Error(
         `Failed to compose NFT image: ${err instanceof Error ? err.message : 'Unknown error'}`
       );
@@ -44,11 +66,11 @@ export async function POST() {
     try {
       imageHash = await uploadImageToPinata(
         imageBuffer,
-        `${collectionName}-Test-${testTokenId}.png`
+        `${collectionName}-Admin-${testTokenId}.png`
       );
-      console.log('[test-pinata] Successfully uploaded image to Pinata:', imageHash);
+      console.log('[admin-generate] Successfully uploaded image to Pinata:', imageHash);
     } catch (err) {
-      console.error('[test-pinata] Failed to upload image to Pinata:', err);
+      console.error('[admin-generate] Failed to upload image to Pinata:', err);
       throw new Error(
         `Failed to upload image to Pinata: ${err instanceof Error ? err.message : 'Unknown error'}`
       );
@@ -58,33 +80,34 @@ export async function POST() {
     let metadataHash;
     try {
       metadataHash = await uploadMetadataToPinata(testTokenId, imageHash, attributes);
-      console.log('[test-pinata] Successfully uploaded metadata to Pinata:', metadataHash);
+      console.log('[admin-generate] Successfully uploaded metadata to Pinata:', metadataHash);
     } catch (err) {
-      console.error('[test-pinata] Failed to upload metadata to Pinata:', err);
+      console.error('[admin-generate] Failed to upload metadata to Pinata:', err);
       throw new Error(
         `Failed to upload metadata to Pinata: ${err instanceof Error ? err.message : 'Unknown error'}`
       );
     }
 
     // 4. Create URLs and token URI
-    const imageUrl = `https://gateway.pinata.cloud/ipfs/${imageHash}`;
-    const metadataUrl = `https://gateway.pinata.cloud/ipfs/${metadataHash}`;
+    const pinataGateway = process.env.NEXT_PUBLIC_PINATA_GATEWAY || 'https://gateway.pinata.cloud';
+    const imageUrl = `${pinataGateway}/ipfs/${imageHash}`;
+    const metadataUrl = `${pinataGateway}/ipfs/${metadataHash}`;
     const tokenURI = `ipfs://${metadataHash}` as TokenURI;
 
     // 5. Create the complete metadata object (for display purposes)
     const completeMetadata = {
       name: `${collectionName} #${testTokenId}`,
-      description: `Generated test NFT from ${collectionName}`,
+      description: `Admin generated NFT from ${collectionName}`,
       image: `ipfs://${imageHash}`,
       attributes,
     };
 
     // 6. Store the IPFS hashes and URLs in Redis
-    await redis.set('test-pinata-image-hash', imageHash);
-    await redis.set('test-pinata-image-url', imageUrl);
-    await redis.set('test-pinata-metadata-hash', metadataHash);
-    await redis.set('test-pinata-metadata-url', metadataUrl);
-    await redis.set('test-pinata-token-uri', tokenURI);
+    await redis.set('admin-generate-image-hash', imageHash);
+    await redis.set('admin-generate-image-url', imageUrl);
+    await redis.set('admin-generate-metadata-hash', metadataHash);
+    await redis.set('admin-generate-metadata-url', metadataUrl);
+    await redis.set('admin-generate-token-uri', tokenURI);
 
     const result: PinataUploadResult = {
       imageHash,
@@ -95,7 +118,7 @@ export async function POST() {
       metadata: completeMetadata,
     };
 
-    console.log('[test-pinata] Test completed successfully');
+    console.log(`[admin-generate] Admin ${adminFid} completed NFT generation successfully`);
 
     return NextResponse.json({
       success: true,
@@ -103,10 +126,10 @@ export async function POST() {
       message: 'Generated NFT image and metadata uploaded to Pinata using generator package',
     });
   } catch (error) {
-    console.error('[test-pinata] Error in Pinata test:', error);
+    console.error('[admin-generate] Error in admin NFT generation:', error);
     return NextResponse.json(
       {
-        error: 'Failed to upload to Pinata',
+        error: 'Failed to generate NFT',
         details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
