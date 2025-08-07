@@ -5,11 +5,12 @@ import { useNeynarContext } from '@neynar/react';
 import { Card } from '@/components/base/Card';
 import { Button } from '@/components/base/Button';
 import { Typography } from '@/components/base/Typography';
-import { Switch } from '@/components/base/Switch';
 import { CastDisplayWidget } from './CastDisplayWidget';
 import { UsernameInput } from './UsernameInput';
 import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
 import axios from 'axios';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/base/Tabs';
+import { Dialog } from '@/components/base/Dialog';
 
 interface WinnerSelectionWidgetProps {
   onTokenMinted?: () => void;
@@ -42,6 +43,8 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
 
   const [loading, setLoading] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<string>('');
+  const [isConfirmOpen, setIsConfirmOpen] = useState<boolean>(false);
+  const [tabValue, setTabValue] = useState<'send' | 'chance'>('send');
 
   // Fetch current state from Redis
   const fetchState = useCallback(async () => {
@@ -102,9 +105,7 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
       } else {
         setTimeRemaining('');
         // Auto-enable public send if time is up
-        if (!state.isPublicSendEnabled) {
-          handleEnablePublicSend();
-        }
+        if (!state.isPublicSendEnabled) handleEnablePublicSend();
       }
     }, 1000);
 
@@ -116,66 +117,10 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
     fetchState();
   }, [fetchState]);
 
-  const handleToggleRandomWinner = async (checked: boolean) => {
-    setLoading(true);
-    try {
-      if (checked) {
-        // Enable random winner mode via backend endpoint (handles Redis + cast)
-        if (user?.username) {
-          const response = await axios.post('/api/enable-random-winner', {
-            username: user.username,
-          });
-
-          if (response.data.success) {
-            setState((prev) => ({
-              ...prev,
-              useRandomWinner: true,
-              winnerSelectionStart: response.data.winnerSelectionStart,
-              isPublicSendEnabled: false,
-            }));
-
-            toast({
-              description: '🎲 Random mode enabled: Public sending will be available in 30 minutes',
-            });
-          } else {
-            throw new Error('Failed to enable random winner mode');
-          }
-        } else {
-          throw new Error('User not authenticated');
-        }
-      } else {
-        // Disable random winner mode - clear all related state
-        await Promise.all([
-          axios.post('/api/redis', { action: 'write', key: 'useRandomWinner', value: 'false' }),
-          axios.post('/api/redis', { action: 'delete', key: 'winnerSelectionStart' }),
-          axios.post('/api/redis', { action: 'delete', key: 'isPublicSendEnabled' }),
-        ]);
-
-        setState((prev) => ({
-          ...prev,
-          useRandomWinner: false,
-          winnerSelectionStart: null,
-          isPublicSendEnabled: false,
-        }));
-
-        toast({
-          description: '✋ Manual selection mode enabled',
-        });
-      }
-    } catch (error) {
-      console.error('Error toggling random winner:', error);
-
-      // Fetch current state from backend to sync UI
-      await fetchState();
-
-      toast({
-        description: 'Failed to update selection mode',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Keep tab selection in sync with mode
+  useEffect(() => {
+    setTabValue(state.useRandomWinner ? 'chance' : 'send');
+  }, [state.useRandomWinner]);
 
   const handleManualSend = async () => {
     if (!selectedUser) {
@@ -231,9 +176,46 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
     }
   };
 
+  const confirmEnableChance = async () => {
+    if (!user?.username) {
+      toast({ description: 'User not authenticated', variant: 'destructive' });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Leverage existing backend flow to enable random mode, create cast, and start 30m window
+      const response = await axios.post('/api/enable-random-winner', {
+        username: user.username,
+      });
+
+      if (response.data.success) {
+        setState((prev) => ({
+          ...prev,
+          useRandomWinner: true,
+          winnerSelectionStart: response.data.winnerSelectionStart,
+          isPublicSendEnabled: false,
+        }));
+
+        toast({
+          description: '🎲 Chance mode enabled: Send ChooChoo to a random reactor in 30 minutes!',
+        });
+        setIsConfirmOpen(false);
+        setTabValue('chance');
+      } else {
+        throw new Error('Failed to enable random winner mode');
+      }
+    } catch (error) {
+      console.error('Error enabling chance mode:', error);
+      await fetchState();
+      toast({ description: 'Failed to enable chance mode', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      {/* Cast Display - Show if useRandomWinner is true and castHash exists */}
       {state.useRandomWinner && state.currentCastHash && (
         <CastDisplayWidget castHash={state.currentCastHash} />
       )}
@@ -244,78 +226,148 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
             Choose Selection Method
           </Typography>
 
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Typography variant="body" className="font-medium !text-white">
-                Leave it to chance?
-              </Typography>
-              <Typography variant="body" className="text-sm !text-white">
-                Toggle on to let anyone pick a random reactor to your cast to receive ChooChoo next
-                after 30 minutes, or manually select someone below.
-              </Typography>
-            </div>
-            <Switch
-              checked={state.useRandomWinner}
-              onCheckedChange={handleToggleRandomWinner}
-              disabled={loading}
-              className="data-[state=checked]:bg-purple-800 data-[state=unchecked]:bg-purple-600 data-[state=checked]:border-purple-900 data-[state=unchecked]:border-purple-700"
-            />
-          </div>
-
-          {state.useRandomWinner ? (
-            <div className="space-y-4">
-              {state.winnerSelectionStart && !state.isPublicSendEnabled && (
-                <div className="p-3 bg-purple-700 border border-white rounded">
-                  <Typography variant="body" className="text-sm !text-white">
-                    ⏱️ Public sending will be enabled in: <strong>{timeRemaining}</strong>
-                  </Typography>
-                </div>
-              )}
-
-              <Button
-                onClick={handleRandomSend}
-                disabled={loading || !state.isPublicSendEnabled}
-                className="w-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white"
-                style={{ backgroundColor: '#a855f7' }}
+          <Tabs
+            value={tabValue}
+            onValueChange={(v) => setTabValue(v as 'send' | 'chance')}
+            className="w-full"
+          >
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger
+                value="send"
+                disabled={state.useRandomWinner}
+                className="data-[state=active]:!bg-purple-700 data-[state=active]:!text-white data-[state=active]:!border-white"
               >
-                {loading
-                  ? 'Selecting Winner...'
-                  : state.isPublicSendEnabled
-                    ? '🎲 Pick Random Winner'
-                    : '🎲 Pick Random Winner (Disabled)'}
-              </Button>
-
-              {!state.isPublicSendEnabled && (
-                <Typography variant="body" className="text-xs !text-white text-center">
-                  Button will be enabled for everyone once the timer expires
-                </Typography>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <UsernameInput
-                label="Select Next Passenger"
-                placeholder="Enter username..."
-                onUserSelect={setSelectedUser}
-                disabled={loading}
-                helperText="Choose who gets ChooChoo next"
-                className="w-full"
-              />
-
-              <Button
-                onClick={handleManualSend}
-                disabled={loading || !selectedUser}
-                className="w-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white"
-                style={{ backgroundColor: '#a855f7' }}
+                Send
+              </TabsTrigger>
+              <TabsTrigger
+                value="chance"
+                className="data-[state=active]:!bg-purple-700 data-[state=active]:!text-white data-[state=active]:!border-white"
               >
-                {loading
-                  ? 'Sending ChooChoo...'
-                  : selectedUser
-                    ? `Send ChooChoo to @${selectedUser.username}`
-                    : 'Send ChooChoo'}
-              </Button>
-            </div>
-          )}
+                Chance
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="send">
+              <div className="space-y-4 w-full">
+                {!state.useRandomWinner ? (
+                  <>
+                    <UsernameInput
+                      label="Select Next Passenger"
+                      placeholder="Enter username..."
+                      onUserSelect={setSelectedUser}
+                      disabled={loading}
+                      className="w-full"
+                    />
+                    <Typography variant="body" className="text-xs !text-white">
+                      Choose who gets ChooChoo next
+                    </Typography>
+
+                    <Button
+                      onClick={handleManualSend}
+                      disabled={loading || !selectedUser}
+                      className="w-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white"
+                      style={{ backgroundColor: '#a855f7' }}
+                    >
+                      {loading
+                        ? 'Sending ChooChoo...'
+                        : selectedUser
+                          ? `Send ChooChoo to @${selectedUser.username}`
+                          : 'Send ChooChoo'}
+                    </Button>
+                  </>
+                ) : (
+                  <div className="p-3 bg-purple-700 border border-white rounded">
+                    <Typography variant="body" className="text-sm !text-white">
+                      Manual sending is disabled after confirming Chance mode.
+                    </Typography>
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="chance">
+              <div className="space-y-4 w-full">
+                {!state.useRandomWinner ? (
+                  <>
+                    <Typography variant="body" className="!text-white">
+                      You can leave ChooChoo&apos;s next stop up to chance. In 30 minutes anyone
+                      will be able to select a random person who has reacted to your previous cast
+                      to receive ChooChoo.
+                    </Typography>
+
+                    <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+                      <Dialog.Trigger asChild>
+                        <Button
+                          className="w-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white"
+                          style={{ backgroundColor: '#a855f7' }}
+                          disabled={loading}
+                        >
+                          Confirm
+                        </Button>
+                      </Dialog.Trigger>
+                      <Dialog.Content
+                        title="Confirm Chance Mode"
+                        description="Confirm Chance Mode"
+                        size="sm"
+                        className="!bg-purple-700 !text-white !border-white"
+                      >
+                        <div className="p-4 space-y-4">
+                          <Typography variant="body" className="!text-white">
+                            Once you confirm, you cannot manually send. Leave it up to chance?
+                          </Typography>
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              onClick={() => setIsConfirmOpen(false)}
+                              disabled={loading}
+                              className="!bg-red-600 hover:!bg-red-700 !text-white !border-2 !border-red-700"
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              onClick={confirmEnableChance}
+                              disabled={loading}
+                              className="!bg-purple-500 hover:!bg-purple-600 !text-white !border-2 !border-white"
+                            >
+                              {loading ? 'Confirming...' : 'Confirm'}
+                            </Button>
+                          </div>
+                        </div>
+                      </Dialog.Content>
+                    </Dialog>
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    {state.winnerSelectionStart && !state.isPublicSendEnabled && (
+                      <div className="p-3 bg-purple-700 border border-white rounded">
+                        <Typography variant="body" className="text-sm !text-white">
+                          ⏱️ Public sending will be enabled in: <strong>{timeRemaining}</strong>
+                        </Typography>
+                      </div>
+                    )}
+
+                    <Button
+                      onClick={handleRandomSend}
+                      disabled={loading || !state.isPublicSendEnabled}
+                      className="w-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white"
+                      style={{ backgroundColor: '#a855f7' }}
+                    >
+                      {loading
+                        ? 'Selecting Winner...'
+                        : state.isPublicSendEnabled
+                          ? '🎲 Send ChooChoo'
+                          : 'Come back later...'}
+                    </Button>
+
+                    {!state.isPublicSendEnabled && (
+                      <Typography variant="body" className="text-xs !text-white text-center">
+                        Anyone can send ChooChoo to a random reactor when the time is up
+                      </Typography>
+                    )}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
         </div>
       </Card>
     </div>

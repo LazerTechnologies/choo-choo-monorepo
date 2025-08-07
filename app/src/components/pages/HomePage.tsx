@@ -11,10 +11,8 @@ import { useCurrentHolder } from '@/hooks/useCurrentHolder';
 import { useUserCastedStatus } from '@/hooks/useUserCastedStatus';
 import { useSoundPlayer } from '@/hooks/useSoundPlayer';
 import { APP_NAME } from '@/lib/constants';
-import { useState, useEffect, useCallback } from 'react';
-import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
-import axios from 'axios';
 import Image from 'next/image';
+import { PublicChanceWidget } from '@/components/ui/PublicChanceWidget';
 
 interface HomePageProps {
   title: string;
@@ -26,51 +24,6 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
   const { isCurrentHolder, loading: isHolderLoading } = useCurrentHolder();
   const { hasCurrentUserCasted, loading: isCastedLoading, refreshStatus } = useUserCastedStatus();
   const { playChooChoo } = useSoundPlayer();
-  const { toast } = useMarqueeToast();
-
-  const [isPublicSendEnabled, setIsPublicSendEnabled] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  // Check if public send is enabled
-  const checkPublicSendStatus = useCallback(async () => {
-    try {
-      const response = await axios.get('/api/redis?action=read&key=isPublicSendEnabled');
-      setIsPublicSendEnabled(response.data.value === 'true');
-    } catch (error) {
-      console.error('Error checking public send status:', error);
-    }
-  }, []);
-
-  useEffect(() => {
-    checkPublicSendStatus();
-    // Check every 30 seconds for status updates
-    const interval = setInterval(checkPublicSendStatus, 30000);
-    return () => clearInterval(interval);
-  }, [checkPublicSendStatus]);
-
-  const handlePublicRandomSend = async () => {
-    setLoading(true);
-    try {
-      const response = await axios.post('/api/send-train');
-
-      if (response.data.success) {
-        toast({
-          description: `@${response.data.winner.username} was selected as the next passenger!`,
-        });
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
-      }
-    } catch (error) {
-      console.error('Error sending to random winner:', error);
-      toast({
-        description: 'Failed to select random winner',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="overflow-y-auto h-[calc(100vh-200px)] px-6">
@@ -139,28 +92,8 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
         </div>
       )}
 
-      {/* Public Random Send Button - Show for non-current holders when public send is enabled */}
-      {context?.user && !isHolderLoading && !isCurrentHolder && isPublicSendEnabled && (
-        <div className="w-full max-w-md mx-auto mb-8 flex flex-col items-center justify-center">
-          <Typography
-            variant="h3"
-            className="text-center mb-4 text-gray-900 dark:text-gray-100 font-comic"
-          >
-            Public Winner Selection Open!
-          </Typography>
-          <Typography variant="body" className="text-center mb-4 text-gray-900 dark:text-gray-100">
-            The current passenger left it up to chance! Anyone can now pick a random winner from the
-            cast reactions.
-          </Typography>
-          <Button
-            onClick={handlePublicRandomSend}
-            disabled={loading}
-            className="w-full bg-purple-500 hover:bg-purple-600 text-white max-w-sm"
-          >
-            {loading ? 'Selecting Winner...' : '🎲 Pick Random Winner'}
-          </Button>
-        </div>
-      )}
+      {/* Public Chance UI - visible to everyone when chance mode is active */}
+      <PublicChanceWidget />
 
       {/* Current Stop Section */}
       <div className="w-full max-w-md mx-auto mb-8">
