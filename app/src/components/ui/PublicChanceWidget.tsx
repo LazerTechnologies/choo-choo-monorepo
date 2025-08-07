@@ -108,11 +108,6 @@ export function PublicChanceWidget() {
             <Typography variant="body" className="text-sm !text-white mt-1">
               Send ChooChoo to a random reactor from the below cast
             </Typography>
-            {!state.isPublicSendEnabled && (
-              <Typography variant="body" className="text-xs !text-white mt-2">
-                Anyone can send ChooChoo to a random reactor when the time is up
-              </Typography>
-            )}
           </div>
 
           {state.winnerSelectionStart && !state.isPublicSendEnabled && (

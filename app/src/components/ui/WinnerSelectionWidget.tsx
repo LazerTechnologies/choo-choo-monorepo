@@ -211,7 +211,7 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
 
             <TabsContent value="chance">
               <div className="space-y-4 w-full">
-                <Typography variant="body" className="!text-white">
+                <Typography variant="body" className="text-sm !text-white text-center">
                   Leave ChooChoo&apos;s next stop up to chance.
                   <br />
                   <br />

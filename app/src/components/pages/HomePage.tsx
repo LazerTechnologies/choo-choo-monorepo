@@ -76,12 +76,6 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
             </>
           ) : (
             <div className="w-full">
-              <Typography
-                variant="h3"
-                className="text-center mb-4 text-gray-900 dark:text-gray-100 font-comic"
-              >
-                Pick Next Passenger
-              </Typography>
               <WinnerSelectionWidget
                 onTokenMinted={() => {
                   refreshStatus();
