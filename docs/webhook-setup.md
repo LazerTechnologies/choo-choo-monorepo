@@ -27,7 +27,7 @@ Add to your `.env.local`:
 ```bash
 # Webhook configuration from Neynar developer portal
 WEBHOOK_ID=your_webhook_id_here
-WEBHOOK_SECRET=your_webhook_secret_here
+NEYNAR_WEBHOOK_SECRET=your_webhook_secret_here
 
 # Make sure this is set for the webhook to mark users as having casted
 NEXT_PUBLIC_APP_URL=https://your-app-domain.com
@@ -37,9 +37,9 @@ NEXT_PUBLIC_APP_URL=https://your-app-domain.com
 
 For security, set up webhook signature validation:
 
-1. Get your `WEBHOOK_ID` and `WEBHOOK_SECRET` from your Neynar developer portal
-2. Add them to your environment variables
-3. The webhook endpoint will automatically validate signatures when `WEBHOOK_SECRET` is set
+1. Get your `WEBHOOK_ID` and webhook secret from your Neynar developer portal
+2. Add them to your environment variables as `WEBHOOK_ID` and `NEYNAR_WEBHOOK_SECRET`
+3. The webhook endpoint will automatically validate signatures when `NEYNAR_WEBHOOK_SECRET` is set
 
 ## How It Works
 

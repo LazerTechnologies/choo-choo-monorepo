@@ -4,25 +4,32 @@ import axios from 'axios';
 import crypto from 'crypto';
 
 function validateWebhook(body: string, signature: string, secret: string): boolean {
-  const expectedSignature = crypto.createHmac('sha256', secret).update(body).digest('hex');
+  const expectedSignature = crypto.createHmac('sha512', secret).update(body).digest('hex');
 
-  return signature === `sha256=${expectedSignature}`;
+  return signature === expectedSignature;
 }
 
 export async function POST(request: Request) {
   try {
     const rawBody = await request.text();
+    console.log('🔔 Webhook received:', rawBody.substring(0, 200) + '...');
 
     // Validate webhook signature if secret is configured
-    if (process.env.WEBHOOK_SECRET) {
-      const signature = request.headers.get('x-neynar-signature');
-      if (!signature || !validateWebhook(rawBody, signature, process.env.WEBHOOK_SECRET)) {
+    if (process.env.NEYNAR_WEBHOOK_SECRET) {
+      const signature = request.headers.get('X-Neynar-Signature');
+      if (!signature) {
+        console.error('Neynar signature missing from request headers');
+        return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
+      }
+
+      if (!validateWebhook(rawBody, signature, process.env.NEYNAR_WEBHOOK_SECRET)) {
         console.error('Invalid webhook signature');
         return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
       }
     }
 
     const body = JSON.parse(rawBody);
+    console.log('📨 Webhook type:', body.type);
 
     // Neynar webhook payload for new casts
     if (body.type === 'cast.created') {

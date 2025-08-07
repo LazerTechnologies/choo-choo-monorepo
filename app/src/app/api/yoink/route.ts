@@ -266,9 +266,10 @@ export async function POST(request: NextRequest) {
         if (currentHolderData?.username && nftData?.imageHash) {
           const ticketCastText = CHOOCHOO_CAST_TEMPLATES.TICKET_ISSUED(
             currentHolderData.username,
-            tokenId,
-            nftData.imageHash
+            tokenId
           );
+
+          const imageUrl = `https://${process.env.NEXT_PUBLIC_PINATA_GATEWAY}/ipfs/${nftData.imageHash}`;
 
           const ticketCastResponse = await fetch(
             `${process.env.NEXT_PUBLIC_APP_URL}/api/internal/send-cast`,
@@ -280,6 +281,7 @@ export async function POST(request: NextRequest) {
               },
               body: JSON.stringify({
                 text: ticketCastText,
+                embeds: [{ url: imageUrl }],
                 parent: 'https://onchainsummer.xyz', // Post in the Base channel
               }),
             }

@@ -32,9 +32,8 @@ export const CHOOCHOO_TRAIN_METADATA_URI = process.env.NEXT_PUBLIC_CHOOCHOO_TRAI
 // ChooChoo Cast Templates
 export const CHOOCHOO_CAST_TEMPLATES = {
   // [@choochoo] Cast sent to previous holder when their ticket is minted
-  TICKET_ISSUED: (previousHolderUsername: string, tokenId: number, ipfsImageHash: string) =>
-    `🎫 Ticket #${tokenId} has been minted by the conductor and delivered to @${previousHolderUsername} to commemorate their ride. All aboard for the next stop!\n\n` +
-    `https://${process.env.NEXT_PUBLIC_PINATA_GATEWAY}/ipfs/${ipfsImageHash}`,
+  TICKET_ISSUED: (previousHolderUsername: string, tokenId: number) =>
+    `🎫 Ticket #${tokenId} has been minted by the conductor and delivered to @${previousHolderUsername} to commemorate their ride. All aboard for the next stop!`,
 
   // [@choochoo] Generic journey announcement
   JOURNEY_CONTINUES: () =>
