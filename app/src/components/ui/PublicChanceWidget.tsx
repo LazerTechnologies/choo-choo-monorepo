@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import { Button } from '@/components/base/Button';
 import { Typography } from '@/components/base/Typography';
+import { Card } from '@/components/base/Card';
 import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
 import { CastDisplayWidget } from './CastDisplayWidget';
 
@@ -94,36 +95,44 @@ export function PublicChanceWidget() {
   if (!state.useRandomWinner) return null;
 
   return (
-    <div className="w-full max-w-md mx-auto mb-8 flex flex-col items-center justify-center">
+    <div className="w-full max-w-md mx-auto mb-8 space-y-4">
+      {/* Display the announcement cast */}
       {state.currentCastHash && <CastDisplayWidget castHash={state.currentCastHash} />}
 
-      <Typography
-        variant="h3"
-        className="text-center mb-4 text-gray-900 dark:text-gray-100 font-comic"
-      >
-        Chance Mode Active
-      </Typography>
-
-      {state.winnerSelectionStart && !state.isPublicSendEnabled && (
-        <div className="p-3 bg-purple-700 border border-white rounded w-full max-w-sm mb-3">
-          <Typography variant="body" className="text-sm !text-white text-center">
-            ⏱️ Choose a winner in: <strong>{timeRemaining}</strong>
+      <Card className="p-4 !bg-purple-500 !border-white" style={{ backgroundColor: '#a855f7' }}>
+        <div className="space-y-4">
+          <Typography variant="h4" className="!text-white font-comic text-center">
+            Chance Mode Active
           </Typography>
-        </div>
-      )}
 
-      <Button
-        onClick={handlePublicRandomSend}
-        disabled={loading || !state.isPublicSendEnabled}
-        className="w-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white max-w-sm"
-        style={{ backgroundColor: '#a855f7' }}
-      >
-        {loading
-          ? 'Selecting Winner...'
-          : state.isPublicSendEnabled
-            ? '🎲 Send ChooChoo'
-            : 'Come back later...'}
-      </Button>
+          {state.winnerSelectionStart && !state.isPublicSendEnabled && (
+            <div className="p-3 bg-purple-700 border border-white rounded">
+              <Typography variant="body" className="text-sm !text-white text-center">
+                ⏱️ Public sending will be enabled in: <strong>{timeRemaining}</strong>
+              </Typography>
+            </div>
+          )}
+
+          <Button
+            onClick={handlePublicRandomSend}
+            disabled={loading || !state.isPublicSendEnabled}
+            className="w-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white"
+            style={{ backgroundColor: '#a855f7' }}
+          >
+            {loading
+              ? 'Selecting Winner...'
+              : state.isPublicSendEnabled
+                ? '🎲 Send ChooChoo'
+                : 'Come back later...'}
+          </Button>
+
+          {!state.isPublicSendEnabled && (
+            <Typography variant="body" className="text-xs !text-white text-center">
+              Send ChooChoo to a random reactor when the time is up
+            </Typography>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }
