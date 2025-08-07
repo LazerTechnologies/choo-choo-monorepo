@@ -3,8 +3,7 @@ import { Avatar } from '@/components/base/Avatar';
 import { Typography } from '@/components/base/Typography';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { CurrentHolderData } from '@/types/nft';
-import { useSoundPlayer } from '@/hooks/useSoundPlayer';
-import { useToast } from '@/hooks/useToast';
+import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
 import { useMiniApp } from '@neynar/react';
 
 interface CurrentHolderItemProps {
@@ -16,9 +15,8 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
   const [isCurrentUser, setIsCurrentUser] = useState(false);
   const [duration, setDuration] = useState<string>('');
 
-  const { playChooChoo } = useSoundPlayer();
   const { haptics } = useMiniApp();
-  const { toast } = useToast();
+  const { toast } = useMarqueeToast();
   const previousHolderFid = useRef<number | null>(null);
   const isInitialLoad = useRef(true);
 
@@ -38,26 +36,13 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
             previousHolderFid.current !== newHolderFid
           ) {
             console.log(`[Easter Egg] If you're reading this, you are based 🔵`);
-            playChooChoo({ volume: 0.7 });
             try {
               await haptics?.impactOccurred('medium');
             } catch (error) {
               console.log('Haptic feedback failed:', error);
             }
             toast({
-              description: (
-                <div className="flex items-center gap-3">
-                  <Avatar size="sm" className="border-2 border-blue-400 flex-shrink-0">
-                    <Avatar.Image src={newHolder.pfpUrl} alt={newHolder.username} />
-                    <Avatar.Fallback className="bg-blue-500 text-white text-xs font-bold">
-                      {newHolder.username.slice(0, 2).toUpperCase()}
-                    </Avatar.Fallback>
-                  </Avatar>
-                  <span className="font-comic text-sm font-semibold">
-                    All aboard! {newHolder.username} is now riding ChooChoo!
-                  </span>
-                </div>
-              ),
+              description: `🚂 All aboard! ${newHolder.username} is now riding ChooChoo!`,
             });
           }
 
@@ -76,7 +61,7 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
     } catch (error) {
       console.error('Failed to fetch current holder:', error);
     }
-  }, [playChooChoo, haptics, toast]);
+  }, [haptics, toast]);
 
   // Initial load
   useEffect(() => {

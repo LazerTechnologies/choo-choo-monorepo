@@ -8,7 +8,7 @@ import { Typography } from '@/components/base/Typography';
 import { Switch } from '@/components/base/Switch';
 import { CastDisplayWidget } from './CastDisplayWidget';
 import { UsernameInput } from './UsernameInput';
-import { useToast } from '@/hooks/useToast';
+import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
 import axios from 'axios';
 
 interface WinnerSelectionWidgetProps {
@@ -23,7 +23,7 @@ interface WinnerSelectionState {
 }
 
 export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetProps) {
-  const { toast } = useToast();
+  const { toast } = useMarqueeToast();
   const { user } = useNeynarContext();
 
   const [state, setState] = useState<WinnerSelectionState>({
@@ -141,8 +141,7 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
             }));
 
             toast({
-              description:
-                '🎲 Random winner mode enabled! Public sending will be available in 30 minutes.',
+              description: '🎲 Random mode enabled: Public sending will be available in 30 minutes',
             });
           }
         }

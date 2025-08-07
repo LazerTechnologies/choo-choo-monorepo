@@ -98,3 +98,37 @@ export const CHOOCHOO_CAST_TEMPLATES = {
     `Thank you for your patience.\n\n` +
     `The adventure continues! 🔵`,
 } as const;
+
+// Train Station Marquee Messages
+export const TRAIN_STATION_MESSAGES = [
+  '🚂 Next departure: Platform 9¾',
+  '⛔ Mind the gap',
+  '🍾 Reminder: No sex in the champagne room',
+  '🎫 All aboard the ChooChoo express!',
+  '🚃 The 4:20 express is now boarding on platform... uh... platform? lol',
+  '📢 The conductor has been found, thank you',
+  '🎵 Now playing: Thomas the Tank Engine ASMR',
+  '🚂 Choo choo mfer!',
+  '⏰ Delays expected due to cows on the tracks',
+  '🚉 Please keep your tickets ready for inspection',
+  '🚀 Next Stop: The Moon',
+  '🎲 Try leaving the next stop up to chance... ChooChoo loves chaos',
+] as const;
+
+// Marquee Configuration
+export const MARQUEE_CONFIG = {
+  scrollPxPerSecond: 10,
+  standardMessages: TRAIN_STATION_MESSAGES,
+  toastScrollCycles: 2,
+  maxToastAge: 10000, // 10 seconds
+  priorityDelayMs: 500,
+  userContextFrequency: 5, // Every 5th message cycle
+} as const;
+
+// Message Priority Levels
+export enum MessagePriority {
+  EMERGENCY = 0, // Immediate injection (errors, critical alerts)
+  TOAST = 1, // Normal toast notifications
+  USER_CONTEXT = 2, // User info, achievements
+  STANDARD = 3, // Default train humor
+}

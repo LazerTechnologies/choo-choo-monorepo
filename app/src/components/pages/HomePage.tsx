@@ -12,7 +12,7 @@ import { useUserCastedStatus } from '@/hooks/useUserCastedStatus';
 import { useSoundPlayer } from '@/hooks/useSoundPlayer';
 import { APP_NAME } from '@/lib/constants';
 import { useState, useEffect, useCallback } from 'react';
-import { useToast } from '@/hooks/useToast';
+import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
 import axios from 'axios';
 import Image from 'next/image';
 
@@ -26,7 +26,7 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
   const { isCurrentHolder, loading: isHolderLoading } = useCurrentHolder();
   const { hasCurrentUserCasted, loading: isCastedLoading, refreshStatus } = useUserCastedStatus();
   const { playChooChoo } = useSoundPlayer();
-  const { toast } = useToast();
+  const { toast } = useMarqueeToast();
 
   const [isPublicSendEnabled, setIsPublicSendEnabled] = useState(false);
   const [loading, setLoading] = useState(false);

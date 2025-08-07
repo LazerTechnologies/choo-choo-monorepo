@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useMiniApp } from '@neynar/react';
 import { useCurrentHolder } from '@/hooks/useCurrentHolder';
-import { useToast } from '@/hooks/useToast';
+import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
 import { Button } from '@/components/base/Button';
 import { Card } from '@/components/base/Card';
 import { Typography } from '@/components/base/Typography';
@@ -17,7 +17,7 @@ interface CastingWidgetProps {
 export function CastingWidget({ onCastSent }: CastingWidgetProps) {
   const { context } = useMiniApp();
   const { isCurrentHolder, loading } = useCurrentHolder();
-  const { toast } = useToast();
+  const { toast } = useMarqueeToast();
   const [isWaitingForCast, setIsWaitingForCast] = useState(false);
   const [pollInterval, setPollInterval] = useState<NodeJS.Timeout | null>(null);
 
@@ -35,7 +35,7 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
     startPolling();
 
     toast({
-      description: "🗨️ Casting... Come back when you're done!",
+      description: "🗨️ Casting... Come back when you're done",
     });
   };
 
@@ -51,7 +51,7 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
           setIsWaitingForCast(false);
 
           toast({
-            description: '✅ Cast found!',
+            description: '✅ Cast found! Proceed to picking the next stop',
           });
 
           onCastSent?.();
@@ -69,7 +69,7 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
         clearInterval(interval);
         setIsWaitingForCast(false);
         toast({
-          description: '⛔ Timeout: If you casted, please refresh the page.',
+          description: '⛔ Timeout: If you casted, please refresh the page',
           variant: 'destructive',
         });
       },
