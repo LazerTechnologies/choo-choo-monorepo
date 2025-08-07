@@ -105,17 +105,6 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
         </Button>
       </div>
 
-      {/* Current Stop Section */}
-      <div className="w-full max-w-md mx-auto mb-8">
-        <Typography
-          variant="h3"
-          className="text-center mb-4 text-gray-900 dark:text-gray-100 font-comic"
-        >
-          Current Stop
-        </Typography>
-        <CurrentHolderItem refreshOnMintTrigger={timelineRefreshTrigger} />
-      </div>
-
       {/* Casting Widget or Winner Selection - Only show if user is signed in and is current holder */}
       {context?.user && !isHolderLoading && !isCastedLoading && isCurrentHolder && (
         <div className="w-full max-w-md mx-auto mb-8 flex flex-col items-center justify-center">
@@ -172,6 +161,17 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
           </Button>
         </div>
       )}
+
+      {/* Current Stop Section */}
+      <div className="w-full max-w-md mx-auto mb-8">
+        <Typography
+          variant="h3"
+          className="text-center mb-4 text-gray-900 dark:text-gray-100 font-comic"
+        >
+          Current Stop
+        </Typography>
+        <CurrentHolderItem refreshOnMintTrigger={timelineRefreshTrigger} />
+      </div>
 
       <div className="pb-8">
         <JourneyTimeline refreshOnMintTrigger={timelineRefreshTrigger} />

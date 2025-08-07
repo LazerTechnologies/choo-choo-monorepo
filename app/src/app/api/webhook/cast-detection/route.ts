@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { setCastHash, getCurrentHolder } from '@/lib/kv';
-import axios from 'axios';
+import { setCastHash, redis } from '@/lib/kv';
+import type { CurrentHolderData } from '@/types/nft';
 import crypto from 'crypto';
 
 function validateWebhook(body: string, signature: string, secret: string): boolean {
@@ -41,25 +41,34 @@ export async function POST(request: Request) {
       const expectedTextPart = "I'm riding @choochoo!";
 
       if (castText.includes(expectedTextPart)) {
-        // Check if author is current holder
-        const currentHolder = await getCurrentHolder();
+        // Check if author is current holder (using the correct data structure)
+        const holderDataString = await redis.get('current-holder');
+        if (!holderDataString) {
+          console.log('❌ No current holder found in Redis');
+          return NextResponse.json({ success: true });
+        }
+
+        const currentHolder: CurrentHolderData = JSON.parse(holderDataString);
+        if (!currentHolder.fid) {
+          console.log('❌ Current holder missing FID');
+          return NextResponse.json({ success: true });
+        }
 
         // Convert both to numbers for comparison (ensure type consistency)
-        const currentHolderFid = Number(currentHolder?.fid);
+        const currentHolderFid = Number(currentHolder.fid);
         const castAuthorFid = Number(authorFid);
 
         console.log(
           `🔍 Comparing FIDs: currentHolder=${currentHolderFid}, castAuthor=${castAuthorFid}`
         );
+        console.log('🔍 Current holder data:', JSON.stringify(currentHolder));
 
         if (currentHolderFid === castAuthorFid) {
           // Update the active cast hash
           await setCastHash(cast.hash);
 
-          // Mark user as having casted
-          await axios.post(`${process.env.NEXT_PUBLIC_APP_URL}/api/user-casted-status`, {
-            hasCurrentUserCasted: true,
-          });
+          // Mark user as having casted (direct Redis update)
+          await redis.set('hasCurrentUserCasted', 'true');
 
           console.log(`✅ Cast detected from current holder via webhook: ${cast.hash}`);
           return NextResponse.json({ success: true, message: 'Cast processed' });
