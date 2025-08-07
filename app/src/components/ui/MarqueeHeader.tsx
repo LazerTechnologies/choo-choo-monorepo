@@ -7,9 +7,6 @@ import { useSoundPlayer } from '@/hooks/useSoundPlayer';
 import Marquee from '@/components/base/Marquee';
 import { MARQUEE_CONFIG } from '@/lib/constants';
 
-// eslint-disable-next-line @typescript-eslint/ban-types
-type MarqueeHeaderProps = {};
-
 export function MarqueeHeader() {
   const { context } = useMiniApp();
   const [animationKey, setAnimationKey] = useState<number>(() => Date.now());
