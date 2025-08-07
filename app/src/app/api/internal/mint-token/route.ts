@@ -187,28 +187,27 @@ export async function POST(request: Request) {
       );
     }
 
-    let actualTokenId;
+    // The actual token ID is always the one we calculated from Redis
+    // since that's our centralized source of truth
+    const actualTokenId = tokenId;
+
     try {
       const updatedTotalSupply = await contractService.getTotalSupply();
-      // The actual token ID is the predicted tokenId (totalSupply + 1 before minting)
-      // updatedTotalSupply should equal tokenId after successful minting
-      actualTokenId = tokenId;
       console.log(
-        `[internal/mint-token] Actual minted token ID: ${actualTokenId} (total supply now: ${updatedTotalSupply})`
+        `[internal/mint-token] Minted token ID: ${actualTokenId} (total supply now: ${updatedTotalSupply})`
       );
 
-      // Verify the mint was successful by checking total supply increased
+      // Verify the mint was successful by checking total supply increased correctly
       if (updatedTotalSupply !== tokenId) {
         console.warn(
-          `[internal/mint-token] Warning: Total supply (${updatedTotalSupply}) doesn't match expected token ID (${tokenId})`
+          `[internal/mint-token] Total supply (${updatedTotalSupply}) doesn't match expected token ID (${tokenId}). This may indicate a sync issue.`
         );
       }
     } catch (err) {
       console.error(
-        '[internal/mint-token] Failed to get updated total supply, using predicted token ID:',
+        '[internal/mint-token] Failed to get updated total supply (non-critical):',
         err
       );
-      actualTokenId = tokenId; // Fallback to predicted ID
     }
 
     try {

@@ -11,18 +11,59 @@ export const REDIS_KEYS = {
 } as const;
 
 /**
- * Store comprehensive token data in Redis
+ * Get the next available token ID for minting
+ * This is the central source of truth for token ID allocation
+ */
+export async function getNextTokenId(): Promise<number> {
+  try {
+    const currentTrackerData = await redis.get(REDIS_KEYS.currentTokenId);
+
+    if (!currentTrackerData) {
+      // First ticket token (train is token 0, first ticket is token 1)
+      const nextTokenId = 1;
+      console.log(
+        '[redis-token-utils] No current token tracker found, starting with token ID:',
+        nextTokenId
+      );
+      return nextTokenId;
+    }
+
+    const tracker = JSON.parse(currentTrackerData) as CurrentTokenTracker;
+    const nextTokenId = tracker.currentTokenId + 1;
+    console.log('[redis-token-utils] Next token ID calculated from Redis tracker:', nextTokenId);
+    return nextTokenId;
+  } catch (error) {
+    console.error('[redis-token-utils] Failed to get next token ID from Redis:', error);
+    // Fallback: try to get from contract
+    try {
+      const { getContractService } = await import('@/lib/services/contract');
+      const contractService = getContractService();
+      const totalSupply = await contractService.getTotalSupply();
+      const nextTokenId = totalSupply + 1;
+      console.warn('[redis-token-utils] Using contract fallback for next token ID:', nextTokenId);
+      return nextTokenId;
+    } catch (contractError) {
+      console.error('[redis-token-utils] Contract fallback also failed:', contractError);
+      throw new Error('Failed to get next token ID from both Redis and contract');
+    }
+  }
+}
+
+/**
+ * Store comprehensive token data in Redis and update the token ID tracker
  */
 export async function storeTokenData(tokenData: TokenData): Promise<void> {
   const key = REDIS_KEYS.token(tokenData.tokenId);
   await redis.set(key, JSON.stringify(tokenData));
 
-  // Update current token ID tracker
+  // Update current token ID tracker to this token ID
   const tracker: CurrentTokenTracker = {
     currentTokenId: tokenData.tokenId,
     lastUpdated: new Date().toISOString(),
   };
   await redis.set(REDIS_KEYS.currentTokenId, JSON.stringify(tracker));
+
+  console.log(`[redis-token-utils] Updated token ID tracker to: ${tokenData.tokenId}`);
 }
 
 /**
@@ -126,5 +167,41 @@ export async function getLastMovedTimestamp(): Promise<LastMovedTimestamp | null
   } catch (error) {
     console.error('Failed to parse last moved timestamp:', error);
     return null;
+  }
+}
+
+/**
+ * Initialize or fix the Redis token tracker based on existing token data
+ * This can be used to fix sync issues
+ */
+export async function syncTokenTracker(): Promise<number> {
+  try {
+    // Find the highest token ID in Redis
+    let highestTokenId = 0;
+
+    // Check tokens 1-10 (should cover most cases)
+    for (let i = 1; i <= 10; i++) {
+      const tokenData = await getTokenData(i);
+      if (tokenData) {
+        highestTokenId = i;
+      }
+    }
+
+    console.log(`[redis-token-utils] Found highest token ID in Redis: ${highestTokenId}`);
+
+    // Update the tracker
+    if (highestTokenId > 0) {
+      const tracker: CurrentTokenTracker = {
+        currentTokenId: highestTokenId,
+        lastUpdated: new Date().toISOString(),
+      };
+      await redis.set(REDIS_KEYS.currentTokenId, JSON.stringify(tracker));
+      console.log(`[redis-token-utils] Synced token tracker to: ${highestTokenId}`);
+    }
+
+    return highestTokenId;
+  } catch (error) {
+    console.error('[redis-token-utils] Failed to sync token tracker:', error);
+    throw error;
   }
 }

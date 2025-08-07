@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAddress } from 'viem';
-import { getContractService } from '@/lib/services/contract';
+import { getNextTokenId } from '@/lib/redis-token-utils';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
 import { CHOOCHOO_CAST_TEMPLATES, ADMIN_FIDS } from '@/lib/constants';
 import { redis } from '@/lib/kv';
@@ -192,15 +192,14 @@ export async function POST(request: Request) {
       console.warn('[admin-send-train] Failed to get current holder (non-critical):', err);
     }
 
-    // 5. Get next token ID
-    let contractService, totalSupply, tokenId;
+    // 5. Get next token ID from centralized Redis tracker
+    let tokenId;
     try {
-      contractService = getContractService();
-      totalSupply = await contractService.getTotalSupply();
-      tokenId = totalSupply + 1;
+      tokenId = await getNextTokenId();
+      console.log(`[admin-send-train] Using centralized token ID: ${tokenId}`);
     } catch (err) {
-      console.error('[admin-send-train] Failed to get contract state:', err);
-      return NextResponse.json({ error: 'Failed to get contract state' }, { status: 500 });
+      console.error('[admin-send-train] Failed to get next token ID:', err);
+      return NextResponse.json({ error: 'Failed to get next token ID' }, { status: 500 });
     }
 
     // 5. Generate NFT with winner's username

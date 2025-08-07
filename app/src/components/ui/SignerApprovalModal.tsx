@@ -136,41 +136,38 @@ export function SignerApprovalModal({
           </Typography>
 
           <Typography variant="small" className="!text-white mb-4 text-center">
-            Approve ChooChoo as a signer in Warpcast to send casts.
+            Approve ChooChoo as a signer in Farcaster to send casts.
           </Typography>
 
           {isPolling && (
-            <Typography variant="small" className="!text-blue-200 text-center mb-3">
-              🔄 Waiting for approval...
-            </Typography>
-          )}
-
-          {isMobile ? (
-            <div className="space-y-3">
-              <Typography variant="small" className="!text-white text-center">
-                Tap to open Warpcast:
+            <div className="mb-3">
+              <Typography variant="small" className="!text-blue-200 text-center">
+                🔄 Waiting...
               </Typography>
-
-              <div className="flex justify-center">
-                <Button
-                  onClick={handleDeeplink}
-                  className="!text-white hover:!text-white !bg-purple-700 !border-2 !border-white"
-                >
-                  Open Warpcast
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              <Typography variant="small" className="!text-white text-center">
-                Scan with your mobile device:
-              </Typography>
-
-              <div className="flex justify-center bg-white p-3 rounded-lg">
-                <QRCodeSVG value={approvalUrl} size={150} />
-              </div>
             </div>
           )}
+
+          <div className="space-y-3">
+            <div className="flex justify-center bg-white p-3 rounded-lg">
+              <QRCodeSVG value={approvalUrl} size={150} />
+            </div>
+
+            {isMobile && (
+              <div className="space-y-2">
+                <Typography variant="small" className="!text-white text-center">
+                  Tap to open Farcaster:
+                </Typography>
+                <div className="flex justify-center">
+                  <Button
+                    onClick={handleDeeplink}
+                    className="!text-white hover:!text-white !bg-purple-700 !border-2 !border-white"
+                  >
+                    Open Farcaster
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
 
           <div className="mt-4">
             <Button
