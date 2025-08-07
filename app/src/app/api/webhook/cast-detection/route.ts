@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { setCastHash, redis } from '@/lib/kv';
+import { redis } from '@/lib/kv';
 import type { CurrentHolderData } from '@/types/nft';
 import crypto from 'crypto';
 
@@ -64,8 +64,8 @@ export async function POST(request: Request) {
         console.log('🔍 Current holder data:', JSON.stringify(currentHolder));
 
         if (currentHolderFid === castAuthorFid) {
-          // Update the active cast hash
-          await setCastHash(cast.hash);
+          // Update the current cast hash using the same key as other endpoints
+          await redis.set('current-cast-hash', cast.hash);
 
           // Mark user as having casted (direct Redis update)
           await redis.set('hasCurrentUserCasted', 'true');

@@ -43,17 +43,13 @@ export interface IdempotencyRecord {
 
 // KV Store Keys
 const KEYS = {
-  // Active cast hash for determining next stop winner
-  ACTIVE_CAST_HASH: 'choochoo:active_cast_hash',
-
   // All holders history (sorted set by timestamp)
   HOLDERS_HISTORY: 'choochoo:holders_history',
 
   // Individual holder data
   HOLDER: (tokenId: number) => `choochoo:holder:${tokenId}`,
 
-  // Current holder (latest token)
-  CURRENT_HOLDER: 'choochoo:current_holder',
+  CURRENT_HOLDER: 'current-holder',
 
   // Processing state for transactions
   PROCESSING_STATE: (castHash: string) => `choochoo:processing:${castHash}`,
@@ -74,15 +70,6 @@ const TTL = {
   PROCESSING_STATE: 7 * 24 * 60 * 60, // 7 days
   TOKEN_METADATA: 30 * 24 * 60 * 60, // 30 days
 } as const;
-
-// Cast Hash Management
-export async function setCastHash(castHash: string): Promise<void> {
-  await redis.set(KEYS.ACTIVE_CAST_HASH, castHash);
-}
-
-export async function getCastHash(): Promise<string | null> {
-  return await redis.get(KEYS.ACTIVE_CAST_HASH);
-}
 
 // Holder Management
 export async function addHolder(holder: ChooChooHolder): Promise<void> {

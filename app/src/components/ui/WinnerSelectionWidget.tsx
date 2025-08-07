@@ -119,12 +119,6 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
   const handleToggleRandomWinner = async (checked: boolean) => {
     setLoading(true);
     try {
-      await axios.post('/api/redis', {
-        action: 'write',
-        key: 'useRandomWinner',
-        value: checked.toString(),
-      });
-
       if (checked) {
         // Enable random winner mode via backend endpoint (handles Redis + cast)
         if (user?.username) {
@@ -143,11 +137,16 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
             toast({
               description: '🎲 Random mode enabled: Public sending will be available in 30 minutes',
             });
+          } else {
+            throw new Error('Failed to enable random winner mode');
           }
+        } else {
+          throw new Error('User not authenticated');
         }
       } else {
-        // Clear timer and disable public send
+        // Disable random winner mode - clear all related state
         await Promise.all([
+          axios.post('/api/redis', { action: 'write', key: 'useRandomWinner', value: 'false' }),
           axios.post('/api/redis', { action: 'delete', key: 'winnerSelectionStart' }),
           axios.post('/api/redis', { action: 'delete', key: 'isPublicSendEnabled' }),
         ]);
@@ -158,9 +157,17 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
           winnerSelectionStart: null,
           isPublicSendEnabled: false,
         }));
+
+        toast({
+          description: '✋ Manual selection mode enabled',
+        });
       }
     } catch (error) {
       console.error('Error toggling random winner:', error);
+
+      // Fetch current state from backend to sync UI
+      await fetchState();
+
       toast({
         description: 'Failed to update selection mode',
         variant: 'destructive',
