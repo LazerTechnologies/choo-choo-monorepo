@@ -48,7 +48,7 @@ export function MarqueeHeader() {
         key={animationKey}
         items={marqueeItems}
         onItemComplete={handleItemComplete}
-        speed={MARQUEE_CONFIG.scrollPxPerSecond}
+        speed={MARQUEE_CONFIG.scrollSpeed}
         emergencyMode={hasEmergencyMessages}
         className="shadow-lg"
       />

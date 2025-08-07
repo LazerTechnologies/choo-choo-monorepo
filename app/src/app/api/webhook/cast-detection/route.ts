@@ -44,7 +44,15 @@ export async function POST(request: Request) {
         // Check if author is current holder
         const currentHolder = await getCurrentHolder();
 
-        if (currentHolder?.fid === authorFid) {
+        // Convert both to numbers for comparison (ensure type consistency)
+        const currentHolderFid = Number(currentHolder?.fid);
+        const castAuthorFid = Number(authorFid);
+
+        console.log(
+          `🔍 Comparing FIDs: currentHolder=${currentHolderFid}, castAuthor=${castAuthorFid}`
+        );
+
+        if (currentHolderFid === castAuthorFid) {
           // Update the active cast hash
           await setCastHash(cast.hash);
 
@@ -56,7 +64,9 @@ export async function POST(request: Request) {
           console.log(`✅ Cast detected from current holder via webhook: ${cast.hash}`);
           return NextResponse.json({ success: true, message: 'Cast processed' });
         } else {
-          console.log(`ℹ️ ChooChoo cast detected but not from current holder: FID ${authorFid}`);
+          console.log(
+            `ℹ️ ChooChoo cast detected but not from current holder: currentHolder=${currentHolderFid}, castAuthor=${castAuthorFid}`
+          );
         }
       }
     }

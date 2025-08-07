@@ -100,11 +100,12 @@ export const CHOOCHOO_CAST_TEMPLATES = {
 
 // Train Station Marquee Messages
 export const TRAIN_STATION_MESSAGES = [
+  `🔵 If you're reading this, you're based`,
   '🚂 Next departure: Platform 9¾',
   '⛔ Mind the gap',
-  '🍾 Reminder: No sex in the champagne room',
+  '🔔 Reminder: No sex in the champagne room',
   '🎫 All aboard the ChooChoo express!',
-  '🚃 The 4:20 express is now boarding on platform... uh... platform? lol',
+  '🔔 The 4:20 express is now boarding on platform... uh... platform? lol',
   '📢 The conductor has been found, thank you',
   '🎵 Now playing: Thomas the Tank Engine ASMR',
   '🚂 Choo choo mfer!',
@@ -116,7 +117,7 @@ export const TRAIN_STATION_MESSAGES = [
 
 // Marquee Configuration
 export const MARQUEE_CONFIG = {
-  scrollPxPerSecond: 10,
+  scrollSpeed: parseInt(process.env.NEXT_PUBLIC_MARQUEE_SCROLL_SPEED || '10', 10),
   standardMessages: TRAIN_STATION_MESSAGES,
   toastScrollCycles: 2,
   maxToastAge: 10000, // 10 seconds
