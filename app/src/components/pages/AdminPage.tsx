@@ -8,7 +8,7 @@ import { Input } from '@/components/base/Input';
 import { Typography } from '@/components/base/Typography';
 import { Switch } from '@/components/base/Switch';
 import { UsernameInput } from '@/components/ui/UsernameInput';
-import { SignerApprovalModal } from '@/components/ui/SignerApprovalModal';
+
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 import type { PinataUploadResult } from '@/types/nft';
 
@@ -862,40 +862,6 @@ function AppPauseToggle({ adminFid }: { adminFid?: number }) {
 }
 
 // @todo: remove this when we go live
-function TestSignerModal() {
-  const [showModal, setShowModal] = useState(false);
-
-  return (
-    <Card className="my-8 !bg-blue-600 !border-white">
-      <Card.Header>
-        <Card.Title>Test Signer Approval Modal</Card.Title>
-        <Card.Description>
-          Test the signer approval modal UI without going through the full sign-in flow.
-        </Card.Description>
-      </Card.Header>
-      <Card.Content>
-        <Button
-          onClick={() => setShowModal(true)}
-          className="w-full bg-blue-600 text-white border-white hover:bg-blue-700"
-          variant="default"
-        >
-          Open Signer Modal
-        </Button>
-
-        <SignerApprovalModal
-          isOpen={showModal}
-          onClose={() => setShowModal(false)}
-          approvalUrl="https://client.warpcast.com/deeplinks/signed-key-request?token=test-token"
-          onApprovalComplete={() => {
-            setShowModal(false);
-            console.log('Modal approval completed');
-          }}
-          userFid={123456}
-        />
-      </Card.Content>
-    </Card>
-  );
-}
 
 export function AdminPage({ onTokenMinted }: AdminPageProps) {
   const { isAdmin, currentUserFid } = useAdminAccess();
@@ -924,10 +890,6 @@ export function AdminPage({ onTokenMinted }: AdminPageProps) {
       <TestPinata />
       <SetTicketMetadata adminFid={currentUserFid} />
       <TestAdminNextStop onTokenMinted={onTokenMinted} adminFid={currentUserFid} />
-
-      {/* Test Signer Modal */}
-      <TestSignerModal />
-
       {/* App Pause Toggle - at the bottom with warning styling */}
       <AppPauseToggle adminFid={currentUserFid} />
     </div>

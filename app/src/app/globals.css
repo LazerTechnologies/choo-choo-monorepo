@@ -52,6 +52,28 @@
     --reverse-box-shadow-y: -4px;
     --font-heading: var(--font-comic);
     --font-base: var(--font-sans);
+
+    /* Marquee animations */
+    --animate-marquee: marquee 5s linear infinite;
+    --animate-marquee2: marquee2 5s linear infinite;
+  }
+
+  @keyframes marquee {
+    0% {
+      transform: translateX(0%);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
+  }
+
+  @keyframes marquee2 {
+    0% {
+      transform: translateX(100%);
+    }
+    100% {
+      transform: translateX(0%);
+    }
   }
 
   /* Dark mode - same values as light mode */

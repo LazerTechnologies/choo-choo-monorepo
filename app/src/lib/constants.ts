@@ -53,7 +53,7 @@ export const CHOOCHOO_CAST_TEMPLATES = {
   // [@user] Cast sent by current holder to announce they have ChooChoo
   USER_NEW_PASSENGER_CAST: () =>
     `I'm riding @choochoo! 🚂\n\n` +
-    `React to this cast to have a chance at being the next passenger, or comment and I just might chose you directly.\n\n` +
+    `Soon you could be too! React to this cast to be in the running for next passenger.\n\n` +
     `All aboard!`,
 
   // [@choochoo] Cast sent when someone yoinks the train

@@ -12,6 +12,7 @@ type HeaderProps = {
   } | null;
 };
 
+// @todo: safe to remove this file, just make sure we're not going to use it for anything before we go to production
 export function Header({ neynarUser }: HeaderProps) {
   const { context } = useMiniApp();
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
