@@ -96,14 +96,24 @@ export function PublicChanceWidget() {
 
   return (
     <div className="w-full max-w-md mx-auto mb-8 space-y-4">
-      {/* Display the announcement cast */}
-      {state.currentCastHash && <CastDisplayWidget castHash={state.currentCastHash} />}
-
-      <Card className="p-4 !bg-purple-500 !border-white" style={{ backgroundColor: '#a855f7' }}>
+      <Card
+        className="p-4 !bg-purple-500 !border-white w-full"
+        style={{ backgroundColor: '#a855f7' }}
+      >
         <div className="space-y-4">
-          <Typography variant="h4" className="!text-white font-comic text-center">
-            Chance Mode Active
-          </Typography>
+          <div className="text-center">
+            <Typography variant="h5" className="!text-white font-comic">
+              Chance Mode
+            </Typography>
+            <Typography variant="body" className="text-sm !text-white mt-1">
+              Send ChooChoo to a random reactor from the below cast
+            </Typography>
+            {!state.isPublicSendEnabled && (
+              <Typography variant="body" className="text-xs !text-white mt-2">
+                Anyone can send ChooChoo to a random reactor when the time is up
+              </Typography>
+            )}
+          </div>
 
           {state.winnerSelectionStart && !state.isPublicSendEnabled && (
             <div className="p-3 bg-purple-700 border border-white rounded">
@@ -125,14 +135,11 @@ export function PublicChanceWidget() {
                 ? '🎲 Send ChooChoo'
                 : 'Come back later...'}
           </Button>
-
-          {!state.isPublicSendEnabled && (
-            <Typography variant="body" className="text-xs !text-white text-center">
-              Send ChooChoo to a random reactor when the time is up
-            </Typography>
-          )}
         </div>
       </Card>
+
+      {/* Announcement cast */}
+      {state.currentCastHash && <CastDisplayWidget castHash={state.currentCastHash} />}
     </div>
   );
 }

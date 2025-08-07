@@ -155,9 +155,11 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
     <div className="space-y-6">
       <Card className="p-4 !bg-purple-500 !border-white" style={{ backgroundColor: '#a855f7' }}>
         <div className="space-y-4">
-          <Typography variant="h4" className="!text-white font-comic">
-            Choose Selection Method
-          </Typography>
+          <div className="text-center">
+            <Typography variant="body" className="text-sm !text-white">
+              Send ChooChoo to a friend, or leave it to chance.
+            </Typography>
+          </div>
 
           <Tabs
             value={tabValue}
@@ -210,8 +212,11 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
             <TabsContent value="chance">
               <div className="space-y-4 w-full">
                 <Typography variant="body" className="!text-white">
-                  You can leave ChooChoo&apos;s next stop up to chance. In 30 minutes anyone will be
-                  able to select a random reactor to your previous cast to receive ChooChoo.
+                  Leave ChooChoo&apos;s next stop up to chance.
+                  <br />
+                  <br />
+                  In 30 minutes anyone will be able to select a random reactor to your previous cast
+                  to receive ChooChoo.
                 </Typography>
 
                 <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
