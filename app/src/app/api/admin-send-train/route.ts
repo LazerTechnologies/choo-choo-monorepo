@@ -4,7 +4,6 @@ import { isAddress } from 'viem';
 import { getNextTokenId } from '@/lib/redis-token-utils';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
 import { CHOOCHOO_CAST_TEMPLATES, ADMIN_FIDS } from '@/lib/constants';
-import { redis } from '@/lib/kv';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
@@ -356,20 +355,27 @@ export async function POST(request: Request) {
       // Don't fail the request for cast sending issues
     }
 
-    // 8. Clear winner selection flags since the train has moved
+    // 8. Reset workflow state to NOT_CASTED for the new holder
     try {
-      await Promise.all([
-        redis.del('current-cast-hash'),
-        redis.del('hasCurrentUserCasted'),
-        redis.del('useRandomWinner'),
-        redis.del('winnerSelectionStart'),
-        redis.del('isPublicSendEnabled'),
-      ]);
-      console.log(
-        '[admin-send-train] Cleared cast flags and winner selection flags after admin train movement'
-      );
+      const resetResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/workflow-state`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          state: 'NOT_CASTED',
+          winnerSelectionStart: null,
+          currentCastHash: null,
+        }),
+      });
+
+      if (resetResponse.ok) {
+        console.log(
+          '[admin-send-train] Reset workflow state to NOT_CASTED after admin train movement'
+        );
+      } else {
+        console.warn('[admin-send-train] Failed to reset workflow state via API');
+      }
     } catch (err) {
-      console.error('[admin-send-train] Failed to clear flags (non-critical):', err);
+      console.error('[admin-send-train] Failed to reset workflow state (non-critical):', err);
       // Don't fail the request for this
     }
 

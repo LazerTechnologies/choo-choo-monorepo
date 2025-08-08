@@ -50,6 +50,21 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
           clearInterval(interval);
           setIsWaitingForCast(false);
 
+          // Update workflow state to CASTED
+          try {
+            await fetch('/api/workflow-state', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                state: 'CASTED',
+                winnerSelectionStart: null,
+                currentCastHash: null,
+              }),
+            });
+          } catch (error) {
+            console.error('Failed to update workflow state to CASTED:', error);
+          }
+
           toast({
             description: '✅ Cast found! Proceed to picking the next stop',
           });

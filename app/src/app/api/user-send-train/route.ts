@@ -5,6 +5,7 @@ import { redis } from '@/lib/kv';
 import { getNextTokenId } from '@/lib/redis-token-utils';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
 import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
+import axios from 'axios';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
@@ -286,20 +287,18 @@ export async function POST(request: Request) {
       );
     }
 
-    // 8. Clear the flags since the train has moved
+    // 8. Reset workflow state to NOT_CASTED for the new holder
     try {
-      await Promise.all([
-        redis.del('hasCurrentUserCasted'),
-        redis.del('current-cast-hash'),
-        redis.del('useRandomWinner'),
-        redis.del('winnerSelectionStart'),
-        redis.del('isPublicSendEnabled'),
-      ]);
+      await axios.post(`${process.env.NEXT_PUBLIC_APP_URL}/api/workflow-state`, {
+        state: 'NOT_CASTED',
+        winnerSelectionStart: null,
+        currentCastHash: null,
+      });
       console.log(
-        '[user-send-train] Cleared user casted flag, cast hash, and winner selection flags after successful train movement'
+        '[user-send-train] Reset workflow state to NOT_CASTED after successful train movement'
       );
     } catch (err) {
-      console.error('[user-send-train] Failed to clear flags (non-critical):', err);
+      console.error('[user-send-train] Failed to reset workflow state (non-critical):', err);
     }
 
     // 9. Send announcement casts from ChooChoo account

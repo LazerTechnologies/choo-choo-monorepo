@@ -10,6 +10,7 @@ import { Switch } from '@/components/base/Switch';
 import { UsernameInput } from '@/components/ui/UsernameInput';
 
 import { useAdminAccess } from '@/hooks/useAdminAccess';
+import { WorkflowState } from '@/lib/workflow-types';
 import type { PinataUploadResult } from '@/types/nft';
 import axios from 'axios';
 
@@ -17,7 +18,7 @@ interface AdminPageProps {
   onTokenMinted?: () => void;
 }
 
-function RedisStateTesting({ adminFid }: { adminFid?: number }) {
+function WorkflowStateTesting({ adminFid }: { adminFid?: number }) {
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
@@ -25,47 +26,53 @@ function RedisStateTesting({ adminFid }: { adminFid?: number }) {
   const testStates = useMemo(
     () => [
       {
-        id: 'initial',
-        name: 'Initial State',
-        description: 'Reset to initial state - no random mode, no timers',
-        values: {
-          useRandomWinner: 'false',
+        id: 'not-casted',
+        name: 'Not Casted (Initial State)',
+        description: 'Current holder has not sent announcement cast yet',
+        workflowData: {
+          state: WorkflowState.NOT_CASTED,
           winnerSelectionStart: null,
-          isPublicSendEnabled: 'false',
-          'current-cast-hash': null,
+          currentCastHash: null,
         },
       },
       {
-        id: 'chance-confirmed',
-        name: 'Chance Mode Just Confirmed',
+        id: 'casted',
+        name: 'Casted (Selection Mode)',
+        description: 'Current holder has casted, can choose manual or chance mode',
+        workflowData: {
+          state: WorkflowState.CASTED,
+          winnerSelectionStart: null,
+          currentCastHash: null,
+        },
+      },
+      {
+        id: 'chance-active',
+        name: 'Chance Mode - Active Countdown',
         description: '30min countdown active, public sending disabled',
-        values: {
-          useRandomWinner: 'true',
+        workflowData: {
+          state: WorkflowState.CHANCE_ACTIVE,
           winnerSelectionStart: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-          isPublicSendEnabled: 'false',
-          'current-cast-hash': '0x104fa3f438bc2e0ad32e7b5c6c90243e7728bae7',
+          currentCastHash: '0x104fa3f438bc2e0ad32e7b5c6c90243e7728bae7',
         },
       },
       {
         id: 'chance-expired',
         name: 'Chance Mode - Timer Expired',
         description: 'Timer expired, public sending enabled',
-        values: {
-          useRandomWinner: 'true',
+        workflowData: {
+          state: WorkflowState.CHANCE_EXPIRED,
           winnerSelectionStart: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-          isPublicSendEnabled: 'true',
-          'current-cast-hash': '0x104fa3f438bc2e0ad32e7b5c6c90243e7728bae7',
+          currentCastHash: '0x104fa3f438bc2e0ad32e7b5c6c90243e7728bae7',
         },
       },
       {
         id: 'manual-send',
         name: 'Manual Send Mode',
-        description: 'Manual selection only, no random mode',
-        values: {
-          useRandomWinner: 'false',
+        description: 'Train is currently being sent manually',
+        workflowData: {
+          state: WorkflowState.MANUAL_SEND,
           winnerSelectionStart: null,
-          isPublicSendEnabled: 'false',
-          'current-cast-hash': null,
+          currentCastHash: null,
         },
       },
     ],
@@ -87,38 +94,25 @@ function RedisStateTesting({ adminFid }: { adminFid?: number }) {
       setResult(null);
 
       try {
-        // Set all Redis values for this state
-        const promises = Object.entries(state.values).map(([key, value]) => {
-          if (value === null) {
-            // Delete key if value is null
-            return axios.post('/api/redis', {
-              action: 'delete',
-              key,
-            });
-          } else {
-            // Set key value
-            return axios.post('/api/redis', {
-              action: 'write',
-              key,
-              value,
-            });
-          }
-        });
+        // Use the new workflow state API
+        const response = await axios.post('/api/workflow-state', state.workflowData);
 
-        await Promise.all(promises);
+        if (response.status === 200) {
+          setResult(`Successfully set workflow state: ${state.name}`);
 
-        setResult(`Successfully set state: ${state.name}`);
+          // Dispatch event to trigger UI refresh
+          try {
+            window.dispatchEvent(new CustomEvent('workflow-state-changed'));
+          } catch {}
 
-        // Dispatch event to trigger UI refresh
-        try {
-          window.dispatchEvent(new CustomEvent('choo-random-enabled'));
-        } catch {}
-
-        // Auto-clear result after 3 seconds
-        setTimeout(() => setResult(null), 3000);
+          // Auto-clear result after 3 seconds
+          setTimeout(() => setResult(null), 3000);
+        } else {
+          throw new Error('Workflow state API returned error');
+        }
       } catch (err) {
-        console.error('Error setting Redis state:', err);
-        setError(`Failed to set state: ${state.name}`);
+        console.error('Error setting workflow state:', err);
+        setError(`Failed to set workflow state: ${state.name}`);
       } finally {
         setLoading(null);
       }
@@ -129,11 +123,10 @@ function RedisStateTesting({ adminFid }: { adminFid?: number }) {
   return (
     <Card className="my-8 !bg-blue-600 !border-white">
       <Card.Header>
-        <Card.Title>Redis State Testing</Card.Title>
+        <Card.Title>Workflow State Testing</Card.Title>
         <Card.Description>
-          Quickly switch between different Redis states to test the UI flow without going through
-          the normal user actions. Each button sets the appropriate combination of Redis keys for
-          that state.
+          Quickly switch between different workflow states to test the UI flow without going through
+          the normal user actions. Each button sets the workflow state and appropriate data.
         </Card.Description>
       </Card.Header>
       <Card.Content>
@@ -163,12 +156,13 @@ function RedisStateTesting({ adminFid }: { adminFid?: number }) {
         )}
 
         <div className="text-xs text-gray-400 mt-4 p-2 bg-blue-800/30 rounded">
-          <div className="font-semibold mb-1">State Details:</div>
+          <div className="font-semibold mb-1">Workflow States:</div>
           <div className="space-y-1 font-mono">
-            <div>• useRandomWinner: true/false</div>
-            <div>• winnerSelectionStart: ISO timestamp or null</div>
-            <div>• isPublicSendEnabled: true/false</div>
-            <div>• current-cast-hash: hash or null</div>
+            <div>• NOT_CASTED: Current holder hasn&apos;t sent announcement cast</div>
+            <div>• CASTED: Current holder can choose manual or chance mode</div>
+            <div>• CHANCE_ACTIVE: 30min countdown active</div>
+            <div>• CHANCE_EXPIRED: Public random send enabled</div>
+            <div>• MANUAL_SEND: Manual sending in progress</div>
           </div>
         </div>
       </Card.Content>
@@ -1052,8 +1046,8 @@ export function AdminPage({ onTokenMinted }: AdminPageProps) {
 
   return (
     <div className="space-y-3 px-6 w-full max-w-md mx-auto">
-      {/* Redis State Testing */}
-      <RedisStateTesting adminFid={currentUserFid} />
+      {/* Workflow State Testing */}
+      <WorkflowStateTesting adminFid={currentUserFid} />
 
       {/* Admin Test Sections */}
       <SetInitialHolder onTokenMinted={onTokenMinted} adminFid={currentUserFid} />

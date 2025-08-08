@@ -1,74 +1,28 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Button } from '@/components/base/Button';
 import { Typography } from '@/components/base/Typography';
 import { Card } from '@/components/base/Card';
 import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
-import { CastDisplayWidget } from './CastDisplayWidget';
-
-interface PublicChanceState {
-  useRandomWinner: boolean;
-  winnerSelectionStart: string | null;
-  isPublicSendEnabled: boolean;
-  currentCastHash: string | null;
-}
+import { useWorkflowState } from '@/hooks/useWorkflowState';
+import { WorkflowState } from '@/lib/workflow-types';
 
 export function PublicChanceWidget() {
   const { toast } = useMarqueeToast();
-
-  const [state, setState] = useState<PublicChanceState>({
-    useRandomWinner: false,
-    winnerSelectionStart: null,
-    isPublicSendEnabled: false,
-    currentCastHash: null,
-  });
+  const { workflowData, updateWorkflowState } = useWorkflowState();
   const [loading, setLoading] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<string>('');
 
-  const fetchState = useCallback(async () => {
-    try {
-      const [useRandomResponse, winnerStartResponse, publicEnabledResponse, castHashResponse] =
-        await Promise.all([
-          axios.get('/api/redis?action=read&key=useRandomWinner'),
-          axios.get('/api/redis?action=read&key=winnerSelectionStart'),
-          axios.get('/api/redis?action=read&key=isPublicSendEnabled'),
-          axios.get('/api/redis?action=read&key=current-cast-hash'),
-        ]);
-
-      setState({
-        useRandomWinner: useRandomResponse.data.value === 'true',
-        winnerSelectionStart: winnerStartResponse.data.value,
-        isPublicSendEnabled: publicEnabledResponse.data.value === 'true',
-        currentCastHash: castHashResponse.data.value,
-      });
-    } catch (error) {
-      console.error('Error fetching public chance state:', error);
-    }
-  }, []);
+  // No need for separate state fetching - useWorkflowState handles this
 
   useEffect(() => {
-    fetchState();
-    const interval = setInterval(fetchState, 30000);
-
-    const handleImmediateRefresh = () => {
-      fetchState();
-    };
-    window.addEventListener('choo-random-enabled', handleImmediateRefresh);
-
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('choo-random-enabled', handleImmediateRefresh);
-    };
-  }, [fetchState]);
-
-  useEffect(() => {
-    if (!state.winnerSelectionStart) return;
+    if (!workflowData.winnerSelectionStart) return;
 
     const interval = setInterval(() => {
       const now = new Date().getTime();
-      const targetTime = new Date(state.winnerSelectionStart!).getTime();
+      const targetTime = new Date(workflowData.winnerSelectionStart!).getTime();
       const difference = targetTime - now;
 
       if (difference > 0) {
@@ -77,11 +31,15 @@ export function PublicChanceWidget() {
         setTimeRemaining(`${minutes}m ${seconds}s`);
       } else {
         setTimeRemaining('');
+        // Auto-transition to CHANCE_EXPIRED when timer expires
+        if (workflowData.state === WorkflowState.CHANCE_ACTIVE) {
+          updateWorkflowState(WorkflowState.CHANCE_EXPIRED);
+        }
       }
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [state.winnerSelectionStart]);
+  }, [workflowData.winnerSelectionStart, workflowData.state, updateWorkflowState]);
 
   const handlePublicRandomSend = async () => {
     setLoading(true);
@@ -101,7 +59,13 @@ export function PublicChanceWidget() {
     }
   };
 
-  if (!(state.useRandomWinner || state.isPublicSendEnabled)) return null;
+  // Only render in chance states - HomePage handles routing but this provides safety
+  if (
+    workflowData.state !== WorkflowState.CHANCE_ACTIVE &&
+    workflowData.state !== WorkflowState.CHANCE_EXPIRED
+  ) {
+    return null;
+  }
 
   return (
     <div className="w-full max-w-md mx-auto mb-8 space-y-4">
@@ -119,7 +83,7 @@ export function PublicChanceWidget() {
             </Typography>
           </div>
 
-          {state.winnerSelectionStart && !state.isPublicSendEnabled && (
+          {workflowData.state === WorkflowState.CHANCE_ACTIVE && (
             <div className="p-3 bg-purple-700 border border-white rounded">
               <Typography variant="body" className="text-sm !text-white text-center">
                 ⏱️ Public sending will be enabled in: <strong>{timeRemaining}</strong>
@@ -129,21 +93,20 @@ export function PublicChanceWidget() {
 
           <Button
             onClick={handlePublicRandomSend}
-            disabled={loading || !state.isPublicSendEnabled}
+            disabled={loading || workflowData.state !== WorkflowState.CHANCE_EXPIRED}
             className="w-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white"
             style={{ backgroundColor: '#a855f7' }}
           >
             {loading
               ? 'Selecting Winner...'
-              : state.isPublicSendEnabled
+              : workflowData.state === WorkflowState.CHANCE_EXPIRED
                 ? '🎲 Send ChooChoo'
                 : 'Come back later...'}
           </Button>
         </div>
       </Card>
 
-      {/* Announcement cast */}
-      {state.currentCastHash && <CastDisplayWidget castHash={state.currentCastHash} />}
+      {/* Cast display is now handled by HomePage */}
     </div>
   );
 }

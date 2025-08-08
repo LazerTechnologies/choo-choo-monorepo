@@ -184,20 +184,27 @@ export async function POST() {
       );
     }
 
-    // 6. Clear the flags since the train has moved
+    // 6. Reset workflow state to NOT_CASTED for the new holder
     try {
-      await Promise.all([
-        redis.del('current-cast-hash'),
-        redis.del('hasCurrentUserCasted'),
-        redis.del('useRandomWinner'),
-        redis.del('winnerSelectionStart'),
-        redis.del('isPublicSendEnabled'),
-      ]);
-      console.log(
-        '[send-train] Cleared current cast hash, user casted flag, and winner selection flags after successful train movement'
-      );
+      const resetResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/workflow-state`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          state: 'NOT_CASTED',
+          winnerSelectionStart: null,
+          currentCastHash: null,
+        }),
+      });
+
+      if (resetResponse.ok) {
+        console.log(
+          '[send-train] Reset workflow state to NOT_CASTED after successful train movement'
+        );
+      } else {
+        console.warn('[send-train] Failed to reset workflow state via API');
+      }
     } catch (err) {
-      console.error('[send-train] Failed to clear flags (non-critical):', err);
+      console.error('[send-train] Failed to reset workflow state (non-critical):', err);
       // Don't fail the request for this
     }
 

@@ -6,13 +6,15 @@ import { Typography } from '@/components/base/Typography';
 import { CurrentHolderItem } from '@/components/ui/timeline/CurrentHolderItem';
 import { CastingWidget } from '@/components/ui/CastingWidget';
 import { WinnerSelectionWidget } from '@/components/ui/WinnerSelectionWidget';
+import { PublicChanceWidget } from '@/components/ui/PublicChanceWidget';
+import { CastDisplayWidget } from '@/components/ui/CastDisplayWidget';
 import { JourneyTimeline } from '@/components/ui/timeline';
 import { useCurrentHolder } from '@/hooks/useCurrentHolder';
-import { useUserCastedStatus } from '@/hooks/useUserCastedStatus';
+import { useWorkflowState } from '@/hooks/useWorkflowState';
 import { useSoundPlayer } from '@/hooks/useSoundPlayer';
+import { WorkflowState } from '@/lib/workflow-types';
 import { APP_NAME } from '@/lib/constants';
 import Image from 'next/image';
-import { PublicChanceWidget } from '@/components/ui/PublicChanceWidget';
 
 interface HomePageProps {
   title: string;
@@ -22,8 +24,12 @@ interface HomePageProps {
 export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
   const { context } = useMiniApp();
   const { isCurrentHolder, loading: isHolderLoading } = useCurrentHolder();
-  const { hasCurrentUserCasted, loading: isCastedLoading, refreshStatus } = useUserCastedStatus();
+  const { workflowData, loading: isWorkflowLoading, refetch: refreshWorkflow } = useWorkflowState();
   const { playChooChoo } = useSoundPlayer();
+
+  const handleWorkflowRefresh = () => {
+    refreshWorkflow();
+  };
 
   return (
     <div className="overflow-y-auto h-[calc(100vh-200px)] px-6">
@@ -58,10 +64,11 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
         </Button>
       </div>
 
-      {/* Casting Widget or Winner Selection - Only show if user is signed in and is current holder */}
-      {context?.user && !isHolderLoading && !isCastedLoading && isCurrentHolder && (
+      {/* Workflow-based UI rendering */}
+      {context?.user && !isHolderLoading && !isWorkflowLoading && (
         <div className="w-full max-w-md mx-auto mb-8 flex flex-col items-center justify-center">
-          {!hasCurrentUserCasted ? (
+          {/* NOT_CASTED: Show casting widget only to current holder */}
+          {workflowData.state === WorkflowState.NOT_CASTED && isCurrentHolder && (
             <>
               <Typography
                 variant="body"
@@ -71,23 +78,39 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
                 you&apos;ll be able to choose where ChooChoo goes next.
               </Typography>
               <div className="w-full flex justify-center">
-                <CastingWidget onCastSent={refreshStatus} />
+                <CastingWidget onCastSent={handleWorkflowRefresh} />
               </div>
             </>
-          ) : (
+          )}
+
+          {/* CASTED: Show winner selection widget only to current holder */}
+          {workflowData.state === WorkflowState.CASTED && isCurrentHolder && (
             <div className="w-full">
-              <WinnerSelectionWidget
-                onTokenMinted={() => {
-                  refreshStatus();
-                }}
-              />
+              <WinnerSelectionWidget onTokenMinted={handleWorkflowRefresh} />
+            </div>
+          )}
+
+          {/* CHANCE_ACTIVE & CHANCE_EXPIRED: Show public chance widget to everyone */}
+          {(workflowData.state === WorkflowState.CHANCE_ACTIVE ||
+            workflowData.state === WorkflowState.CHANCE_EXPIRED) && (
+            <div className="w-full space-y-4">
+              <PublicChanceWidget />
+              {workflowData.currentCastHash && (
+                <CastDisplayWidget castHash={workflowData.currentCastHash} />
+              )}
+            </div>
+          )}
+
+          {/* MANUAL_SEND: Show loading state */}
+          {workflowData.state === WorkflowState.MANUAL_SEND && (
+            <div className="w-full text-center">
+              <Typography variant="body" className="text-gray-600 dark:text-gray-300">
+                🚂 ChooChoo is on the move...
+              </Typography>
             </div>
           )}
         </div>
       )}
-
-      {/* Public Chance UI - visible to everyone when chance mode is active */}
-      <PublicChanceWidget />
 
       {/* Current Stop Section */}
       <div className="w-full max-w-md mx-auto mb-8">

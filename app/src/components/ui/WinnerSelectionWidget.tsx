@@ -1,40 +1,27 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useNeynarContext } from '@neynar/react';
 import { Card } from '@/components/base/Card';
 import { Button } from '@/components/base/Button';
 import { Typography } from '@/components/base/Typography';
 import { UsernameInput } from './UsernameInput';
 import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
+import { useWorkflowState } from '@/hooks/useWorkflowState';
+import { WorkflowState } from '@/lib/workflow-types';
 import axios from 'axios';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/base/Tabs';
 import { Dialog } from '@/components/base/Dialog';
-import { useRouter } from 'next/navigation';
 import { MessagePriority } from '@/lib/constants';
 
 interface WinnerSelectionWidgetProps {
   onTokenMinted?: () => void;
 }
 
-interface WinnerSelectionState {
-  useRandomWinner: boolean;
-  winnerSelectionStart: string | null;
-  isPublicSendEnabled: boolean;
-  currentCastHash: string | null;
-}
-
 export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetProps) {
   const { toast } = useMarqueeToast();
   const { user } = useNeynarContext();
-  const router = useRouter();
-
-  const [state, setState] = useState<WinnerSelectionState>({
-    useRandomWinner: false,
-    winnerSelectionStart: null,
-    isPublicSendEnabled: false,
-    currentCastHash: null,
-  });
+  const { updateWorkflowState } = useWorkflowState();
 
   const [selectedUser, setSelectedUser] = useState<{
     fid: number;
@@ -47,38 +34,6 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
   const [isConfirmOpen, setIsConfirmOpen] = useState<boolean>(false);
   const [tabValue, setTabValue] = useState<'send' | 'chance'>('send');
 
-  // Fetch current state from Redis
-  const fetchState = useCallback(async () => {
-    try {
-      const [useRandomResponse, winnerStartResponse, publicEnabledResponse, castHashResponse] =
-        await Promise.all([
-          axios.get('/api/redis?action=read&key=useRandomWinner'),
-          axios.get('/api/redis?action=read&key=winnerSelectionStart'),
-          axios.get('/api/redis?action=read&key=isPublicSendEnabled'),
-          axios.get('/api/redis?action=read&key=current-cast-hash'),
-        ]);
-
-      setState({
-        useRandomWinner: useRandomResponse.data.value === 'true',
-        winnerSelectionStart: winnerStartResponse.data.value,
-        isPublicSendEnabled: publicEnabledResponse.data.value === 'true',
-        currentCastHash: castHashResponse.data.value,
-      });
-    } catch (error) {
-      console.error('Error fetching state:', error);
-    }
-  }, []);
-
-  // Fetch state on component mount
-  useEffect(() => {
-    fetchState();
-  }, [fetchState]);
-
-  // Keep tab selection in sync with mode
-  useEffect(() => {
-    setTabValue(state.useRandomWinner ? 'chance' : 'send');
-  }, [state.useRandomWinner]);
-
   const handleManualSend = async () => {
     if (!selectedUser) {
       toast({
@@ -89,6 +44,10 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
     }
 
     setLoading(true);
+
+    // Update to MANUAL_SEND state immediately
+    await updateWorkflowState(WorkflowState.MANUAL_SEND);
+
     try {
       const response = await axios.post('/api/user-send-train', {
         targetFid: selectedUser.fid,
@@ -106,6 +65,8 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
         description: 'Failed to send ChooChoo',
         variant: 'destructive',
       });
+      // Revert to CASTED state on error
+      await updateWorkflowState(WorkflowState.CASTED);
     } finally {
       setLoading(false);
     }
@@ -125,13 +86,11 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
       });
 
       if (response.data.success) {
-        // Optimistically update local state for immediate UI handoff
-        setState((prev) => ({
-          ...prev,
-          useRandomWinner: true,
+        // Update to CHANCE_ACTIVE state with the new data
+        await updateWorkflowState(WorkflowState.CHANCE_ACTIVE, {
           winnerSelectionStart: response.data.winnerSelectionStart,
-          isPublicSendEnabled: false,
-        }));
+          currentCastHash: response.data.castHash,
+        });
 
         // Close dialog immediately
         setIsConfirmOpen(false);
@@ -142,32 +101,25 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
           priority: MessagePriority.USER_CONTEXT,
         });
 
-        // Notify other widgets to re-fetch Redis state immediately
+        // Notify other components
         try {
-          window.dispatchEvent(new CustomEvent('choo-random-enabled'));
+          window.dispatchEvent(new CustomEvent('workflow-state-changed'));
         } catch {}
 
-        // Ensure the homepage re-renders and PublicChanceWidget fetches fresh Redis state
-        setTimeout(() => {
-          router.refresh();
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        }, 200);
+        onTokenMinted?.();
       } else {
         throw new Error('Failed to enable random winner mode');
       }
     } catch (error) {
       console.error('Error enabling chance mode:', error);
-      await fetchState();
       toast({ description: 'Failed to enable chance mode', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
 
-  // Don't render if chance mode is already active - PublicChanceWidget will handle it
-  if (state.useRandomWinner) {
-    return null;
-  }
+  // This component only renders in CASTED state - HomePage handles the routing
+  // No conditional rendering needed here since HomePage controls when this shows
 
   return (
     <div className="space-y-6">
