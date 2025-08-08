@@ -1092,7 +1092,10 @@ function JourneyAnnouncement({ adminFid }: { adminFid?: number }) {
     <Card className="my-8 !bg-purple-600 !border-white">
       <Card.Header>
         <Card.Title>Send Journey Announcement</Card.Title>
-        <Card.Description>Cast generic announcement from @choochoo.</Card.Description>
+        <Card.Description>
+          Posts the prewritten <span className="font-bold text-blue-600">JOURNEY_CONTINUES</span>{' '}
+          message from @choochoo.
+        </Card.Description>
       </Card.Header>
       <Card.Content>
         <div className="space-y-3">
@@ -1103,13 +1106,21 @@ function JourneyAnnouncement({ adminFid }: { adminFid?: number }) {
             className="w-full bg-purple-600 text-white border-white hover:bg-purple-700"
             variant="default"
           >
-            Send Cast
+            Send Announcement
           </Button>
-          {error && <div className="text-xs text-red-300 p-2 bg-red-900/20 rounded">{error}</div>}
-          {result && (
-            <div className="text-xs text-green-300 p-2 bg-green-900/20 rounded">{result}</div>
-          )}
         </div>
+
+        {error && (
+          <div className="text-xs text-red-500 mt-3 p-2 bg-red-50 dark:bg-red-900/20 rounded">
+            {error}
+          </div>
+        )}
+
+        {result && (
+          <div className="text-xs text-green-600 dark:text-green-400 mt-3 p-2 bg-green-50 dark:bg-green-900/20 rounded">
+            ✅ {result}
+          </div>
+        )}
       </Card.Content>
     </Card>
   );
@@ -1179,11 +1190,19 @@ function CustomCast({ adminFid }: { adminFid?: number }) {
           >
             Send Cast
           </Button>
-          {error && <div className="text-xs text-red-300 p-2 bg-red-900/20 rounded">{error}</div>}
-          {result && (
-            <div className="text-xs text-green-300 p-2 bg-green-900/20 rounded">{result}</div>
-          )}
         </div>
+
+        {error && (
+          <div className="text-xs text-red-500 mt-3 p-2 bg-red-50 dark:bg-red-900/20 rounded">
+            {error}
+          </div>
+        )}
+
+        {result && (
+          <div className="text-xs text-green-600 dark:text-green-400 mt-3 p-2 bg-green-50 dark:bg-green-900/20 rounded">
+            ✅ {result}
+          </div>
+        )}
       </Card.Content>
     </Card>
   );
