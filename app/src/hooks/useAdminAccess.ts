@@ -11,6 +11,7 @@ export function useAdminAccess() {
   const currentUserFid = neynarAuthUser?.fid || context?.user?.fid;
   const isAdmin = currentUserFid ? ADMIN_FIDS.includes(currentUserFid) : false;
 
+  // Note: This is only for client/UI gating. Server routes must use requireAdmin.
   return {
     currentUserFid,
     isAdmin,

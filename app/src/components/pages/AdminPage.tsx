@@ -222,7 +222,7 @@ function AdminGenerate({ adminFid }: { adminFid?: number }) {
       const res = await fetch('/api/admin-generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adminFid }),
+        body: JSON.stringify({}),
       });
       const data = await res.json();
 
@@ -414,7 +414,6 @@ function SetInitialHolder({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           targetFid: selectedUser.fid,
-          adminFid: adminFid,
         }),
       });
 
@@ -590,7 +589,6 @@ function SetTicketMetadata({ adminFid }: { adminFid?: number }) {
           tokenURI,
           image: '', // Empty since metadata contains everything
           traits: '', // Empty since metadata contains everything
-          adminFid: adminFid,
         }),
       });
 
@@ -747,7 +745,6 @@ function TestAdminNextStop({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           targetFid: selectedUser.fid,
-          adminFid: adminFid,
         }),
       });
 
@@ -925,7 +922,6 @@ function AppPauseToggle({ adminFid }: { adminFid?: number }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           isPaused: pendingState,
-          adminFid: adminFid,
         }),
       });
 
@@ -1073,7 +1069,7 @@ function JourneyAnnouncement({ adminFid }: { adminFid?: number }) {
       const res = await fetch('/api/admin-send-cast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adminFid, text, idem: `journey-continues-${today}` }),
+        body: JSON.stringify({ text, idem: `journey-continues-${today}` }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -1151,7 +1147,7 @@ function CustomCast({ adminFid }: { adminFid?: number }) {
       const res = await fetch('/api/admin-send-cast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adminFid, text }),
+        body: JSON.stringify({ text }),
       });
       const data = await res.json();
       if (res.ok && data.success) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { ADMIN_FIDS } from '@/lib/constants';
+import { requireAdmin } from '@/lib/auth/require-admin';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
@@ -10,7 +10,6 @@ const adminSetTicketDataSchema = z.object({
   tokenURI: z.string().min(1, 'Token URI is required'),
   image: z.string().optional().default(''),
   traits: z.string().optional().default(''),
-  adminFid: z.number().positive('Admin FID is required'),
 });
 
 interface AdminSetTicketDataResponse {
@@ -27,6 +26,10 @@ interface AdminSetTicketDataResponse {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Admin auth
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+
     // Parse and validate request body
     let body;
     try {
@@ -45,16 +48,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { tokenId, tokenURI, image, traits, adminFid } = validation.data;
-
-    // Check if user is admin
-    if (!ADMIN_FIDS.includes(adminFid)) {
-      console.error(`[admin-set-ticket-data] Unauthorized: FID ${adminFid} is not an admin`);
-      return NextResponse.json({ error: 'Unauthorized - Admin access required' }, { status: 403 });
-    }
+    const { tokenId, tokenURI, image, traits } = validation.data;
 
     console.log(
-      `[admin-set-ticket-data] Admin FID ${adminFid} setting ticket data for token ${tokenId}`
+      `[admin-set-ticket-data] Admin FID ${auth.adminFid} setting ticket data for token ${tokenId}`
     );
 
     // Call internal endpoint to execute the transaction

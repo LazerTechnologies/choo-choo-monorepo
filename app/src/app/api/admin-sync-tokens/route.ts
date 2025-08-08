@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server';
 import { syncTokenTracker } from '@/lib/redis-token-utils';
-import { ADMIN_FIDS } from '@/lib/constants';
-
-interface AdminSyncTokensRequest {
-  adminFid: number;
-}
+import { requireAdmin } from '@/lib/auth/require-admin';
 
 /**
  * POST /api/admin-sync-tokens
@@ -14,15 +10,10 @@ interface AdminSyncTokensRequest {
  */
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as AdminSyncTokensRequest;
-    const { adminFid } = body;
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
 
-    // Verify admin access
-    if (!ADMIN_FIDS.includes(adminFid)) {
-      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
-    }
-
-    console.log(`[admin-sync-tokens] Admin ${adminFid} syncing token tracker`);
+    console.log(`[admin-sync-tokens] Admin ${auth.adminFid} syncing token tracker`);
 
     // Sync the token tracker
     const highestTokenId = await syncTokenTracker();

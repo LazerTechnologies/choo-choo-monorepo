@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { redis } from '@/lib/kv';
-import { ADMIN_FIDS, CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
+import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
+import { requireAdmin } from '@/lib/auth/require-admin';
 
 const APP_PAUSE_KEY = 'app-paused';
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
@@ -66,13 +67,11 @@ export async function GET() {
  */
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const { isPaused, adminFid } = body;
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
 
-    // Validate admin access
-    if (!adminFid || !ADMIN_FIDS.includes(adminFid)) {
-      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
-    }
+    const body = await request.json();
+    const { isPaused } = body as { isPaused: boolean };
 
     // Validate isPaused is boolean
     if (typeof isPaused !== 'boolean') {
@@ -82,7 +81,7 @@ export async function POST(request: Request) {
     // Set the pause state in Redis
     await redis.set(APP_PAUSE_KEY, isPaused.toString());
 
-    console.log(`[admin-app-pause] Admin ${adminFid} set app pause state to: ${isPaused}`);
+    console.log(`[admin-app-pause] Admin ${auth.adminFid} set app pause state to: ${isPaused}`);
 
     // Send maintenance cast announcement
     try {

@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { ADMIN_FIDS, APP_URL } from '@/lib/constants';
+import { APP_URL } from '@/lib/constants';
+import { requireAdmin } from '@/lib/auth/require-admin';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
 interface AdminSendCastBody {
-  adminFid: number;
   text: string;
   idem?: string;
   channel_id?: string;
@@ -12,14 +12,13 @@ interface AdminSendCastBody {
 
 export async function POST(request: Request) {
   try {
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+
     const body = (await request.json()) as AdminSendCastBody;
 
-    if (!body || typeof body.adminFid !== 'number' || typeof body.text !== 'string') {
+    if (!body || typeof body.text !== 'string') {
       return NextResponse.json({ error: 'Invalid body' }, { status: 400 });
-    }
-
-    if (!ADMIN_FIDS.includes(body.adminFid)) {
-      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
     }
 
     if (!INTERNAL_SECRET) {

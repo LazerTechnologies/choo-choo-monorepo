@@ -7,32 +7,16 @@ import {
   collectionName,
 } from 'generator';
 import { getContractService } from '@/lib/services/contract';
-import { ADMIN_FIDS } from '@/lib/constants';
+import { requireAdmin } from '@/lib/auth/require-admin';
 import type { PinataUploadResult, TokenURI } from '@/types/nft';
-
-interface AdminGenerateRequest {
-  adminFid: number;
-}
 
 export async function POST(request: Request) {
   try {
-    // Parse and validate request body for admin authentication
-    let body: AdminGenerateRequest;
-    try {
-      body = await request.json();
-    } catch (err) {
-      console.error('[admin-generate] Error parsing request body:', err);
-      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-    }
+    // Admin auth
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
 
-    const { adminFid } = body;
-
-    // Validate admin access
-    if (!adminFid || !ADMIN_FIDS.includes(adminFid)) {
-      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
-    }
-
-    console.log(`[admin-generate] Admin ${adminFid} generating test NFT`);
+    console.log(`[admin-generate] Admin ${auth.adminFid} generating test NFT`);
 
     // Get the next token ID from contract (same as real tokens would get)
     let testTokenId;
@@ -118,7 +102,7 @@ export async function POST(request: Request) {
       metadata: completeMetadata,
     };
 
-    console.log(`[admin-generate] Admin ${adminFid} completed NFT generation successfully`);
+    console.log(`[admin-generate] Admin ${auth.adminFid} completed NFT generation successfully`);
 
     return NextResponse.json({
       success: true,

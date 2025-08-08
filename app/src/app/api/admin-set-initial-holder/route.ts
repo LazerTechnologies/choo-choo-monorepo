@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAddress } from 'viem';
 import { redis } from '@/lib/kv';
-import { getContractService } from '@/lib/services/contract';
-import { ADMIN_FIDS } from '@/lib/constants';
+import { requireAdmin } from '@/lib/auth/require-admin';
 
 import type { CurrentHolderData } from '@/types/nft';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
@@ -12,17 +11,13 @@ import { CHOOCHOO_CAST_TEMPLATES, CHOOCHOO_TRAIN_METADATA_URI } from '@/lib/cons
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
-// Admin FIDs (same as in useAdminAccess hook)
-
 // Validation schema
 const setInitialHolderBodySchema = z.object({
   targetFid: z.number().positive('Target FID must be positive'),
-  adminFid: z.number().positive('Admin FID must be positive'),
 });
 
 interface SetInitialHolderRequest {
   targetFid: number;
-  adminFid: number;
 }
 
 interface SetInitialHolderResponse {
@@ -110,6 +105,10 @@ async function fetchUserByFid(fid: number): Promise<{
  */
 export async function POST(request: Request) {
   try {
+    // Admin auth
+    const auth = await requireAdmin(request);
+    if (!auth.ok) return auth.response;
+
     // Parse and validate request body
     const body = await request.json();
     const validationResult = setInitialHolderBodySchema.safeParse(body);
@@ -124,15 +123,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const { targetFid, adminFid }: SetInitialHolderRequest = validationResult.data;
-
-    // Validate admin access
-    if (!ADMIN_FIDS.includes(adminFid)) {
-      return NextResponse.json({ error: 'Unauthorized: Admin access required' }, { status: 403 });
-    }
+    const { targetFid }: SetInitialHolderRequest = validationResult.data;
 
     console.log(
-      `[admin-set-initial-holder] Admin ${adminFid} attempting to set initial holder to FID ${targetFid}`
+      `[admin-set-initial-holder] Admin ${auth.adminFid} attempting to set initial holder to FID ${targetFid}`
     );
 
     // Check Redis to see if current holder exists
@@ -199,37 +193,14 @@ export async function POST(request: Request) {
         '[admin-set-initial-holder] CHOOCHOO_TRAIN_METADATA_URI environment variable is required but not configured'
       );
       return NextResponse.json(
-        {
-          error:
-            'CHOOCHOO_TRAIN_METADATA_URI environment variable is required. Please configure it and try again.',
-        },
+        { error: 'Server misconfigured: CHOOCHOO_TRAIN_METADATA_URI missing' },
         { status: 500 }
       );
     }
 
     try {
-      const contractService = getContractService();
-      const setMainTokenURITx = await contractService.setMainTokenURI(CHOOCHOO_TRAIN_METADATA_URI);
-      console.log(
-        `[admin-set-initial-holder] Successfully set main token URI: ${setMainTokenURITx}`
-      );
-    } catch (err) {
-      console.error('[admin-set-initial-holder] Failed to set main token URI:', err);
-      return NextResponse.json(
-        {
-          error:
-            'Failed to set main token URI on contract. Please check the contract service and try again.',
-        },
-        { status: 500 }
-      );
-    }
-
-    // Send journey begins announcement cast from ChooChoo account
-    try {
-      const journeyBeginsCastText = CHOOCHOO_CAST_TEMPLATES.JOURNEY_BEGINS(targetUser.username);
-
-      const castResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL}/api/internal/send-cast`,
+      const setUriResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_APP_URL}/api/internal/set-ticket-data`,
         {
           method: 'POST',
           headers: {
@@ -237,52 +208,47 @@ export async function POST(request: Request) {
             'x-internal-secret': INTERNAL_SECRET || '',
           },
           body: JSON.stringify({
-            text: journeyBeginsCastText,
-            // channel_id: 'base', // @note: if we want to add a channel to the cast
+            tokenId: 0,
+            tokenURI: CHOOCHOO_TRAIN_METADATA_URI,
+            image: '',
+            traits: '',
           }),
         }
       );
 
-      if (castResponse.ok) {
-        const castData = await castResponse.json();
-        console.log(
-          `[admin-set-initial-holder] Successfully sent journey begins cast: ${castData.cast?.hash}`
-        );
-      } else {
-        const castErrorData = await castResponse.json();
-        console.warn(
-          '[admin-set-initial-holder] Failed to send journey begins cast (non-critical):',
-          castErrorData.error
-        );
+      if (!setUriResponse.ok) {
+        const text = await setUriResponse.text();
+        console.error('[admin-set-initial-holder] Failed to set token 0 URI:', text);
+        return NextResponse.json({ error: 'Failed to set token 0 metadata URI' }, { status: 500 });
       }
+    } catch (err) {
+      console.error('[admin-set-initial-holder] Error setting token 0 URI:', err);
+      return NextResponse.json({ error: 'Failed to set token 0 metadata URI' }, { status: 500 });
+    }
+
+    try {
+      const journeyBeginsCastText = CHOOCHOO_CAST_TEMPLATES.JOURNEY_BEGINS(targetUser.username);
+      await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/send-cast`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-internal-secret': INTERNAL_SECRET || '',
+        },
+        body: JSON.stringify({ text: journeyBeginsCastText }),
+      });
     } catch (err) {
       console.warn(
         '[admin-set-initial-holder] Failed to send journey begins cast (non-critical):',
         err
       );
-      // Don't fail the request for cast sending issues
     }
 
-    const response: SetInitialHolderResponse = {
+    return NextResponse.json({
       success: true,
-      holder: {
-        fid: currentHolderData.fid,
-        username: currentHolderData.username,
-        displayName: currentHolderData.displayName,
-        pfpUrl: currentHolderData.pfpUrl,
-        address: currentHolderData.address,
-        timestamp: currentHolderData.timestamp,
-      },
-    };
-
-    return NextResponse.json(response);
+      holder: currentHolderData,
+    } as SetInitialHolderResponse);
   } catch (error) {
-    console.error('[admin-set-initial-holder] Error:', error);
-
-    if (error instanceof Error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ error: 'Failed to set initial holder' }, { status: 500 });
+    console.error('[admin-set-initial-holder] Unexpected error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
