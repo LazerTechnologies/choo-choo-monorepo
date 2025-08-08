@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { ADMIN_FIDS } from '@/lib/constants';
+import { ADMIN_FIDS, APP_URL } from '@/lib/constants';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     if (body.idem) payload.idem = body.idem;
     if (body.channel_id) payload.channel_id = body.channel_id;
 
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/send-cast`, {
+    const response = await fetch(`${APP_URL}/api/internal/send-cast`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
