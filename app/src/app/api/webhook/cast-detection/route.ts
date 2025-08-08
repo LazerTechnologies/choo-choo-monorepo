@@ -9,12 +9,20 @@ function validateWebhook(body: string, signature: string, secret: string): boole
   return signature === expectedSignature;
 }
 
+/**
+ * POST /api/webhook/cast-detection
+ *
+ * Handles the Neynar webhook for new casts.
+ * Validates the webhook signature and updates the workflow state if the cast is from the current holder.
+ *
+ * @param request - The HTTP request object containing the webhook payload.
+ * @returns 200 on success, 401 if signature is invalid, 500 on error.
+ */
 export async function POST(request: Request) {
   try {
     const rawBody = await request.text();
     console.log('🔔 Webhook received:', rawBody.substring(0, 200) + '...');
 
-    // Validate webhook signature if secret is configured
     if (process.env.NEYNAR_WEBHOOK_SECRET) {
       const signature = request.headers.get('X-Neynar-Signature');
       if (!signature) {
@@ -31,17 +39,14 @@ export async function POST(request: Request) {
     const body = JSON.parse(rawBody);
     console.log('📨 Webhook type:', body.type);
 
-    // Neynar webhook payload for new casts
     if (body.type === 'cast.created') {
       const cast = body.data;
       const castText = cast.text;
       const authorFid = cast.author.fid;
 
-      // Check if this matches our template
       const expectedTextPart = "I'm riding @choochoo!";
 
       if (castText.includes(expectedTextPart)) {
-        // Check if author is current holder (using the correct data structure)
         const holderDataString = await redis.get('current-holder');
         if (!holderDataString) {
           console.log('❌ No current holder found in Redis');
@@ -54,7 +59,6 @@ export async function POST(request: Request) {
           return NextResponse.json({ success: true });
         }
 
-        // Convert both to numbers for comparison (ensure type consistency)
         const currentHolderFid = Number(currentHolder.fid);
         const castAuthorFid = Number(authorFid);
 
@@ -64,11 +68,13 @@ export async function POST(request: Request) {
         console.log('🔍 Current holder data:', JSON.stringify(currentHolder));
 
         if (currentHolderFid === castAuthorFid) {
-          // Update the current cast hash using the same key as other endpoints
-          await redis.set('current-cast-hash', cast.hash);
+          const workflowData = {
+            state: 'CASTED',
+            winnerSelectionStart: null,
+            currentCastHash: cast.hash,
+          };
 
-          // Mark user as having casted (direct Redis update)
-          await redis.set('hasCurrentUserCasted', 'true');
+          await redis.set('workflowState', JSON.stringify(workflowData));
 
           console.log(`✅ Cast detected from current holder via webhook: ${cast.hash}`);
           return NextResponse.json({ success: true, message: 'Cast processed' });

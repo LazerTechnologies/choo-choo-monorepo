@@ -38,7 +38,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'userFid is required in request body' }, { status: 400 });
       }
 
-      // Basic address validation
       if (!/^0x[a-fA-F0-9]{40}$/i.test(targetAddress)) {
         return NextResponse.json({ error: 'Invalid address format' }, { status: 400 });
       }
@@ -191,15 +190,14 @@ export async function POST(request: NextRequest) {
         console.log(`[yoink] Updated current holder in Redis to: ${yoinkerData.username}`);
       }
 
-      // Clear any existing cast hash and winner selection flags since holder changed
-      await Promise.all([
-        redis.del('current-cast-hash'),
-        redis.del('hasCurrentUserCasted'),
-        redis.del('useRandomWinner'),
-        redis.del('winnerSelectionStart'),
-        redis.del('isPublicSendEnabled'),
-      ]);
-      console.log('[yoink] Cleared cast flags and winner selection flags after yoink');
+      const workflowData = {
+        state: 'NOT_CASTED',
+        winnerSelectionStart: null,
+        currentCastHash: null,
+      };
+
+      await redis.set('workflowState', JSON.stringify(workflowData));
+      console.log('[yoink] Reset workflow state to NOT_CASTED after yoink');
     } catch (err) {
       console.warn('[yoink] Failed to update Redis (non-critical):', err);
     }
@@ -237,7 +235,6 @@ export async function POST(request: NextRequest) {
     // 11. Send announcement casts
     try {
       if (yoinkerData?.username) {
-        // Send yoink announcement cast
         const yoinkCastText = CHOOCHOO_CAST_TEMPLATES.YOINK_ANNOUNCEMENT(yoinkerData.username);
 
         const yoinkCastResponse = await fetch(
@@ -250,7 +247,7 @@ export async function POST(request: NextRequest) {
             },
             body: JSON.stringify({
               text: yoinkCastText,
-              // channel_id: 'base', // @todo: if we want to add a channel to the cast
+              // channel_id: 'base', // @note: if we want to add a channel to the cast
             }),
           }
         );
@@ -262,7 +259,6 @@ export async function POST(request: NextRequest) {
           console.warn('[yoink] Failed to send yoink cast (non-critical)');
         }
 
-        // Send ticket issued cast for previous holder (if NFT was generated)
         if (currentHolderData?.username && nftData?.imageHash) {
           const ticketCastText = CHOOCHOO_CAST_TEMPLATES.TICKET_ISSUED(
             currentHolderData.username,

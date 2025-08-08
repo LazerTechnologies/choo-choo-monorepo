@@ -36,6 +36,9 @@ interface UserSendTrainResponse {
 
 /**
  * Fetches user data from Neynar by FID
+ *
+ * @param fid - The FID of the user to fetch data for.
+ * @returns The user data if found, otherwise null.
  */
 async function fetchUserByFid(fid: number): Promise<{
   address: string;
@@ -130,9 +133,17 @@ export async function POST(request: Request) {
     // Note: Authentication is handled via the current holder check since this endpoint
     // should only be accessible to the current holder in the UI
 
-    // 2. Check if user has casted
-    const hasCurrentUserCasted = await redis.get('hasCurrentUserCasted');
-    if (hasCurrentUserCasted !== 'true') {
+    // 2. Check workflow state - user must be in CASTED state
+    const workflowStateJson = await redis.get('workflowState');
+    if (!workflowStateJson) {
+      return NextResponse.json(
+        { error: 'No workflow state found. Please send a cast first.' },
+        { status: 400 }
+      );
+    }
+
+    const workflowData = JSON.parse(workflowStateJson);
+    if (workflowData.state !== 'CASTED') {
       return NextResponse.json(
         { error: 'You must send a cast first before manually selecting the next passenger' },
         { status: 400 }

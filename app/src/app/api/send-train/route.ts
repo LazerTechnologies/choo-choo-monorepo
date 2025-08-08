@@ -19,12 +19,25 @@ export async function POST() {
   try {
     console.log('[send-train] 🫡 Public random winner selection request');
 
-    // 1. Get current cast hash from Redis
+    // 1. Get current cast hash from workflow state
     let castHash;
     try {
-      castHash = await redis.get('current-cast-hash');
+      const workflowStateJson = await redis.get('workflowState');
+      if (!workflowStateJson) {
+        console.error('[send-train] No workflow state found in Redis');
+        return NextResponse.json(
+          {
+            error: 'No active workflow state found.',
+          },
+          { status: 400 }
+        );
+      }
+
+      const workflowData = JSON.parse(workflowStateJson);
+      castHash = workflowData.currentCastHash;
+
       if (!castHash) {
-        console.error('[send-train] No current cast hash found in Redis');
+        console.error('[send-train] No current cast hash found in workflow state');
         return NextResponse.json(
           {
             error: 'No active cast found. The current holder must publish a cast first.',
@@ -273,7 +286,7 @@ export async function POST() {
       }
     } catch (err) {
       console.warn('[send-train] Failed to send announcement casts (non-critical):', err);
-      // Don't fail the request for cast sending issues
+      // Don't fail the request just because the announcement cast wasn't sent
     }
 
     // 8. Return combined result
