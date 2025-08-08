@@ -25,14 +25,12 @@ export function MaintenanceCard() {
 
       <Card className="!bg-purple-600 !border-white">
         <Card.Header>
-          <Card.Title className="text-center !text-white font-comic">
-            🚧 Maintenance Mode
-          </Card.Title>
+          <Card.Title className="text-center !text-white font-comic">Maintenance Time</Card.Title>
         </Card.Header>
         <Card.Content>
           <div className="text-center space-y-3">
             <Typography variant="body" className="!text-white font-comic">
-              ChooChoo is currently taking a quick break for maintenance!
+              ChooChoo is currently undergoing maintenance.
             </Typography>
             <Typography variant="body" className="!text-white text-sm font-comic">
               We&apos;ll be back on track shortly. Thank you for your patience! 🚂

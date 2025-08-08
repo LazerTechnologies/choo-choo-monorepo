@@ -57,11 +57,11 @@ export function JourneyTimeline({ refreshOnMintTrigger }: JourneyTimelineProps) 
   if (loading && items.length === 0) {
     return (
       <div className="w-full max-w-md mx-auto">
-        <Typography variant="h3" className="text-center mb-4 text-gray-900 dark:text-gray-100">
+        {/* <Typography variant="h3" className="text-center mb-4 text-gray-100 dark:text-gray-100">
           Previous Stops
-        </Typography>
+        </Typography> */}
         <div className="text-center py-8">
-          <Typography variant="body" className="text-gray-500 dark:text-gray-400 font-comic">
+          <Typography variant="body" className="text-gray-400 dark:text-gray-400 font-comic">
             Loading journey...
           </Typography>
         </div>
@@ -72,9 +72,9 @@ export function JourneyTimeline({ refreshOnMintTrigger }: JourneyTimelineProps) 
   if (error && items.length === 0) {
     return (
       <div className="w-full max-w-md mx-auto">
-        <Typography variant="h3" className="text-center mb-4 text-gray-900 dark:text-gray-100">
+        {/* <Typography variant="h3" className="text-center mb-4 text-gray-100 dark:text-gray-100">
           Previous Stops
-        </Typography>
+        </Typography> */}
         <div className="text-center py-8">
           <Typography variant="body" className="text-red-500 dark:text-red-400 font-comic">
             {error}
@@ -86,12 +86,12 @@ export function JourneyTimeline({ refreshOnMintTrigger }: JourneyTimelineProps) 
 
   return (
     <div className="w-full max-w-md mx-auto">
-      <Typography
+      {/* <Typography
         variant="h3"
-        className="text-center mb-4 text-gray-900 dark:text-gray-100 font-comic"
+        className="text-center mb-4 text-gray-100 dark:text-gray-100 font-comic"
       >
         Previous Stops
-      </Typography>
+      </Typography> */}
 
       <div className="space-y-3">
         {items.map((item, index) => (
@@ -110,8 +110,8 @@ export function JourneyTimeline({ refreshOnMintTrigger }: JourneyTimelineProps) 
 
       {items.length === 0 && !loading && (
         <div className="text-center py-8">
-          <Typography variant="body" className="text-gray-500 dark:text-gray-400 font-comic">
-            Choo Choo is still in the station!
+          <Typography variant="body" className="text-gray-400 dark:text-gray-400 font-comic">
+            ChooChoo hasn&apos;t left the station yet!
           </Typography>
         </div>
       )}

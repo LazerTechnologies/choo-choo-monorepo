@@ -70,7 +70,7 @@ export function JourneyTimelineItem({
                     variant="label"
                     className="font-semibold !text-white truncate font-comic hover:underline transition-all"
                   >
-                    {username}
+                    @{username}
                   </Typography>
                 </a>
                 <a

@@ -22,7 +22,7 @@ export function YoinkPage() {
   // Handle success and error states
   useEffect(() => {
     if (isSuccess) {
-      console.log('🚩 You yoinker! You&apos;re now on ChooChoo!');
+      console.log('🚩 Nice yoink! You&apos;re now on ChooChoo!');
       reset();
     }
   }, [isSuccess, reset]);
@@ -54,16 +54,12 @@ export function YoinkPage() {
 
   return (
     <div className="space-y-3 px-6 w-full max-w-md mx-auto">
-      <Typography variant="h2" className="text-center mb-6 text-white font-comic">
-        Yoink ChooChoo
-      </Typography>
-
       <Card className="!bg-purple-600 !border-white">
         <Card.Header>
-          <Card.Title className="!text-white font-comic">Rescue ChooChoo</Card.Title>
+          <Card.Title className="!text-white font-comic">Yoink ChooChoo</Card.Title>
           <Card.Description className="!text-white font-comic">
-            If ChooChoo gets stuck, and you haven&apos;t held the train before, you can yoink it to
-            safety and become the next passenger!
+            If ChooChoo hasn&apos;t moved in 48 hours, anyone who hasn&apos;t ridden the train
+            before can hop aboard and become the next passenger!
           </Card.Description>
         </Card.Header>
         <Card.Content>
@@ -102,7 +98,7 @@ export function YoinkPage() {
               <Typography variant="body" className="!text-white font-comic">
                 {countdownState.isAvailable
                   ? '🚂 ChooChoo can be yoinked now!'
-                  : `🚂 ChooChoo can be yoinked in: ${countdownState.clockFormat}`}
+                  : `⏱️ ChooChoo can be yoinked in: ${countdownState.clockFormat}`}
               </Typography>
             )}
           </div>
@@ -128,10 +124,11 @@ export function YoinkPage() {
           </div>
 
           {!address && !addressLoading && (
-            <div className="bg-yellow-100 border border-yellow-400 rounded-lg p-3 mb-4">
+            <div className="bg-yellow-100 border border-yellow-400 rounded-lg p-3 mb-4 mt-4">
               <Typography variant="small" className="!text-yellow-800 font-comic">
-                💡 To yoink ChooChoo, you need a verified Ethereum address in your Farcaster
-                profile. Go to Settings → Verified Addresses in the Farcaster app to add one.
+                💡 You must verify an Ethereum address to participate. Go to{' '}
+                <span className="font-bold">Settings → Verified Addresses</span> in Farcaster to add
+                one.
               </Typography>
             </div>
           )}
@@ -146,10 +143,10 @@ export function YoinkPage() {
               {isLoading
                 ? 'Yoinking...'
                 : !address
-                  ? 'Need Verified Address'
+                  ? 'Ineligible'
                   : canYoink
                     ? 'Yoink ChooChoo!'
-                    : 'Not Available Yet'}
+                    : 'Please wait...'}
             </Typography>
           </Button>
         </Card.Content>
