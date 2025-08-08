@@ -13,6 +13,7 @@ import { AdminPage } from '@/components/pages/AdminPage';
 import { FAQPage } from '@/components/pages/FAQPage';
 import { YoinkPage } from '@/components/pages/YoinkPage';
 import { PausedPage } from '@/components/pages/PausedPage';
+import { MaintenanceCard } from '@/components/ui/MaintenanceCard';
 import { USE_WALLET } from '@/lib/constants';
 import type { Tab, NeynarUser } from '@/types/app';
 
@@ -83,28 +84,6 @@ export default function Home({ title = 'Choo Choo on Base' }: HomeProps) {
     return <div>Loading...</div>;
   }
 
-  // If app is paused, show maintenance page
-  if (isPaused) {
-    return (
-      <MarqueeToastProvider>
-        <div
-          className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-purple-900"
-          style={{
-            paddingTop: context?.client.safeAreaInsets?.top ?? 0,
-            paddingBottom: context?.client.safeAreaInsets?.bottom ?? 0,
-            paddingLeft: context?.client.safeAreaInsets?.left ?? 0,
-            paddingRight: context?.client.safeAreaInsets?.right ?? 0,
-          }}
-        >
-          <MarqueeHeader />
-          <div className="mx-auto py-2 px-4 pt-16 pb-24">
-            <PausedPage />
-          </div>
-        </div>
-      </MarqueeToastProvider>
-    );
-  }
-
   return (
     <MarqueeToastProvider>
       <div
@@ -126,15 +105,18 @@ export default function Home({ title = 'Choo Choo on Base' }: HomeProps) {
           </div>
 
           {/* Render the appropriate page component based on current tab */}
-          {currentTab === 'home' && (
-            <HomePage title={title} timelineRefreshTrigger={timelineRefreshTrigger} />
-          )}
+          {currentTab === 'home' &&
+            (isPaused ? (
+              <MaintenanceCard />
+            ) : (
+              <HomePage title={title} timelineRefreshTrigger={timelineRefreshTrigger} />
+            ))}
 
           {currentTab === 'actions' && <AdminPage onTokenMinted={handleTokenMinted} />}
 
           {currentTab === 'faq' && <FAQPage />}
 
-          {currentTab === 'yoink' && <YoinkPage />}
+          {currentTab === 'yoink' && (isPaused ? <MaintenanceCard /> : <YoinkPage />)}
 
           <Footer
             activeTab={currentTab as Tab}

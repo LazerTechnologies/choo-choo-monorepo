@@ -10,6 +10,8 @@ import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
 import axios from 'axios';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/base/Tabs';
 import { Dialog } from '@/components/base/Dialog';
+import { useRouter } from 'next/navigation';
+import { MessagePriority } from '@/lib/constants';
 
 interface WinnerSelectionWidgetProps {
   onTokenMinted?: () => void;
@@ -25,6 +27,7 @@ interface WinnerSelectionState {
 export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetProps) {
   const { toast } = useMarqueeToast();
   const { user } = useNeynarContext();
+  const router = useRouter();
 
   const [state, setState] = useState<WinnerSelectionState>({
     useRandomWinner: false,
@@ -122,6 +125,7 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
       });
 
       if (response.data.success) {
+        // Optimistically update local state for immediate UI handoff
         setState((prev) => ({
           ...prev,
           useRandomWinner: true,
@@ -129,11 +133,25 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
           isPublicSendEnabled: false,
         }));
 
+        // Close dialog immediately
+        setIsConfirmOpen(false);
+
+        // Silent feedback (no whistle): use USER_CONTEXT priority so marquee doesn't trigger sound
         toast({
           description: '🎲 Random mode enabled: Public sending will be available in 30 minutes',
+          priority: MessagePriority.USER_CONTEXT,
         });
-        setIsConfirmOpen(false);
-        setTabValue('chance');
+
+        // Notify other widgets to re-fetch Redis state immediately
+        try {
+          window.dispatchEvent(new CustomEvent('choo-random-enabled'));
+        } catch {}
+
+        // Ensure the homepage re-renders and PublicChanceWidget fetches fresh Redis state
+        setTimeout(() => {
+          router.refresh();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 200);
       } else {
         throw new Error('Failed to enable random winner mode');
       }

@@ -51,7 +51,16 @@ export function PublicChanceWidget() {
   useEffect(() => {
     fetchState();
     const interval = setInterval(fetchState, 30000);
-    return () => clearInterval(interval);
+
+    const handleImmediateRefresh = () => {
+      fetchState();
+    };
+    window.addEventListener('choo-random-enabled', handleImmediateRefresh);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('choo-random-enabled', handleImmediateRefresh);
+    };
   }, [fetchState]);
 
   useEffect(() => {
@@ -92,7 +101,7 @@ export function PublicChanceWidget() {
     }
   };
 
-  if (!state.useRandomWinner) return null;
+  if (!(state.useRandomWinner || state.isPublicSendEnabled)) return null;
 
   return (
     <div className="w-full max-w-md mx-auto mb-8 space-y-4">

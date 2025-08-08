@@ -771,10 +771,11 @@ function AppPauseToggle({ adminFid }: { adminFid?: number }) {
   return (
     <Card className="my-8 !bg-red-100 !border-red-300 dark:!bg-red-900/20 dark:!border-red-700">
       <Card.Header>
-        <Card.Title className="text-red-800 dark:text-red-300">🚧 App Maintenance 🚧</Card.Title>
+        <Card.Title className="text-red-800 dark:text-red-300">Maintenance Mode</Card.Title>
         <Card.Description className="text-red-700 dark:text-red-400">
           Toggle this to pause the app for maintenance. When enabled, users will see a maintenance
-          page instead of the normal app.
+          card on the home and yoink pages. The footer stays active so users can navigate to other
+          pages.
         </Card.Description>
       </Card.Header>
       <Card.Content>
@@ -793,7 +794,7 @@ function AppPauseToggle({ adminFid }: { adminFid?: number }) {
               </label>
               <div className="text-xs text-blue-400">
                 {currentDisplayState
-                  ? 'Users will see the maintenance page'
+                  ? 'Users will see maintenance cards on home and yoink pages'
                   : 'App is running normally'}
               </div>
             </div>
