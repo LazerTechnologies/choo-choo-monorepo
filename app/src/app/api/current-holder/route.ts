@@ -26,17 +26,20 @@ export async function GET() {
       console.error('[current-holder] Failed to get current holder from Redis:', err);
       return NextResponse.json(
         { error: 'Failed to retrieve current holder information' },
-        { status: 500 }
+        { status: 500, headers: { 'Cache-Control': 'no-store' } }
       );
     }
 
     if (!currentHolderData) {
-      return NextResponse.json({
-        hasCurrentHolder: false,
-        isCurrentHolder: false,
-        currentUserFid,
-        currentHolder: null,
-      });
+      return NextResponse.json(
+        {
+          hasCurrentHolder: false,
+          isCurrentHolder: false,
+          currentUserFid,
+          currentHolder: null,
+        },
+        { headers: { 'Cache-Control': 'no-store' } }
+      );
     }
 
     // Only calculate isCurrentHolder if user is authenticated
@@ -44,21 +47,27 @@ export async function GET() {
       ? currentUserFid.toString() === currentHolderData.fid.toString()
       : false;
 
-    return NextResponse.json({
-      hasCurrentHolder: true,
-      isCurrentHolder,
-      currentUserFid,
-      currentHolder: {
-        fid: currentHolderData.fid,
-        username: currentHolderData.username,
-        displayName: currentHolderData.displayName,
-        pfpUrl: currentHolderData.pfpUrl,
-        address: currentHolderData.address,
-        timestamp: currentHolderData.timestamp,
+    return NextResponse.json(
+      {
+        hasCurrentHolder: true,
+        isCurrentHolder,
+        currentUserFid,
+        currentHolder: {
+          fid: currentHolderData.fid,
+          username: currentHolderData.username,
+          displayName: currentHolderData.displayName,
+          pfpUrl: currentHolderData.pfpUrl,
+          address: currentHolderData.address,
+          timestamp: currentHolderData.timestamp,
+        },
       },
-    });
+      { headers: { 'Cache-Control': 'no-store' } }
+    );
   } catch (error) {
     console.error('[current-holder] Error:', error);
-    return NextResponse.json({ error: 'Failed to check current holder status' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to check current holder status' },
+      { status: 500, headers: { 'Cache-Control': 'no-store' } }
+    );
   }
 }

@@ -187,6 +187,13 @@ export async function POST(request: NextRequest) {
     try {
       if (yoinkerData) {
         await redis.set('current-holder', JSON.stringify(yoinkerData));
+        try {
+          const { redisPub, CURRENT_HOLDER_CHANNEL } = await import('@/lib/kv');
+          await redisPub.publish(
+            CURRENT_HOLDER_CHANNEL,
+            JSON.stringify({ type: 'holder-updated' })
+          );
+        } catch {}
         console.log(`[yoink] Updated current holder in Redis to: ${yoinkerData.username}`);
       }
 

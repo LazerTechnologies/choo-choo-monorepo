@@ -8,6 +8,11 @@ const redis = new Redis(
   process.env.REDIS_PUBLIC_URL || process.env.REDIS_URL || 'redis://localhost:6379'
 );
 
+// Dedicated pub/sub clients
+export const redisPub = redis;
+export const redisSub = redis.duplicate();
+export const CURRENT_HOLDER_CHANNEL = 'current-holder:updates';
+
 // Export redis instance for direct access
 export { redis };
 

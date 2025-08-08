@@ -5,6 +5,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import type { CurrentHolderData } from '@/types/nft';
 import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
 import { useMiniApp } from '@neynar/react';
+import { clearCurrentHolderCache, fetchCurrentHolderCached } from '@/lib/fetchCurrentHolder';
 
 interface CurrentHolderItemProps {
   refreshOnMintTrigger?: number;
@@ -22,10 +23,9 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
 
   const fetchCurrentHolder = useCallback(async () => {
     try {
-      const response = await fetch('/api/current-holder');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.hasCurrentHolder) {
+      const data = await fetchCurrentHolderCached();
+      if (data) {
+        if (data.hasCurrentHolder && data.currentHolder) {
           const newHolder = data.currentHolder;
           const newHolderFid = newHolder.fid;
 
@@ -70,6 +70,7 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
 
   useEffect(() => {
     if (refreshOnMintTrigger && refreshOnMintTrigger > 0) {
+      clearCurrentHolderCache();
       fetchCurrentHolder();
     }
   }, [refreshOnMintTrigger, fetchCurrentHolder]);

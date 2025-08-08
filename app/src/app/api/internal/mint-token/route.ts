@@ -300,6 +300,10 @@ export async function POST(request: Request) {
         timestamp: transferTimestamp, // Use the same timestamp
       };
       await redis.set('current-holder', JSON.stringify(currentHolderData));
+      try {
+        const { redisPub, CURRENT_HOLDER_CHANNEL } = await import('@/lib/kv');
+        await redisPub.publish(CURRENT_HOLDER_CHANNEL, JSON.stringify({ type: 'holder-updated' }));
+      } catch {}
       console.log(
         `[internal/mint-token] Updated current holder to: ${newHolderData.username} (FID: ${newHolderData.fid})`
       );

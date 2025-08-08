@@ -184,6 +184,10 @@ export async function POST(request: Request) {
 
     // Store in Redis using the same key as the rest of the system
     await redis.set('current-holder', JSON.stringify(currentHolderData));
+    try {
+      const { redisPub, CURRENT_HOLDER_CHANNEL } = await import('@/lib/kv');
+      await redisPub.publish(CURRENT_HOLDER_CHANNEL, JSON.stringify({ type: 'holder-updated' }));
+    } catch {}
 
     console.log(
       `[admin-set-initial-holder] Successfully set initial current holder: ${targetUser.username} (FID: ${targetUser.fid})`
