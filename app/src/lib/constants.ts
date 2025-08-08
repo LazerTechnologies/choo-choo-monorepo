@@ -105,6 +105,7 @@ export const TRAIN_STATION_MESSAGES = [
   '⛔ Mind the gap ⛔',
   '🌲 Smoke em if you got em',
   '📢 Has anyone seen the conductor???',
+  '🔵 Is it day two yet?',
   '🔔 The 4:20 express is now boarding on platform... uh... 420...',
   '📢 The conductor has been found, thank you',
   '🎵 Now playing: Thomas the Tank Engine ASMR',
