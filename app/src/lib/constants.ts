@@ -100,19 +100,21 @@ export const CHOOCHOO_CAST_TEMPLATES = {
 // Train Station Marquee Messages
 export const TRAIN_STATION_MESSAGES = [
   `🔵 If you're reading this, you're based`,
+  '🔵 Is it day two yet?',
   '📈 $10T is FUD',
   '⛔ Mind the gap ⛔',
-  '🌲 Smoke em if you got em',
+  '🔔 Reminder: Regularly revoke unused token approvals',
+  '🔔 Reminder: Never share your private key or seed phrase',
+  '🔔 Reminder: Not your keys, not your crypto',
   '📢 Has anyone seen the conductor???',
-  '🔵 Is it day two yet?',
-  '🔔 The 4:20 express is now boarding on platform... uh... 420...',
+  '📢 The 4:20 express is now boarding on platform... uh... 420...',
   '📢 The conductor has been found, thank you',
+  '📢 Delays expected due to manlets on the tracks',
   '🎵 Now playing: Thomas the Tank Engine ASMR',
   '🍪 The edibles are kicking in... I repeat, the edibles are kicking in',
   '🚂 Choo choo mfer!',
-  '⏰ Delays expected due to manlets on the tracks',
   '🎫 Get your tickets ready for inspection',
-  '🚀 Next Stop: The Moon',
+  '⬆ Next Stop: Higher ⬆',
   '🎲 Leave the next stop up to chance... ChooChoo loves chaos',
 ] as const;
 
