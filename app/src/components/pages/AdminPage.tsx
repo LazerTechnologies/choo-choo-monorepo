@@ -27,6 +27,7 @@ interface AdminPageProps {
   onTokenMinted?: () => void;
 }
 
+// @todo: remove this when we go live
 function AppStateTesting({ adminFid }: { adminFid?: number }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,7 +135,7 @@ function AppStateTesting({ adminFid }: { adminFid?: number }) {
   }, [adminFid, selectedStateId, testStates]);
 
   return (
-    <Card className="my-8 !bg-blue-600 !border-white">
+    <Card className="my-8 w-full !bg-blue-600 !border-white">
       <Card.Header>
         <Card.Title>App State Test</Card.Title>
         <Card.Description>
@@ -239,7 +240,7 @@ function AdminGenerate({ adminFid }: { adminFid?: number }) {
   }
 
   return (
-    <Card className="my-8 !bg-purple-600 !border-white">
+    <Card className="my-8 w-full !bg-blue-600 !border-white">
       <Card.Header>
         <Card.Title>Generate tokenURI</Card.Title>
         <Card.Description>
@@ -254,7 +255,7 @@ function AdminGenerate({ adminFid }: { adminFid?: number }) {
             onClick={handleGenerateNFT}
             disabled={loading || !adminFid}
             isLoading={loading}
-            className="w-full bg-purple-600 text-white border-white hover:bg-purple-700"
+            className="w-full bg-blue-600 text-white border-white hover:bg-blue-700"
             variant="default"
           >
             Generate
@@ -439,7 +440,7 @@ function SetInitialHolder({
   }, [selectedUser, adminFid, onTokenMinted, isDisabled]);
 
   return (
-    <Card className={`my-8 !border-white ${isDisabled ? '!bg-gray-400' : '!bg-purple-800'}`}>
+    <Card className={`my-8 w-full !border-white ${isDisabled ? '!bg-gray-400' : '!bg-purple-800'}`}>
       <Card.Header>
         <Card.Title>Set Initial Holder</Card.Title>
         <Card.Description>
@@ -457,7 +458,7 @@ function SetInitialHolder({
           <div>
             <UsernameInput
               label="Select Initial Holder"
-              placeholder="Username..."
+              placeholder="Search username..."
               onUserSelect={setSelectedUser}
               disabled={isDisabled || isLoadingStatus}
               helperText=""
@@ -609,7 +610,7 @@ function SetTicketMetadata({ adminFid }: { adminFid?: number }) {
   }, [tokenId, metadataHash, adminFid]);
 
   return (
-    <Card className="my-8 !bg-purple-600 !border-white">
+    <Card className="my-8 w-full !bg-blue-600 !border-white">
       <Card.Header>
         <Card.Title>Set Token Metadata</Card.Title>
         <Card.Description>
@@ -654,7 +655,7 @@ function SetTicketMetadata({ adminFid }: { adminFid?: number }) {
             onClick={handleSetTicketMetadata}
             disabled={loading || !tokenId.trim() || !metadataHash.trim()}
             isLoading={loading}
-            className="w-full bg-purple-600 text-white border-white hover:bg-purple-700"
+            className="w-full bg-blue-600 text-white border-white hover:bg-blue-700"
             variant="default"
           >
             Set tokenURI
@@ -767,12 +768,12 @@ function TestAdminNextStop({
   }, [selectedUser, adminFid, onTokenMinted]);
 
   return (
-    <Card className="my-8 !bg-purple-600 !border-white">
+    <Card className="my-8 w-full !bg-purple-600 !border-white">
       <Card.Header>
-        <Card.Title>Send ChooChoo to User</Card.Title>
+        <Card.Title>Manually Send ChooChoo</Card.Title>
         <Card.Description>
           Send ChooChoo to any user. This will fetch their primary wallet address, generate a unique
-          NFT, and mint it to their wallet.
+          NFT, and mint it to their wallet while bypassing the normal workflow.
         </Card.Description>
       </Card.Header>
       <Card.Content>
@@ -780,7 +781,7 @@ function TestAdminNextStop({
           <div>
             <UsernameInput
               label="Select User to Receive ChooChoo"
-              placeholder="Search for a user by username..."
+              placeholder="Search username..."
               onUserSelect={setSelectedUser}
               disabled={loading}
               className="w-full"
@@ -952,7 +953,7 @@ function AppPauseToggle({ adminFid }: { adminFid?: number }) {
   const currentDisplayState = pendingState !== null ? pendingState : isPaused;
 
   return (
-    <Card className="my-8 !bg-red-100 !border-red-300 dark:!bg-red-900/20 dark:!border-red-700">
+    <Card className="my-8 w-full !bg-red-100 !border-red-300 dark:!bg-red-900/20 dark:!border-red-700">
       <Card.Header>
         <Card.Title className="text-red-800 dark:text-red-300">Maintenance Mode</Card.Title>
         <Card.Description className="text-red-700 dark:text-red-400">
@@ -1089,11 +1090,11 @@ function JourneyAnnouncement({ adminFid }: { adminFid?: number }) {
   }, [adminFid]);
 
   return (
-    <Card className="my-8 !bg-purple-600 !border-white">
+    <Card className="my-8 w-full !bg-purple-800 !border-white">
       <Card.Header>
         <Card.Title>Send Journey Announcement</Card.Title>
         <Card.Description>
-          Posts the prewritten <span className="font-bold text-blue-600">JOURNEY_CONTINUES</span>{' '}
+          Posts the prewritten <span className="font-bold text-blue-200">JOURNEY_CONTINUES</span>{' '}
           message from @choochoo.
         </Card.Description>
       </Card.Header>
@@ -1168,7 +1169,7 @@ function CustomCast({ adminFid }: { adminFid?: number }) {
   }, [adminFid, text]);
 
   return (
-    <Card className="my-8 !bg-purple-600 !border-white">
+    <Card className="my-8 w-full !bg-purple-800 !border-white">
       <Card.Header>
         <Card.Title>Send Custom Cast</Card.Title>
         <Card.Description>Write and send a custom cast from @choochoo.</Card.Description>
@@ -1232,16 +1233,17 @@ export function AdminPage({ onTokenMinted }: AdminPageProps) {
 
   return (
     <div className="space-y-3 px-6 w-full max-w-md mx-auto">
-      {/* Admin Test Sections */}
+      {/* Admin Actions */}
       <SetInitialHolder onTokenMinted={onTokenMinted} adminFid={currentUserFid} />
       <JourneyAnnouncement adminFid={currentUserFid} />
       <CustomCast adminFid={currentUserFid} />
       <AdminGenerate adminFid={currentUserFid} />
       <SetTicketMetadata adminFid={currentUserFid} />
       <TestAdminNextStop onTokenMinted={onTokenMinted} adminFid={currentUserFid} />
-      {/* App Pause Toggle - at the bottom with warning styling */}
+      {/* App Pause Toggle */}
       <AppPauseToggle adminFid={currentUserFid} />
-      {/* App State Testing - moved to bottom */}
+      {/* App State Testing */}
+      {/* @todo: remove this when we go live */}
       <AppStateTesting adminFid={currentUserFid} />
     </div>
   );

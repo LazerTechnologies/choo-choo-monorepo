@@ -117,7 +117,7 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
           variant="h3"
           className="text-center mb-4 text-gray-100 dark:text-gray-100 font-comic"
         >
-          Itinerary
+          ChooChoo&apos;s Journey
         </Typography>
         <CurrentHolderItem refreshOnMintTrigger={timelineRefreshTrigger} />
       </div>
