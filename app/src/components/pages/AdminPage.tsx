@@ -7,6 +7,13 @@ import { Button } from '@/components/base/Button';
 import { Input } from '@/components/base/Input';
 import { Typography } from '@/components/base/Typography';
 import { Switch } from '@/components/base/Switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/base/Select';
 import { UsernameInput } from '@/components/ui/UsernameInput';
 
 import { useAdminAccess } from '@/hooks/useAdminAccess';
@@ -18,10 +25,11 @@ interface AdminPageProps {
   onTokenMinted?: () => void;
 }
 
-function WorkflowStateTesting({ adminFid }: { adminFid?: number }) {
-  const [loading, setLoading] = useState<string | null>(null);
+function AppStateTesting({ adminFid }: { adminFid?: number }) {
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
+  const [selectedStateId, setSelectedStateId] = useState<string>('');
 
   const testStates = useMemo(
     () => [
@@ -79,92 +87,114 @@ function WorkflowStateTesting({ adminFid }: { adminFid?: number }) {
     []
   );
 
-  const handleSetState = useCallback(
-    async (stateId: string) => {
-      if (!adminFid) {
-        setError('You must be signed in to use admin functions');
-        return;
+  const handleSetState = useCallback(async () => {
+    if (!adminFid) {
+      setError('You must be signed in to use admin functions');
+      return;
+    }
+
+    if (!selectedStateId) {
+      setError('Please select a state');
+      return;
+    }
+
+    const state = testStates.find((s) => s.id === selectedStateId);
+    if (!state) return;
+
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const response = await axios.post('/api/workflow-state', state.workflowData);
+
+      if (response.status === 200) {
+        setResult(`Successfully set workflow state: ${state.name}`);
+
+        try {
+          window.dispatchEvent(
+            new CustomEvent('workflow-state-changed', {
+              detail: state.workflowData,
+            })
+          );
+        } catch {}
+
+        setTimeout(() => setResult(null), 3000);
+      } else {
+        throw new Error('Workflow state API returned error');
       }
-
-      const state = testStates.find((s) => s.id === stateId);
-      if (!state) return;
-
-      setLoading(stateId);
-      setError(null);
-      setResult(null);
-
-      try {
-        const response = await axios.post('/api/workflow-state', state.workflowData);
-
-        if (response.status === 200) {
-          setResult(`Successfully set workflow state: ${state.name}`);
-
-          try {
-            window.dispatchEvent(
-              new CustomEvent('workflow-state-changed', {
-                detail: state.workflowData,
-              })
-            );
-          } catch {}
-
-          setTimeout(() => setResult(null), 3000);
-        } else {
-          throw new Error('Workflow state API returned error');
-        }
-      } catch (err) {
-        console.error('Error setting workflow state:', err);
-        setError(`Failed to set workflow state: ${state.name}`);
-      } finally {
-        setLoading(null);
-      }
-    },
-    [adminFid, testStates]
-  );
+    } catch (err) {
+      console.error('Error setting workflow state:', err);
+      setError(`Failed to set workflow state: ${state.name}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [adminFid, selectedStateId, testStates]);
 
   return (
     <Card className="my-8 !bg-blue-600 !border-white">
       <Card.Header>
-        <Card.Title>Workflow State Testing</Card.Title>
+        <Card.Title>App State Test</Card.Title>
         <Card.Description>
-          Switch between workflow states to test the flow without going through the normal user
-          actions. Each button sets the workflow state and appropriate data.
+          Switch between app states to test the flow without going through normal user actions. Each
+          option sets the state and UI.
         </Card.Description>
       </Card.Header>
       <Card.Content>
-        <div className="space-y-3">
-          {testStates.map((state) => (
-            <div key={state.id} className="space-y-2">
-              <Button
-                onClick={() => handleSetState(state.id)}
-                disabled={loading !== null || !adminFid}
-                isLoading={loading === state.id}
-                className="w-full bg-blue-600 text-white border-white hover:bg-blue-700"
-                variant="default"
-              >
-                {state.name}
-              </Button>
-              <div className="text-xs text-gray-300 px-2">{state.description}</div>
+        <div className="space-y-4">
+          <div className="text-xs text-gray-400 p-2 bg-blue-800/30 rounded">
+            <div className="font-semibold mb-2">States:</div>
+            <div className="space-y-1">
+              <div>
+                • <strong>NOT_CASTED:</strong> Current holder hasn&apos;t sent announcement cast
+              </div>
+              <div>
+                • <strong>CASTED:</strong> Current holder chooses mode
+              </div>
+              <div>
+                • <strong>CHANCE_ACTIVE:</strong> 30min countdown active
+              </div>
+              <div>
+                • <strong>CHANCE_EXPIRED:</strong> Public random send enabled
+              </div>
+              <div>
+                • <strong>MANUAL_SEND:</strong> Manual sending in progress
+              </div>
             </div>
-          ))}
-        </div>
-
-        {error && (
-          <div className="text-xs text-red-300 mt-3 p-2 bg-red-900/20 rounded">{error}</div>
-        )}
-
-        {result && (
-          <div className="text-xs text-green-300 mt-3 p-2 bg-green-900/20 rounded">{result}</div>
-        )}
-
-        <div className="text-xs text-gray-400 mt-4 p-2 bg-blue-800/30 rounded">
-          <div className="font-semibold mb-1">Workflow States:</div>
-          <div className="space-y-1 font-mono">
-            <div>• NOT_CASTED: Current holder hasn&apos;t sent announcement cast</div>
-            <div>• CASTED: Current holder chooses mode</div>
-            <div>• CHANCE_ACTIVE: 30min countdown active</div>
-            <div>• CHANCE_EXPIRED: Public random send enabled</div>
-            <div>• MANUAL_SEND: Manual sending in progress</div>
           </div>
+
+          <div className="space-y-3">
+            <Select value={selectedStateId} onValueChange={setSelectedStateId}>
+              <SelectTrigger className="w-full !bg-white !text-black border-gray-300 focus:border-blue-500">
+                <SelectValue placeholder="Select a state to test..." />
+              </SelectTrigger>
+              <SelectContent>
+                {testStates.map((state) => (
+                  <SelectItem key={state.id} value={state.id}>
+                    {state.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Button
+              onClick={handleSetState}
+              disabled={loading || !selectedStateId || !adminFid}
+              isLoading={loading}
+              className="w-full bg-blue-600 text-white border-white hover:bg-blue-700"
+              variant="default"
+            >
+              Set
+            </Button>
+          </div>
+
+          {error && (
+            <div className="text-xs text-red-300 mt-3 p-2 bg-red-900/20 rounded">{error}</div>
+          )}
+
+          {result && (
+            <div className="text-xs text-green-300 mt-3 p-2 bg-green-900/20 rounded">{result}</div>
+          )}
         </div>
       </Card.Content>
     </Card>
@@ -211,8 +241,9 @@ function AdminGenerate({ adminFid }: { adminFid?: number }) {
       <Card.Header>
         <Card.Title>Generate tokenURI</Card.Title>
         <Card.Description>
-          Generate a random NFT image using the generator package along with it&apos;s accompanying
-          metadata and upload to Pinata in the event a token needs to be manually updated.
+          Generate a random NFT & metadata using the generator package and upload to Pinata.
+          <br />
+          In the event a token needs to be updated manually.
         </Card.Description>
       </Card.Header>
       <Card.Content>
@@ -410,13 +441,11 @@ function SetInitialHolder({
       <Card.Header>
         <Card.Title>Set Initial Holder</Card.Title>
         <Card.Description>
-          Set the initial current holder in Redis for fresh mainnet deployment. This populates the
-          current-holder key so the app knows who is holding tokenId: 0 and the rest of the flow
-          works properly.
+          Set the initial holder on contract deployment. This populates the current-holder key so
+          the app knows who is holding tokenId: 0 and the rest of the flow works properly.
           {hasCurrentHolder && (
             <div className="mt-2 text-sm font-semibold text-red-600 dark:text-red-400">
-              ⚠️ DISABLED: A current holder already exists. This function is only for fresh
-              deployments.
+              ⚠️ DISABLED: A current holder already exists.
             </div>
           )}
         </Card.Description>
@@ -426,10 +455,10 @@ function SetInitialHolder({
           <div>
             <UsernameInput
               label="Select Initial Holder"
-              placeholder="Search for a user by username..."
+              placeholder="Username..."
               onUserSelect={setSelectedUser}
               disabled={isDisabled || isLoadingStatus}
-              helperText="Enter the user who should be the initial current holder."
+              helperText=""
               className="w-full"
             />
             {selectedUser && (
@@ -582,8 +611,8 @@ function SetTicketMetadata({ adminFid }: { adminFid?: number }) {
       <Card.Header>
         <Card.Title>Set Token Metadata</Card.Title>
         <Card.Description>
-          Update or set metadata for any ticket NFT. The metadata hash should contain the complete
-          JSON with image, traits, and all other properties generated by the NFT generator.
+          Update metadata for any ticket NFT. The metadata should contain the complete JSON as
+          produced by the generator.
         </Card.Description>
       </Card.Header>
       <Card.Content>
@@ -600,9 +629,7 @@ function SetTicketMetadata({ adminFid }: { adminFid?: number }) {
               className="w-full !bg-white !text-black border-gray-300 focus:border-purple-500"
               min="1"
             />
-            <div className="text-xs text-gray-500 mt-1">
-              The ticket token ID to update (cannot be 0 - that&apos;s the train)
-            </div>
+            <div className="text-xs text-gray-200 mt-1">TokenId &gt; 0</div>
           </div>
 
           <div>
@@ -616,7 +643,7 @@ function SetTicketMetadata({ adminFid }: { adminFid?: number }) {
               onChange={(e) => setMetadataHash(e.target.value)}
               className="w-full !bg-white !text-black border-gray-300 focus:border-purple-500"
             />
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-xs text-gray-200 mt-1">
               IPFS hash of the complete metadata JSON (with or without ipfs:// prefix)
             </div>
           </div>
@@ -742,8 +769,8 @@ function TestAdminNextStop({
       <Card.Header>
         <Card.Title>Send ChooChoo to User</Card.Title>
         <Card.Description>
-          Send ChooChoo to any Farcaster user by entering their FID. This will automatically fetch
-          their verified wallet address, generate a unique NFT, and mint it to their wallet.
+          Send ChooChoo to any user. This will fetch their primary wallet address, generate a unique
+          NFT, and mint it to their wallet.
         </Card.Description>
       </Card.Header>
       <Card.Content>
@@ -754,7 +781,6 @@ function TestAdminNextStop({
               placeholder="Search for a user by username..."
               onUserSelect={setSelectedUser}
               disabled={loading}
-              helperText="Enter the user who should receive ChooChoo next."
               className="w-full"
             />
             {selectedUser && (
@@ -1047,9 +1073,6 @@ export function AdminPage({ onTokenMinted }: AdminPageProps) {
 
   return (
     <div className="space-y-3 px-6 w-full max-w-md mx-auto">
-      {/* Workflow State Testing */}
-      <WorkflowStateTesting adminFid={currentUserFid} />
-
       {/* Admin Test Sections */}
       <SetInitialHolder onTokenMinted={onTokenMinted} adminFid={currentUserFid} />
       <AdminGenerate adminFid={currentUserFid} />
@@ -1057,6 +1080,8 @@ export function AdminPage({ onTokenMinted }: AdminPageProps) {
       <TestAdminNextStop onTokenMinted={onTokenMinted} adminFid={currentUserFid} />
       {/* App Pause Toggle - at the bottom with warning styling */}
       <AppPauseToggle adminFid={currentUserFid} />
+      {/* App State Testing - moved to bottom */}
+      <AppStateTesting adminFid={currentUserFid} />
     </div>
   );
 }
