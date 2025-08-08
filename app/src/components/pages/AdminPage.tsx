@@ -94,18 +94,19 @@ function WorkflowStateTesting({ adminFid }: { adminFid?: number }) {
       setResult(null);
 
       try {
-        // Use the new workflow state API
         const response = await axios.post('/api/workflow-state', state.workflowData);
 
         if (response.status === 200) {
           setResult(`Successfully set workflow state: ${state.name}`);
 
-          // Dispatch event to trigger UI refresh
           try {
-            window.dispatchEvent(new CustomEvent('workflow-state-changed'));
+            window.dispatchEvent(
+              new CustomEvent('workflow-state-changed', {
+                detail: state.workflowData,
+              })
+            );
           } catch {}
 
-          // Auto-clear result after 3 seconds
           setTimeout(() => setResult(null), 3000);
         } else {
           throw new Error('Workflow state API returned error');
@@ -125,8 +126,8 @@ function WorkflowStateTesting({ adminFid }: { adminFid?: number }) {
       <Card.Header>
         <Card.Title>Workflow State Testing</Card.Title>
         <Card.Description>
-          Quickly switch between different workflow states to test the UI flow without going through
-          the normal user actions. Each button sets the workflow state and appropriate data.
+          Switch between workflow states to test the flow without going through the normal user
+          actions. Each button sets the workflow state and appropriate data.
         </Card.Description>
       </Card.Header>
       <Card.Content>
@@ -159,7 +160,7 @@ function WorkflowStateTesting({ adminFid }: { adminFid?: number }) {
           <div className="font-semibold mb-1">Workflow States:</div>
           <div className="space-y-1 font-mono">
             <div>• NOT_CASTED: Current holder hasn&apos;t sent announcement cast</div>
-            <div>• CASTED: Current holder can choose manual or chance mode</div>
+            <div>• CASTED: Current holder chooses mode</div>
             <div>• CHANCE_ACTIVE: 30min countdown active</div>
             <div>• CHANCE_EXPIRED: Public random send enabled</div>
             <div>• MANUAL_SEND: Manual sending in progress</div>

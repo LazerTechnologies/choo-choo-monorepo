@@ -8,6 +8,7 @@ import { Button } from '@/components/base/Button';
 import { Card } from '@/components/base/Card';
 import { Typography } from '@/components/base/Typography';
 import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
+import { WorkflowState } from '@/lib/workflow-types';
 import Image from 'next/image';
 
 interface CastingWidgetProps {
@@ -61,6 +62,18 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
                 currentCastHash: null,
               }),
             });
+            // Broadcast immediate UI update
+            try {
+              window.dispatchEvent(
+                new CustomEvent('workflow-state-changed', {
+                  detail: {
+                    state: WorkflowState.CASTED,
+                    winnerSelectionStart: null,
+                    currentCastHash: null,
+                  },
+                })
+              );
+            } catch {}
           } catch (error) {
             console.error('Failed to update workflow state to CASTED:', error);
           }

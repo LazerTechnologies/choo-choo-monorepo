@@ -3,6 +3,9 @@ import { z } from 'zod';
 import { redis } from '@/lib/kv';
 import { WorkflowState, WorkflowData, DEFAULT_WORKFLOW_DATA } from '@/lib/workflow-types';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 const updateWorkflowSchema = z.object({
   state: z.nativeEnum(WorkflowState),
   winnerSelectionStart: z.string().nullable().optional(),
@@ -21,14 +24,26 @@ export async function GET() {
     const workflowStateJson = await redis.get('workflowState');
 
     if (!workflowStateJson) {
-      return NextResponse.json(DEFAULT_WORKFLOW_DATA);
+      return NextResponse.json(DEFAULT_WORKFLOW_DATA, {
+        headers: {
+          'Cache-Control': 'no-store',
+        },
+      });
     }
 
     const workflowData = JSON.parse(workflowStateJson) as WorkflowData;
-    return NextResponse.json(workflowData);
+    return NextResponse.json(workflowData, {
+      headers: {
+        'Cache-Control': 'no-store',
+      },
+    });
   } catch (error) {
     console.error('Error fetching workflow state:', error);
-    return NextResponse.json(DEFAULT_WORKFLOW_DATA);
+    return NextResponse.json(DEFAULT_WORKFLOW_DATA, {
+      headers: {
+        'Cache-Control': 'no-store',
+      },
+    });
   }
 }
 
@@ -53,15 +68,22 @@ export async function POST(request: Request) {
 
     await redis.set('workflowState', JSON.stringify(workflowData));
 
-    return NextResponse.json(workflowData);
+    return NextResponse.json(workflowData, {
+      headers: {
+        'Cache-Control': 'no-store',
+      },
+    });
   } catch (error) {
     console.error('Error updating workflow state:', error);
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid request data', details: error.errors },
-        { status: 400 }
+        { status: 400, headers: { 'Cache-Control': 'no-store' } }
       );
     }
-    return NextResponse.json({ error: 'Failed to update workflow state' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to update workflow state' },
+      { status: 500, headers: { 'Cache-Control': 'no-store' } }
+    );
   }
 }

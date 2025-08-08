@@ -45,7 +45,6 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
 
     setLoading(true);
 
-    // Update to MANUAL_SEND state immediately
     await updateWorkflowState(WorkflowState.MANUAL_SEND);
 
     try {
@@ -65,7 +64,6 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
         description: 'Failed to send ChooChoo',
         variant: 'destructive',
       });
-      // Revert to CASTED state on error
       await updateWorkflowState(WorkflowState.CASTED);
     } finally {
       setLoading(false);
@@ -80,30 +78,33 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
 
     setLoading(true);
     try {
-      // Leverage existing backend flow to enable random mode, create cast, and start 30m window
       const response = await axios.post('/api/enable-random-winner', {
         username: user.username,
       });
 
       if (response.data.success) {
-        // Update to CHANCE_ACTIVE state with the new data
         await updateWorkflowState(WorkflowState.CHANCE_ACTIVE, {
           winnerSelectionStart: response.data.winnerSelectionStart,
           currentCastHash: response.data.castHash,
         });
 
-        // Close dialog immediately
         setIsConfirmOpen(false);
 
-        // Silent feedback (no whistle): use USER_CONTEXT priority so marquee doesn't trigger sound
         toast({
           description: '🎲 Random mode enabled: Public sending will be available in 30 minutes',
           priority: MessagePriority.USER_CONTEXT,
         });
 
-        // Notify other components
         try {
-          window.dispatchEvent(new CustomEvent('workflow-state-changed'));
+          window.dispatchEvent(
+            new CustomEvent('workflow-state-changed', {
+              detail: {
+                state: WorkflowState.CHANCE_ACTIVE,
+                winnerSelectionStart: response.data.winnerSelectionStart,
+                currentCastHash: response.data.castHash,
+              },
+            })
+          );
         } catch {}
 
         onTokenMinted?.();
@@ -160,7 +161,7 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
                   disabled={loading}
                   className="w-full"
                 />
-                <Typography variant="body" className="text-xs !text-white">
+                <Typography variant="body" className="text-xs !text-white text-center">
                   Choose who gets ChooChoo next
                 </Typography>
 

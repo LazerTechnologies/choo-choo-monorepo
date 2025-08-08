@@ -1,13 +1,18 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { WorkflowState, WorkflowData, DEFAULT_WORKFLOW_DATA } from '@/lib/workflow-types';
 
 export function useWorkflowState() {
   const [workflowData, setWorkflowData] = useState<WorkflowData>(DEFAULT_WORKFLOW_DATA);
+  const latestWorkflowRef = useRef<WorkflowData>(DEFAULT_WORKFLOW_DATA);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    latestWorkflowRef.current = workflowData;
+  }, [workflowData]);
 
   const fetchWorkflowState = useCallback(async () => {
     try {
@@ -29,14 +34,30 @@ export function useWorkflowState() {
         const payload = {
           state: newState,
           ...additionalData,
-        };
+        } as Partial<WorkflowData> & { state: WorkflowState };
+
+        // Optimistically apply locally and broadcast immediately
+        setWorkflowData((prev) => ({ ...prev, ...payload }));
+        try {
+          window.dispatchEvent(
+            new CustomEvent<Partial<WorkflowData>>('workflow-state-changed', { detail: payload })
+          );
+        } catch {}
 
         await axios.post('/api/workflow-state', payload);
-        setWorkflowData((prev) => ({ ...prev, ...payload }));
+
         return true;
       } catch (err) {
         console.error('Error updating workflow state:', err);
         setError('Failed to update workflow state');
+
+        const previous = latestWorkflowRef.current;
+        setWorkflowData(previous);
+        try {
+          window.dispatchEvent(
+            new CustomEvent<Partial<WorkflowData>>('workflow-state-changed', { detail: previous })
+          );
+        } catch {}
         return false;
       }
     },
@@ -46,17 +67,20 @@ export function useWorkflowState() {
   useEffect(() => {
     fetchWorkflowState();
 
-    // Listen for workflow state changes
-    const handleWorkflowChange = () => {
-      fetchWorkflowState();
+    const handleWorkflowChange = (evt: Event) => {
+      const detail = (evt as CustomEvent<Partial<WorkflowData>>).detail;
+      if (detail) {
+        setWorkflowData((prev) => ({ ...prev, ...detail }));
+      }
+      void fetchWorkflowState();
     };
 
-    window.addEventListener('workflow-state-changed', handleWorkflowChange);
-    window.addEventListener('choo-random-enabled', handleWorkflowChange);
+    window.addEventListener('workflow-state-changed', handleWorkflowChange as EventListener);
+    window.addEventListener('choo-random-enabled', handleWorkflowChange as EventListener);
 
     return () => {
-      window.removeEventListener('workflow-state-changed', handleWorkflowChange);
-      window.removeEventListener('choo-random-enabled', handleWorkflowChange);
+      window.removeEventListener('workflow-state-changed', handleWorkflowChange as EventListener);
+      window.removeEventListener('choo-random-enabled', handleWorkflowChange as EventListener);
     };
   }, [fetchWorkflowState]);
 
