@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { Card } from '@/components/base/Card';
 import { Button } from '@/components/base/Button';
@@ -11,9 +11,169 @@ import { UsernameInput } from '@/components/ui/UsernameInput';
 
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 import type { PinataUploadResult } from '@/types/nft';
+import axios from 'axios';
 
 interface AdminPageProps {
   onTokenMinted?: () => void;
+}
+
+function RedisStateTesting({ adminFid }: { adminFid?: number }) {
+  const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<string | null>(null);
+
+  const testStates = useMemo(
+    () => [
+      {
+        id: 'initial',
+        name: 'Initial State',
+        description: 'Reset to initial state - no random mode, no timers',
+        values: {
+          useRandomWinner: 'false',
+          winnerSelectionStart: null,
+          isPublicSendEnabled: 'false',
+          'current-cast-hash': null,
+        },
+      },
+      {
+        id: 'chance-confirmed',
+        name: 'Chance Mode Just Confirmed',
+        description: '30min countdown active, public sending disabled',
+        values: {
+          useRandomWinner: 'true',
+          winnerSelectionStart: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+          isPublicSendEnabled: 'false',
+          'current-cast-hash': '0x104fa3f438bc2e0ad32e7b5c6c90243e7728bae7',
+        },
+      },
+      {
+        id: 'chance-expired',
+        name: 'Chance Mode - Timer Expired',
+        description: 'Timer expired, public sending enabled',
+        values: {
+          useRandomWinner: 'true',
+          winnerSelectionStart: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+          isPublicSendEnabled: 'true',
+          'current-cast-hash': '0x104fa3f438bc2e0ad32e7b5c6c90243e7728bae7',
+        },
+      },
+      {
+        id: 'manual-send',
+        name: 'Manual Send Mode',
+        description: 'Manual selection only, no random mode',
+        values: {
+          useRandomWinner: 'false',
+          winnerSelectionStart: null,
+          isPublicSendEnabled: 'false',
+          'current-cast-hash': null,
+        },
+      },
+    ],
+    []
+  );
+
+  const handleSetState = useCallback(
+    async (stateId: string) => {
+      if (!adminFid) {
+        setError('You must be signed in to use admin functions');
+        return;
+      }
+
+      const state = testStates.find((s) => s.id === stateId);
+      if (!state) return;
+
+      setLoading(stateId);
+      setError(null);
+      setResult(null);
+
+      try {
+        // Set all Redis values for this state
+        const promises = Object.entries(state.values).map(([key, value]) => {
+          if (value === null) {
+            // Delete key if value is null
+            return axios.post('/api/redis', {
+              action: 'delete',
+              key,
+            });
+          } else {
+            // Set key value
+            return axios.post('/api/redis', {
+              action: 'write',
+              key,
+              value,
+            });
+          }
+        });
+
+        await Promise.all(promises);
+
+        setResult(`Successfully set state: ${state.name}`);
+
+        // Dispatch event to trigger UI refresh
+        try {
+          window.dispatchEvent(new CustomEvent('choo-random-enabled'));
+        } catch {}
+
+        // Auto-clear result after 3 seconds
+        setTimeout(() => setResult(null), 3000);
+      } catch (err) {
+        console.error('Error setting Redis state:', err);
+        setError(`Failed to set state: ${state.name}`);
+      } finally {
+        setLoading(null);
+      }
+    },
+    [adminFid, testStates]
+  );
+
+  return (
+    <Card className="my-8 !bg-blue-600 !border-white">
+      <Card.Header>
+        <Card.Title>Redis State Testing</Card.Title>
+        <Card.Description>
+          Quickly switch between different Redis states to test the UI flow without going through
+          the normal user actions. Each button sets the appropriate combination of Redis keys for
+          that state.
+        </Card.Description>
+      </Card.Header>
+      <Card.Content>
+        <div className="space-y-3">
+          {testStates.map((state) => (
+            <div key={state.id} className="space-y-2">
+              <Button
+                onClick={() => handleSetState(state.id)}
+                disabled={loading !== null || !adminFid}
+                isLoading={loading === state.id}
+                className="w-full bg-blue-600 text-white border-white hover:bg-blue-700"
+                variant="default"
+              >
+                {state.name}
+              </Button>
+              <div className="text-xs text-gray-300 px-2">{state.description}</div>
+            </div>
+          ))}
+        </div>
+
+        {error && (
+          <div className="text-xs text-red-300 mt-3 p-2 bg-red-900/20 rounded">{error}</div>
+        )}
+
+        {result && (
+          <div className="text-xs text-green-300 mt-3 p-2 bg-green-900/20 rounded">{result}</div>
+        )}
+
+        <div className="text-xs text-gray-400 mt-4 p-2 bg-blue-800/30 rounded">
+          <div className="font-semibold mb-1">State Details:</div>
+          <div className="space-y-1 font-mono">
+            <div>• useRandomWinner: true/false</div>
+            <div>• winnerSelectionStart: ISO timestamp or null</div>
+            <div>• isPublicSendEnabled: true/false</div>
+            <div>• current-cast-hash: hash or null</div>
+          </div>
+        </div>
+      </Card.Content>
+    </Card>
+  );
 }
 
 function AdminGenerate({ adminFid }: { adminFid?: number }) {
@@ -892,6 +1052,9 @@ export function AdminPage({ onTokenMinted }: AdminPageProps) {
 
   return (
     <div className="space-y-3 px-6 w-full max-w-md mx-auto">
+      {/* Redis State Testing */}
+      <RedisStateTesting adminFid={currentUserFid} />
+
       {/* Admin Test Sections */}
       <SetInitialHolder onTokenMinted={onTokenMinted} adminFid={currentUserFid} />
       <AdminGenerate adminFid={currentUserFid} />
