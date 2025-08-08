@@ -15,6 +15,8 @@ import {
   SelectValue,
 } from '@/components/base/Select';
 import { UsernameInput } from '@/components/ui/UsernameInput';
+import { Textarea } from '@/components/base/Textarea';
+import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
 
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 import { WorkflowState } from '@/lib/workflow-types';
@@ -1049,6 +1051,144 @@ function AppPauseToggle({ adminFid }: { adminFid?: number }) {
   );
 }
 
+function JourneyAnnouncement({ adminFid }: { adminFid?: number }) {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSend = useCallback(async () => {
+    if (!adminFid) {
+      setError('You must be signed in to use admin functions');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const text = CHOOCHOO_CAST_TEMPLATES.JOURNEY_CONTINUES();
+      const today = new Date().toISOString().slice(0, 10);
+      const res = await fetch('/api/admin-send-cast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminFid, text, idem: `journey-continues-${today}` }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setResult(`Sent journey announcement${data.cast?.hash ? ` (${data.cast.hash})` : ''}`);
+      } else {
+        setError(data.error || 'Failed to send journey announcement');
+      }
+    } catch (err) {
+      console.error('Error sending journey announcement:', err);
+      setError('Failed to send journey announcement');
+    } finally {
+      setLoading(false);
+    }
+  }, [adminFid]);
+
+  return (
+    <Card className="my-8 !bg-purple-600 !border-white">
+      <Card.Header>
+        <Card.Title>Send Journey Announcement</Card.Title>
+        <Card.Description>Cast generic announcement from @choochoo.</Card.Description>
+      </Card.Header>
+      <Card.Content>
+        <div className="space-y-3">
+          <Button
+            onClick={handleSend}
+            disabled={loading || !adminFid}
+            isLoading={loading}
+            className="w-full bg-purple-600 text-white border-white hover:bg-purple-700"
+            variant="default"
+          >
+            Send Cast
+          </Button>
+          {error && <div className="text-xs text-red-300 p-2 bg-red-900/20 rounded">{error}</div>}
+          {result && (
+            <div className="text-xs text-green-300 p-2 bg-green-900/20 rounded">{result}</div>
+          )}
+        </div>
+      </Card.Content>
+    </Card>
+  );
+}
+
+function CustomCast({ adminFid }: { adminFid?: number }) {
+  const [text, setText] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSend = useCallback(async () => {
+    if (!adminFid) {
+      setError('You must be signed in to use admin functions');
+      return;
+    }
+    if (!text.trim()) {
+      setError('Please enter a message');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setResult(null);
+
+    try {
+      const res = await fetch('/api/admin-send-cast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminFid, text }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setResult(`Cast sent${data.cast?.hash ? ` (${data.cast.hash})` : ''}`);
+        setText('');
+      } else {
+        setError(data.error || 'Failed to send cast');
+      }
+    } catch (err) {
+      console.error('Error sending custom cast:', err);
+      setError('Failed to send cast');
+    } finally {
+      setLoading(false);
+    }
+  }, [adminFid, text]);
+
+  return (
+    <Card className="my-8 !bg-purple-600 !border-white">
+      <Card.Header>
+        <Card.Title>Send Custom Cast</Card.Title>
+        <Card.Description>Write and send a custom cast from @choochoo.</Card.Description>
+      </Card.Header>
+      <Card.Content>
+        <div className="space-y-3">
+          <Textarea
+            placeholder="Type your announcement..."
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            className="!bg-white !text-black border-gray-300"
+          />
+          <Button
+            onClick={handleSend}
+            disabled={loading || !adminFid || !text.trim()}
+            isLoading={loading}
+            className="w-full bg-purple-600 text-white border-white hover:bg-purple-700"
+            variant="default"
+          >
+            Send Cast
+          </Button>
+          {error && <div className="text-xs text-red-300 p-2 bg-red-900/20 rounded">{error}</div>}
+          {result && (
+            <div className="text-xs text-green-300 p-2 bg-green-900/20 rounded">{result}</div>
+          )}
+        </div>
+      </Card.Content>
+    </Card>
+  );
+}
+
 // @todo: remove this when we go live
 
 export function AdminPage({ onTokenMinted }: AdminPageProps) {
@@ -1075,6 +1215,8 @@ export function AdminPage({ onTokenMinted }: AdminPageProps) {
     <div className="space-y-3 px-6 w-full max-w-md mx-auto">
       {/* Admin Test Sections */}
       <SetInitialHolder onTokenMinted={onTokenMinted} adminFid={currentUserFid} />
+      <JourneyAnnouncement adminFid={currentUserFid} />
+      <CustomCast adminFid={currentUserFid} />
       <AdminGenerate adminFid={currentUserFid} />
       <SetTicketMetadata adminFid={currentUserFid} />
       <TestAdminNextStop onTokenMinted={onTokenMinted} adminFid={currentUserFid} />

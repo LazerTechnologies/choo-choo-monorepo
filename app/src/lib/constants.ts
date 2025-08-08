@@ -64,23 +64,23 @@ export const CHOOCHOO_CAST_TEMPLATES = {
 
   // [@choochoo] Cast sent when current holder toggles random winner mode
   RANDOM_WINNER_ENABLED: (username: string) =>
-    `🎲 @${username} has decided to let the community pick ChooChoo's next stop!\n\n` +
-    `React to their cast for a chance to ride next! The community will be able to ` +
+    `🎲 @${username} has decided to leave ChooChoo's next stop up to chance!\n\n` +
+    `React to their cast for a chance to ride next! Anyone can ` +
     `pick a random reactor in 30 minutes. 🚂\n\n` +
     `All aboard! 🎫`,
 
   // [@choochoo] Cast sent when public send mode is enabled (30 minute timer expires)
   PUBLIC_SEND_OPEN: () =>
     `🚂 All aboard!\n\n` +
-    `Anyone can now go to the mini-app and pick a random user to receive ChooChoo! ` +
+    `Head to the mini-app and pick a random user to receive ChooChoo! ` +
     `The current passenger left it up to chance - who will be next? 🎲\n\n` +
     `Don't miss your chance to join the journey! 🚂`,
 
   // [@choochoo] Cast sent when the journey begins with initial holder
   JOURNEY_BEGINS: (username: string) =>
-    `🚂 All aboard! The ChooChoo journey begins! 🎫\n\n` +
+    `🚂 All aboard! ChooChoo has officially left the station! 🎫\n\n` +
     `@${username} is our first passenger and the journey across Base has officially started! ` +
-    `Watch for their announcement cast to see how you can be next.\n\n` +
+    `Follow them and watch out for their announcement cast for your chance to ride.\n\n` +
     `Learn more in the ChooChoo mini-app! 🔵`,
 
   // [@choochoo] Cast sent when app enters maintenance mode
@@ -92,9 +92,8 @@ export const CHOOCHOO_CAST_TEMPLATES = {
 
   // [@choochoo] Cast sent when maintenance ends
   MAINTENANCE_ENDED: () =>
-    `🚂 All aboard! ChooChoo is back on the rails! 🎉\n\n` +
-    `Maintenance is complete and we're ready to continue the journey across Base! ` +
-    `Thank you for your patience.\n\n` +
+    `🚂 All aboard! ChooChoo is back on the rails!\n\n` +
+    `Maintenance is complete and ChooChoo is back to blazing across Base!\n\n` +
     `The adventure continues! 🔵`,
 } as const;
 
