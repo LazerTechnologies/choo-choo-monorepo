@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession, type Session } from 'next-auth';
 import { authOptions } from '@/auth';
 import { ADMIN_FIDS, APP_URL } from '@/lib/constants';
+import { NeynarAPIClient } from '@neynar/nodejs-sdk';
 
 interface RequireAdminOk {
   ok: true;
@@ -48,17 +49,10 @@ async function getAdminFidFromFrame(request: Request): Promise<number | null> {
     const apiKey = process.env.NEYNAR_API_KEY;
     if (!apiKey) return null;
 
-    const res = await fetch('https://api.neynar.com/v2/farcaster/frame/validate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        api_key: apiKey,
-      },
-      body: JSON.stringify({ message_bytes_in_hex: messageBytes }),
-    });
-
-    if (!res.ok) return null;
-    const data: NeynarFrameValidateResponse = await res.json();
+    const client = new NeynarAPIClient({ apiKey });
+    const data = (await client.validateFrameAction({
+      messageBytesInHex: messageBytes,
+    })) as NeynarFrameValidateResponse;
 
     const fid: number | undefined =
       data?.action?.interactor?.fid ?? data?.action?.requester?.fid ?? data?.fid;
