@@ -9,6 +9,7 @@ import { useCurrentUserAddress } from '@/hooks/useCurrentUserAddress';
 import { useNeynarContext } from '@neynar/react';
 import { useMiniApp } from '@neynar/react';
 import { useEffect, useState } from 'react';
+import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
 import { useDepositStatus } from '@/hooks/useDepositStatus';
 import { useDepositUsdc } from '@/hooks/useDepositUsdc';
 import { useAccount, useSwitchChain } from 'wagmi';
@@ -21,6 +22,7 @@ export function YoinkPage() {
   const countdownState = useYoinkCountdown();
   const { address, isLoading: addressLoading, error: addressError } = useCurrentUserAddress();
   const { yoinkTrain, isLoading, isSuccess, isError, error, reset, loadingText } = useYoinkFlow();
+  const { toast: marqueeToast } = useMarqueeToast();
 
   const currentUserFid = neynarUser?.fid || context?.user?.fid;
   const deposit = useDepositStatus(currentUserFid);
@@ -39,16 +41,22 @@ export function YoinkPage() {
   useEffect(() => {
     if (isSuccess) {
       console.log('🚩 Nice yoink! You&apos;re now on ChooChoo!');
+      try {
+        marqueeToast({ description: 'Yoink successful! You are now riding ChooChoo.' });
+      } catch {}
       reset();
     }
-  }, [isSuccess, reset]);
+  }, [isSuccess, marqueeToast, reset]);
 
   useEffect(() => {
     if (isError && error) {
       console.error('Yoink failed:', error);
+      try {
+        marqueeToast({ description: 'Yoink failed', variant: 'destructive' });
+      } catch {}
       reset();
     }
-  }, [isError, error, reset]);
+  }, [isError, error, marqueeToast, reset]);
 
   const handleYoink = async () => {
     if (!address) {
@@ -84,8 +92,8 @@ export function YoinkPage() {
         <Card.Header>
           <Card.Title className="!text-white font-comic">Yoink ChooChoo</Card.Title>
           <Card.Description className="!text-white font-comic">
-            If ChooChoo hasn&apos;t moved in 48 hours, anyone who hasn&apos;t ridden the train
-            before can hop aboard and become the next passenger!
+            If ChooChoo hasn&apos;t moved in 48 hours, anyone who hasn&apos;t ridden before can hop
+            aboard and become the next passenger. Yoinking costs 1 USDC.
           </Card.Description>
         </Card.Header>
         <Card.Content>

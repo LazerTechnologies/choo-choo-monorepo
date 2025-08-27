@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAccount, useConnect, useSwitchChain } from 'wagmi';
 import { base, baseSepolia } from 'wagmi/chains';
 import { Dialog } from '@/components/base/Dialog';
+import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
 import { Button } from '@/components/base/Button';
 import { Typography } from '@/components/base/Typography';
 
@@ -17,13 +18,17 @@ export function ConnectWalletDialog({ open, onOpenChange }: ConnectWalletDialogP
   const { connectors, connect, isPending, error: connectError } = useConnect();
   const { switchChainAsync, isPending: isSwitching } = useSwitchChain();
   const [internalError, setInternalError] = useState<string | null>(null);
+  const { toast: marqueeToast } = useMarqueeToast();
 
   const useMainnet = process.env.NEXT_PUBLIC_USE_MAINNET === 'true';
   const desiredChainId = useMainnet ? base.id : baseSepolia.id;
 
   useEffect(() => {
-    if (isConnected && open) onOpenChange(false);
-  }, [isConnected, open, onOpenChange]);
+    if (isConnected && open) {
+      marqueeToast({ description: 'Wallet connected successfully' });
+      onOpenChange(false);
+    }
+  }, [isConnected, open, onOpenChange, marqueeToast]);
 
   const orderedConnectors = useMemo(() => {
     const order = ['farcasterFrame', 'coinbaseWallet', 'metaMask'];
@@ -47,26 +52,30 @@ export function ConnectWalletDialog({ open, onOpenChange }: ConnectWalletDialogP
       try {
         await switchChainAsync({ chainId: desiredChainId });
       } catch {}
+      marqueeToast({ description: 'Wallet connected successfully' });
     } catch (e) {
       setInternalError(e instanceof Error ? e.message : 'Failed to connect');
+      marqueeToast({ description: 'Wallet connection failed', variant: 'destructive' });
     }
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <Dialog.Content size="sm" title="Connect Wallet">
-        <Dialog.Header>
-          <Typography variant="h5" className="font-comic">
+      <Dialog.Content
+        size="sm"
+        title="Connect Wallet"
+        className="!bg-purple-700 !text-white !border-white"
+      >
+        <div className="p-4 space-y-3">
+          <Typography variant="h5" className="font-comic !text-white">
             Connect your wallet
           </Typography>
-        </Dialog.Header>
 
-        <div className="p-4 space-y-3">
           {orderedConnectors.map((connector) => (
             <Button
               key={connector.uid}
               onClick={() => handleConnect(connector.id)}
-              className="w-full"
+              className="w-full !bg-purple-500 hover:!bg-purple-600 !text-white !border-2 !border-white"
               isLoading={isPending}
             >
               {connector.name}
@@ -74,20 +83,24 @@ export function ConnectWalletDialog({ open, onOpenChange }: ConnectWalletDialogP
           ))}
 
           {(internalError || connectError) && (
-            <div className="text-xs text-red-500">
+            <div className="text-xs text-red-200">
               {internalError || (connectError as Error)?.message}
             </div>
           )}
 
           {(isPending || isSwitching) && (
-            <Typography variant="small" className="text-gray-600">
+            <Typography variant="small" className="!text-white opacity-90">
               {isSwitching ? 'Switching to Base...' : 'Connecting...'}
             </Typography>
           )}
         </div>
 
         <Dialog.Footer position="static">
-          <Button variant="noShadow" onClick={() => onOpenChange(false)}>
+          <Button
+            variant="noShadow"
+            onClick={() => onOpenChange(false)}
+            className="!bg-purple-500 hover:!bg-purple-600 !text-white !border-2 !border-white"
+          >
             Close
           </Button>
         </Dialog.Footer>

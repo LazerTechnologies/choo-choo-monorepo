@@ -162,7 +162,7 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
                   className="w-full"
                 />
                 <Typography variant="body" className="text-xs !text-white text-center">
-                  Choose who gets ChooChoo next
+                  Choose who gets ChooChoo next. Manually sending costs 1 USDC.
                 </Typography>
 
                 <Button
@@ -187,7 +187,7 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
                   <br />
                   <br />
                   In 30 minutes anyone will be able to select a random reactor to your previous cast
-                  to receive ChooChoo.
+                  to receive ChooChoo. Manual send and yoink each cost 1 USDC.
                 </Typography>
 
                 <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>

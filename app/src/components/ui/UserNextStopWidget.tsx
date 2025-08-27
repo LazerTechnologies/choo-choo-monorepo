@@ -14,6 +14,7 @@ import { useNeynarContext } from '@neynar/react';
 import { useMiniApp } from '@neynar/react';
 import { UsernameInput } from '@/components/ui/UsernameInput';
 import axios from 'axios';
+import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
 
 interface UserNextStopWidgetProps {
   onTokenMinted?: () => void;
@@ -48,6 +49,7 @@ export function UserNextStopWidget({ onTokenMinted }: UserNextStopWidgetProps) {
   const { isConnected } = useAccount();
   const { switchChainAsync, isPending: isSwitching } = useSwitchChain();
   const [connectOpen, setConnectOpen] = useState(false);
+  const { toast: marqueeToast } = useMarqueeToast();
 
   const depositHook = useDepositUsdc({
     fid: currentUserFid ?? null,
@@ -75,6 +77,9 @@ export function UserNextStopWidget({ onTokenMinted }: UserNextStopWidgetProps) {
       if (res.data.success) {
         setResult(res.data);
         onTokenMinted?.();
+        try {
+          marqueeToast({ description: `ChooChoo sent to @${res.data.winner.username}!` });
+        } catch {}
       } else {
         setError(res.data.error || 'Failed to send ChooChoo');
       }
@@ -98,9 +103,9 @@ export function UserNextStopWidget({ onTokenMinted }: UserNextStopWidgetProps) {
             Choose Next Passenger
           </Typography>
           <Typography variant="body" className="text-gray-600 dark:text-gray-300">
-            You&apos;ve sent your announcement cast! You can now either wait for reactions and let a
-            random winner be chosen, or manually choose the next passenger by entering their FID
-            below.
+            You&apos;ve sent your announcement cast! You can either wait for reactions and let a
+            random winner be chosen, or manually choose the next passenger below. Manually sending
+            costs 1 USDC.
           </Typography>
         </div>
 

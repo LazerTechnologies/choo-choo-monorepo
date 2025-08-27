@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Address, erc20Abi } from 'viem';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
+import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
 
 interface UseDepositUsdcOptions {
   fid: number | null | undefined;
@@ -36,6 +37,7 @@ export function useDepositUsdc(opts: UseDepositUsdcOptions): UseDepositUsdcResul
   const [isConfirming, setIsConfirming] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { toast: marqueeToast } = useMarqueeToast();
 
   const needsApproval = useMemo(() => {
     if (allowance === null) return true;
@@ -84,10 +86,20 @@ export function useDepositUsdc(opts: UseDepositUsdcOptions): UseDepositUsdcResul
       await readAllowance();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Approval failed');
+      marqueeToast({ description: 'USDC approval failed', variant: 'destructive' });
     } finally {
       setIsApproving(false);
     }
-  }, [address, contractAddress, publicClient, readAllowance, required, usdcAddress, walletClient]);
+  }, [
+    address,
+    contractAddress,
+    marqueeToast,
+    publicClient,
+    readAllowance,
+    required,
+    usdcAddress,
+    walletClient,
+  ]);
 
   const deposit = useCallback(async () => {
     if (!walletClient || !address || !fid) {
@@ -126,12 +138,14 @@ export function useDepositUsdc(opts: UseDepositUsdcOptions): UseDepositUsdcResul
       await publicClient.waitForTransactionReceipt({ hash });
       setIsConfirming(false);
       setIsDone(true);
+      marqueeToast({ description: 'USDC deposit successful' });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Deposit failed');
+      marqueeToast({ description: 'USDC deposit failed', variant: 'destructive' });
     } finally {
       setIsDepositing(false);
     }
-  }, [address, contractAddress, fid, publicClient, required, walletClient]);
+  }, [address, contractAddress, fid, marqueeToast, publicClient, required, walletClient]);
 
   const reset = useCallback(() => {
     setIsApproving(false);

@@ -62,10 +62,6 @@ This plan introduces a 1 USDC fee to manually send the train and to yoink it. Th
 
 General:
 
-- [ ] Add envs:
-  - [ ] `NEXT_PUBLIC_USDC_ADDRESS`
-  - [ ] `USDC_ADDRESS` (server) defaulting to Base Sepolia address
-  - [ ] `USDC_DECIMALS=6`
 - [x] Extend `app/src/lib/services/contract.ts` with read helpers:
   - [x] `getDepositCost(): Promise<bigint>`
   - [x] `getFidDeposited(fid: number): Promise<bigint>`
@@ -98,19 +94,18 @@ New deposit endpoint:
 
 Providers / Wallet:
 
-- [ ] Ensure Wagmi configured for Base/Base Sepolia; already present. Add USDC chain info to UI.
-- [ ] Add a lightweight wallet connect flow (keeps Shadcn/Radix styling):
-  - [ ] Create `ConnectWalletDialog` using `base/Dialog` listing connectors (order: `farcasterFrame` → Coinbase Wallet → MetaMask).
-  - [ ] Use Wagmi `useConnect()` to trigger connector; show inline errors for rejected requests.
-  - [ ] Use `useSwitchChain()` to auto switch to Base when on wrong network; show fallback CTA if user cancels.
-  - [ ] Expose a `ConnectWalletButton` that opens the dialog and reflects states (connecting, wrong network, connected).
-  - [ ] In action buttons (manual send, yoink), if not connected: label “Connect wallet” and open `ConnectWalletDialog` when clicked.
-  - [ ] In deposit flows, silently handle switching to the proper network when chain mismatch, user shouldn't have to manually switch network. use custom hook if required
+- [x] Ensure Wagmi configured for Base/Base Sepolia; already present. Add USDC chain info to UI.
+- [x] Add a lightweight wallet connect flow (keeps Shadcn/Radix styling):
+  - [x] Create `ConnectWalletDialog` using `base/Dialog` listing connectors (order: `farcasterFrame` → Coinbase Wallet → MetaMask).
+  - [x] Use Wagmi `useConnect()` to trigger connector; show inline errors for rejected requests.
+  - [x] Use `useSwitchChain()` to auto switch to Base when on wrong network; show fallback CTA if user cancels.
+  - [x] Expose a `ConnectWalletButton` that opens the dialog and reflects states (connecting, wrong network, connected).
+  - [x] In action buttons (manual send, yoink), if not connected: label “Connect wallet” and open `ConnectWalletDialog` when clicked.
+  - [x] In deposit flows, silently handle switching to the proper network when chain mismatch, user shouldn't have to manually switch network. use custom hook if required
 
 Optional Polish:
 
-- [ ] Handle deep links for mobile wallets (MetaMask/Coinbase) where applicable; avoid blocking modals.
-- [ ] Accessibility: focus trap in dialog; ARIA labels; keyboard navigation.
+- [x] Handle deep links for mobile wallets (MetaMask/Coinbase) where applicable; avoid blocking modals.
 
 Deposit UI/flow:
 
@@ -151,11 +146,11 @@ Hooks / Utils:
 Types and ABI:
 
 - [x] Update `app/src/abi/ChooChooTrain.abi.json` with new contract functions/events.
-- [ ] Use viem’s erc20.
+- [x] Use viem’s erc20.
 
 UX Copy:
 
-- [ ] Update copy to explain 1 USDC requirement on relevant pages.
+- [x] Update copy to explain 1 USDC requirement on relevant pages.
 
 ---
 
@@ -179,7 +174,7 @@ UX Copy:
 
 ### QA Checklist
 
-- [ ] Contract compiles and tests pass.
+- [x] Contract compiles and tests pass.
 - [ ] Deposit emits `UsdcDeposited` with correct fid and amount.
 - [ ] Admin withdrawal restricted and functional.
 - [ ] Manual send fails without deposit; succeeds after deposit.
