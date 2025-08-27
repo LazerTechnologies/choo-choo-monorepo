@@ -146,7 +146,9 @@ export function UserNextStopWidget({ onTokenMinted }: UserNextStopWidgetProps) {
             try {
               const useMainnet = process.env.NEXT_PUBLIC_USE_MAINNET === 'true';
               await switchChainAsync({ chainId: useMainnet ? base.id : baseSepolia.id });
-            } catch {}
+            } catch {
+              return; // Do not proceed on wrong network
+            }
 
             // If deposit not satisfied, run approve/deposit flow
             if (!deposit.satisfied) {
@@ -189,6 +191,10 @@ export function UserNextStopWidget({ onTokenMinted }: UserNextStopWidgetProps) {
                     ? `🚂 Send ChooChoo to @${selectedUser.username}`
                     : 'Send ChooChoo'}
         </Button>
+
+        <Typography variant="small" className="text-center text-gray-600 dark:text-gray-300">
+          Sending costs 1 USDC
+        </Typography>
 
         {/* @todo possibly switch to rainbowkit */}
         <ConnectWalletDialog open={connectOpen} onOpenChange={setConnectOpen} />

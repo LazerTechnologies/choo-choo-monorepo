@@ -85,8 +85,13 @@ export function useDepositUsdc(opts: UseDepositUsdcOptions): UseDepositUsdcResul
       setIsConfirming(false);
       await readAllowance();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Approval failed');
-      marqueeToast({ description: 'USDC approval failed', variant: 'destructive' });
+      const msg = e && typeof e === 'object' && 'message' in e ? (e as Error).message : '';
+      const friendly =
+        msg.includes('User rejected') || msg.includes('Rejected')
+          ? 'User rejected the approval request'
+          : 'USDC approval failed';
+      setError(friendly);
+      marqueeToast({ description: friendly, variant: 'destructive' });
     } finally {
       setIsApproving(false);
     }
@@ -114,6 +119,22 @@ export function useDepositUsdc(opts: UseDepositUsdcOptions): UseDepositUsdcResul
         setIsDepositing(false);
         return;
       }
+      // Pre-check USDC balance >= required
+      try {
+        const bal = (await publicClient.readContract({
+          address: usdcAddress,
+          abi: erc20Abi,
+          functionName: 'balanceOf',
+          args: [address],
+        })) as bigint;
+        if (bal < required) {
+          const friendly = 'Insufficient USDC balance (need at least 1 USDC)';
+          setError(friendly);
+          marqueeToast({ description: friendly, variant: 'destructive' });
+          setIsDepositing(false);
+          return;
+        }
+      } catch {}
       // depositUSDC(uint256 fid, uint256 amount)
       const hash = await walletClient.writeContract({
         address: contractAddress,
@@ -140,12 +161,28 @@ export function useDepositUsdc(opts: UseDepositUsdcOptions): UseDepositUsdcResul
       setIsDone(true);
       marqueeToast({ description: 'USDC deposit successful' });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Deposit failed');
-      marqueeToast({ description: 'USDC deposit failed', variant: 'destructive' });
+      const msg = e && typeof e === 'object' && 'message' in e ? (e as Error).message : '';
+      const friendly =
+        msg.includes('User rejected') || msg.includes('Rejected')
+          ? 'User rejected the transaction'
+          : msg.includes('insufficient')
+            ? 'Insufficient funds to cover gas or amount'
+            : 'USDC deposit failed';
+      setError(friendly);
+      marqueeToast({ description: friendly, variant: 'destructive' });
     } finally {
       setIsDepositing(false);
     }
-  }, [address, contractAddress, fid, marqueeToast, publicClient, required, walletClient]);
+  }, [
+    address,
+    contractAddress,
+    fid,
+    marqueeToast,
+    publicClient,
+    required,
+    usdcAddress,
+    walletClient,
+  ]);
 
   const reset = useCallback(() => {
     setIsApproving(false);

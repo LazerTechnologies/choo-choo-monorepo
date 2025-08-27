@@ -177,7 +177,9 @@ export function YoinkPage() {
               try {
                 const useMainnet = process.env.NEXT_PUBLIC_USE_MAINNET === 'true';
                 await switchChainAsync({ chainId: useMainnet ? base.id : baseSepolia.id });
-              } catch {}
+              } catch {
+                return; // Do not proceed on wrong network
+              }
 
               if (!deposit.satisfied) {
                 if (depositHook.needsApproval) {
@@ -224,6 +226,10 @@ export function YoinkPage() {
                           : 'Please wait...'}
             </Typography>
           </Button>
+
+          <Typography variant="small" className="text-center !text-white mt-2">
+            Yoinking costs 1 USDC
+          </Typography>
 
           {/* @todo possibly switch to rainbowkit */}
           <ConnectWalletDialog open={connectOpen} onOpenChange={setConnectOpen} />

@@ -24,11 +24,12 @@ export function ConnectWalletDialog({ open, onOpenChange }: ConnectWalletDialogP
   const desiredChainId = useMainnet ? base.id : baseSepolia.id;
 
   useEffect(() => {
-    if (isConnected && open) {
+    // Do not auto-close if we have an inline error (e.g., chain switch failed)
+    if (isConnected && open && !internalError) {
       marqueeToast({ description: 'Wallet connected successfully' });
       onOpenChange(false);
     }
-  }, [isConnected, open, onOpenChange, marqueeToast]);
+  }, [isConnected, open, internalError, onOpenChange, marqueeToast]);
 
   const orderedConnectors = useMemo(() => {
     const order = ['farcasterFrame', 'coinbaseWallet', 'metaMask'];
@@ -51,7 +52,11 @@ export function ConnectWalletDialog({ open, onOpenChange }: ConnectWalletDialogP
       // Silent chain switch after connection if needed
       try {
         await switchChainAsync({ chainId: desiredChainId });
-      } catch {}
+      } catch {
+        setInternalError('Please switch to Base to continue');
+        // keep dialog open so user can retry switch/connect
+        return;
+      }
       marqueeToast({ description: 'Wallet connected successfully' });
     } catch (e) {
       setInternalError(e instanceof Error ? e.message : 'Failed to connect');
