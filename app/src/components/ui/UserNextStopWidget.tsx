@@ -7,8 +7,8 @@ import { Button } from '@/components/base/Button';
 import { Typography } from '@/components/base/Typography';
 import { useDepositStatus } from '@/hooks/useDepositStatus';
 import { useDepositUsdc } from '@/hooks/useDepositUsdc';
-import { useAccount, useSwitchChain } from 'wagmi';
-import { base, baseSepolia } from 'wagmi/chains';
+import { useAccount } from 'wagmi';
+import { useEnsureCorrectNetwork } from '@/hooks/useEnsureCorrectNetwork';
 import { ConnectWalletDialog } from '@/components/ui/ConnectWalletDialog';
 import { useNeynarContext } from '@neynar/react';
 import { useMiniApp } from '@neynar/react';
@@ -47,7 +47,7 @@ export function UserNextStopWidget({ onTokenMinted }: UserNextStopWidgetProps) {
   const currentUserFid = neynarUser?.fid || context?.user?.fid || null;
   const deposit = useDepositStatus(currentUserFid);
   const { isConnected } = useAccount();
-  const { switchChainAsync, isPending: isSwitching } = useSwitchChain();
+  const { ensureCorrectNetwork, isSwitching } = useEnsureCorrectNetwork();
   const [connectOpen, setConnectOpen] = useState(false);
   const { toast: marqueeToast } = useMarqueeToast();
 
@@ -142,13 +142,8 @@ export function UserNextStopWidget({ onTokenMinted }: UserNextStopWidgetProps) {
               setConnectOpen(true);
               return;
             }
-            // Ensure network
-            try {
-              const useMainnet = process.env.NEXT_PUBLIC_USE_MAINNET === 'true';
-              await switchChainAsync({ chainId: useMainnet ? base.id : baseSepolia.id });
-            } catch {
-              return; // Do not proceed on wrong network
-            }
+            const ok = await ensureCorrectNetwork();
+            if (!ok) return;
 
             // If deposit not satisfied, run approve/deposit flow
             if (!deposit.satisfied) {
@@ -192,9 +187,11 @@ export function UserNextStopWidget({ onTokenMinted }: UserNextStopWidgetProps) {
                     : 'Send ChooChoo'}
         </Button>
 
-        <Typography variant="small" className="text-center text-gray-600 dark:text-gray-300">
-          Sending costs 1 USDC
-        </Typography>
+        <div className="text-center">
+          <Typography variant="small" className="text-gray-600 dark:text-gray-300">
+            Sending costs 1 USDC
+          </Typography>
+        </div>
 
         {/* @todo possibly switch to rainbowkit */}
         <ConnectWalletDialog open={connectOpen} onOpenChange={setConnectOpen} />

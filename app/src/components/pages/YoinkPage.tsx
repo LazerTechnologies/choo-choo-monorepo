@@ -12,8 +12,8 @@ import { useEffect, useState } from 'react';
 import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
 import { useDepositStatus } from '@/hooks/useDepositStatus';
 import { useDepositUsdc } from '@/hooks/useDepositUsdc';
-import { useAccount, useSwitchChain } from 'wagmi';
-import { base, baseSepolia } from 'wagmi/chains';
+import { useWalletClient } from 'wagmi';
+import { useEnsureCorrectNetwork } from '@/hooks/useEnsureCorrectNetwork';
 import { ConnectWalletDialog } from '@/components/ui/ConnectWalletDialog';
 
 export function YoinkPage() {
@@ -26,8 +26,9 @@ export function YoinkPage() {
 
   const currentUserFid = neynarUser?.fid || context?.user?.fid;
   const deposit = useDepositStatus(currentUserFid);
-  const { isConnected } = useAccount();
-  const { switchChainAsync, isPending: isSwitching } = useSwitchChain();
+  const { data: walletClient } = useWalletClient();
+  const walletConnected = !!walletClient;
+  const { ensureCorrectNetwork, isSwitching } = useEnsureCorrectNetwork();
   const [connectOpen, setConnectOpen] = useState(false);
   const depositHook = useDepositUsdc({
     fid: currentUserFid ?? null,
@@ -169,17 +170,13 @@ export function YoinkPage() {
 
           <Button
             onClick={async () => {
-              if (!address) return;
-              if (!isConnected) {
+              if (!walletConnected) {
                 setConnectOpen(true);
                 return;
               }
-              try {
-                const useMainnet = process.env.NEXT_PUBLIC_USE_MAINNET === 'true';
-                await switchChainAsync({ chainId: useMainnet ? base.id : baseSepolia.id });
-              } catch {
-                return; // Do not proceed on wrong network
-              }
+              if (!address) return;
+              const ok = await ensureCorrectNetwork();
+              if (!ok) return;
 
               if (!deposit.satisfied) {
                 if (depositHook.needsApproval) {
@@ -209,7 +206,7 @@ export function YoinkPage() {
             <Typography variant="body" className="!text-white font-comic">
               {isLoading
                 ? 'Yoinking...'
-                : !isConnected
+                : !walletConnected
                   ? 'Connect wallet'
                   : deposit.isLoading
                     ? 'Loading...'
@@ -227,9 +224,11 @@ export function YoinkPage() {
             </Typography>
           </Button>
 
-          <Typography variant="small" className="text-center !text-white mt-2">
-            Yoinking costs 1 USDC
-          </Typography>
+          <div className="text-center mt-2">
+            <Typography variant="small" className="!text-white">
+              Yoinking costs 1 USDC
+            </Typography>
+          </div>
 
           {/* @todo possibly switch to rainbowkit */}
           <ConnectWalletDialog open={connectOpen} onOpenChange={setConnectOpen} />

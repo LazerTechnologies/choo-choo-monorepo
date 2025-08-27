@@ -7,6 +7,7 @@ import { Dialog } from '@/components/base/Dialog';
 import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
 import { Button } from '@/components/base/Button';
 import { Typography } from '@/components/base/Typography';
+import { useEnsureCorrectNetwork } from '@/hooks/useEnsureCorrectNetwork';
 
 interface ConnectWalletDialogProps {
   open: boolean;
@@ -19,17 +20,26 @@ export function ConnectWalletDialog({ open, onOpenChange }: ConnectWalletDialogP
   const { switchChainAsync, isPending: isSwitching } = useSwitchChain();
   const [internalError, setInternalError] = useState<string | null>(null);
   const { toast: marqueeToast } = useMarqueeToast();
+  const { ensureCorrectNetwork } = useEnsureCorrectNetwork();
 
   const useMainnet = process.env.NEXT_PUBLIC_USE_MAINNET === 'true';
   const desiredChainId = useMainnet ? base.id : baseSepolia.id;
 
   useEffect(() => {
-    // Do not auto-close if we have an inline error (e.g., chain switch failed)
-    if (isConnected && open && !internalError) {
-      marqueeToast({ description: 'Wallet connected successfully' });
-      onOpenChange(false);
-    }
-  }, [isConnected, open, internalError, onOpenChange, marqueeToast]);
+    // On connect, auto-switch to the correct network before closing
+    const maybeSwitch = async () => {
+      if (isConnected && open && !internalError) {
+        const ok = await ensureCorrectNetwork();
+        if (ok) {
+          marqueeToast({ description: 'Wallet connected successfully' });
+          onOpenChange(false);
+        } else {
+          setInternalError('Please switch to Base to continue');
+        }
+      }
+    };
+    void maybeSwitch();
+  }, [isConnected, open, internalError, ensureCorrectNetwork, onOpenChange, marqueeToast]);
 
   const orderedConnectors = useMemo(() => {
     const order = ['farcasterFrame', 'coinbaseWallet', 'metaMask'];
@@ -49,12 +59,10 @@ export function ConnectWalletDialog({ open, onOpenChange }: ConnectWalletDialogP
         return;
       }
       await connect({ connector: target });
-      // Silent chain switch after connection if needed
-      try {
-        await switchChainAsync({ chainId: desiredChainId });
-      } catch {
+      // Auto switch after connection using shared hook
+      const ok = await ensureCorrectNetwork();
+      if (!ok) {
         setInternalError('Please switch to Base to continue');
-        // keep dialog open so user can retry switch/connect
         return;
       }
       marqueeToast({ description: 'Wallet connected successfully' });
