@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useAccount, useConnect, useSwitchChain } from 'wagmi';
-import { base, baseSepolia } from 'wagmi/chains';
 import { Dialog } from '@/components/base/Dialog';
 import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
 import { Button } from '@/components/base/Button';
@@ -17,13 +16,10 @@ interface ConnectWalletDialogProps {
 export function ConnectWalletDialog({ open, onOpenChange }: ConnectWalletDialogProps) {
   const { isConnected } = useAccount();
   const { connectors, connect, isPending, error: connectError } = useConnect();
-  const { switchChainAsync, isPending: isSwitching } = useSwitchChain();
+  const { isPending: isSwitching } = useSwitchChain();
   const [internalError, setInternalError] = useState<string | null>(null);
   const { toast: marqueeToast } = useMarqueeToast();
   const { ensureCorrectNetwork } = useEnsureCorrectNetwork();
-
-  const useMainnet = process.env.NEXT_PUBLIC_USE_MAINNET === 'true';
-  const desiredChainId = useMainnet ? base.id : baseSepolia.id;
 
   useEffect(() => {
     // On connect, auto-switch to the correct network before closing

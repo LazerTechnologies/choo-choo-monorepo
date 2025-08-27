@@ -93,7 +93,7 @@ export function UserNextStopWidget({ onTokenMinted }: UserNextStopWidgetProps) {
     } finally {
       setLoading(false);
     }
-  }, [selectedUser, onTokenMinted]);
+  }, [selectedUser, onTokenMinted, marqueeToast]);
 
   return (
     <Card className="p-4">
