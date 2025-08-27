@@ -62,6 +62,16 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     address[] public admins;
 
+    // ========== USDC DEPOSIT SYSTEM ========== //
+    /// @dev USDC token contract address
+    address public usdc;
+    /// @dev Cumulative USDC deposited by each FID
+    mapping(uint256 => uint256) public fidToUsdcDeposited;
+
+    uint256 public constant USDC_DECIMALS = 6;
+    /// @dev Required deposit amount
+    uint256 public depositCost = 1 * 10 ** USDC_DECIMALS;
+
     // ========== EVENTS ========== //
     /// @dev Emitted when a previous holder receives a ticket NFT.
     event TicketStamped(address indexed to, uint256 indexed tokenId, string traits);
@@ -75,6 +85,12 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
     event AdminAdded(address indexed admin);
     event AdminRemoved(address indexed admin);
 
+    /// @dev USDC deposit events
+    event UsdcDeposited(address indexed from, uint256 indexed fid, uint256 amount);
+    event UsdcWithdrawn(address indexed to, address indexed token, uint256 amount);
+    event UsdcAddressUpdated(address indexed previous, address indexed current);
+    event DepositCostUpdated(uint256 previous, uint256 current);
+
     // ========== ERRORS ========== //
     /// @dev Caller is not the owner nor approved for the token.
     error NotOwnerNorApproved(address caller, uint256 tokenId);
@@ -86,6 +102,10 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
     error CannotSendToCurrentPassenger(address to);
     /// @dev Cannot ride the train more than once.
     error AlreadyRodeTrain(address passenger);
+    /// @dev Invalid FID provided).
+    error InvalidFid(uint256 fid);
+    /// @dev Insufficient deposit amount.
+    error InsufficientDeposit(uint256 provided, uint256 required);
 
     // ========== CONSTANTS ========== //
     /// @dev Commonly used burn address on Base.
@@ -125,6 +145,10 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(ADMIN_ROLE, msg.sender);
         admins.push(msg.sender);
+
+        // Initialize USDC address to Base Sepolia USDC
+        // @todo update to mainnet USDC
+        usdc = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
     }
 
     // ========== TRANSFER LOGIC ========== //
@@ -541,6 +565,80 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
         require(tokenId != 0, "Cannot update train NFT");
         require(_ownerOf(tokenId) != address(0), "Token does not exist");
         ticketData[tokenId] = TicketData({tokenURI: fullTokenURI, image: image, traits: traits});
+    }
+
+    // ========== USDC DEPOSIT SYSTEM ========== //
+    /**
+     * @notice Allows users to deposit USDC to enable manual train sending and yoinking.
+     * @param fid The Farcaster FID to associate with this deposit.
+     * @param amount The amount of USDC to deposit (must be >= depositCost).
+     */
+    function depositUSDC(uint256 fid, uint256 amount) external {
+        if (fid == 0) {
+            revert InvalidFid(fid);
+        }
+        if (amount < depositCost) {
+            revert InsufficientDeposit(amount, depositCost);
+        }
+
+        // Transfer USDC from user to contract
+        IERC20(usdc).transferFrom(_msgSender(), address(this), amount);
+
+        // Update deposit tracking
+        fidToUsdcDeposited[fid] += amount;
+
+        emit UsdcDeposited(_msgSender(), fid, amount);
+    }
+
+    /**
+     * @notice Sets the USDC token address. Only callable by admin.
+     * @param newUsdc The new USDC token contract address.
+     */
+    function setUsdc(address newUsdc) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(newUsdc != address(0), "Invalid USDC address");
+        address previous = usdc;
+        usdc = newUsdc;
+        emit UsdcAddressUpdated(previous, newUsdc);
+    }
+
+    /**
+     * @notice Sets the required deposit cost. Only callable by admin.
+     * @param newCost The new deposit cost in USDC smallest units.
+     */
+    function setDepositCost(uint256 newCost) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        uint256 previous = depositCost;
+        depositCost = newCost;
+        emit DepositCostUpdated(previous, newCost);
+    }
+
+    /**
+     * @notice Withdraws ERC20 tokens from the contract. Only callable by admin.
+     * @param token The ERC20 token contract address.
+     * @param to The address to send tokens to.
+     */
+    function withdrawERC20(address token, address to) external onlyAdmin {
+        require(to != address(0), "Invalid recipient address");
+        IERC20 erc20 = IERC20(token);
+        uint256 balance = erc20.balanceOf(address(this));
+        require(balance > 0, "No tokens to withdraw");
+        require(erc20.transfer(to, balance), "Token transfer failed");
+        emit UsdcWithdrawn(to, token, balance);
+    }
+
+    /**
+     * @notice Returns the required deposit amount.
+     * @return The deposit cost in USDC smallest units.
+     */
+    function getRequiredDeposit() external view returns (uint256) {
+        return depositCost;
+    }
+
+    /**
+     * @notice Returns the contract's USDC balance.
+     * @return The USDC balance in smallest units.
+     */
+    function getUsdcBalance() external view returns (uint256) {
+        return IERC20(usdc).balanceOf(address(this));
     }
 
     // ========== METADATA ========== //

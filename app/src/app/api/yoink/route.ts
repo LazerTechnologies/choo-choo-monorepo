@@ -79,6 +79,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to validate target address' }, { status: 500 });
     }
 
+    // 4. Check USDC deposit requirement for yoinker
+    try {
+      const hasDeposited = await contractService.hasDepositedEnough(userFid);
+
+      if (!hasDeposited) {
+        const [deposited, required] = await Promise.all([
+          contractService.getFidDeposited(userFid),
+          contractService.getDepositCost(),
+        ]);
+
+        return NextResponse.json(
+          {
+            error:
+              'Insufficient USDC deposit. You must deposit at least 1 USDC to yoink the train.',
+            depositStatus: {
+              required: required.toString(),
+              deposited: deposited.toString(),
+              satisfied: false,
+            },
+          },
+          { status: 402 } // Payment Required
+        );
+      }
+    } catch (err) {
+      console.error('[yoink] Failed to check deposit status:', err);
+      return NextResponse.json({ error: 'Failed to verify deposit status' }, { status: 500 });
+    }
+
     // 5. Get current holder data before yoink (they will receive the ticket NFT)
     let currentHolderData = null;
     try {

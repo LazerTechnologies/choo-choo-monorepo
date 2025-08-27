@@ -8,7 +8,12 @@ import { useYoinkFlow } from '@/hooks/useYoinkFlow';
 import { useCurrentUserAddress } from '@/hooks/useCurrentUserAddress';
 import { useNeynarContext } from '@neynar/react';
 import { useMiniApp } from '@neynar/react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useDepositStatus } from '@/hooks/useDepositStatus';
+import { useDepositUsdc } from '@/hooks/useDepositUsdc';
+import { useAccount, useSwitchChain } from 'wagmi';
+import { base, baseSepolia } from 'wagmi/chains';
+import { ConnectWalletDialog } from '@/components/ui/ConnectWalletDialog';
 
 export function YoinkPage() {
   const { user: neynarUser } = useNeynarContext();
@@ -18,6 +23,17 @@ export function YoinkPage() {
   const { yoinkTrain, isLoading, isSuccess, isError, error, reset, loadingText } = useYoinkFlow();
 
   const currentUserFid = neynarUser?.fid || context?.user?.fid;
+  const deposit = useDepositStatus(currentUserFid);
+  const { isConnected } = useAccount();
+  const { switchChainAsync, isPending: isSwitching } = useSwitchChain();
+  const [connectOpen, setConnectOpen] = useState(false);
+  const depositHook = useDepositUsdc({
+    fid: currentUserFid ?? null,
+    contractAddress: process.env.NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS as `0x${string}`,
+    usdcAddress: (deposit.config?.usdcAddress ||
+      '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913') as `0x${string}`,
+    required: deposit.required,
+  });
 
   // Handle success and error states
   useEffect(() => {
@@ -41,16 +57,26 @@ export function YoinkPage() {
       );
       return;
     }
+    if (!currentUserFid) {
+      console.error('Missing user FID. Please re-authenticate with Farcaster.');
+      return;
+    }
 
     try {
       console.log(`User FID ${currentUserFid || 'unknown'} is yoinking ChooChoo! 🚂💨`);
-      await yoinkTrain(address);
+      await yoinkTrain(address, Number(currentUserFid));
     } catch (err) {
       console.error('Yoink failed:', err);
     }
   };
 
-  const canYoink = countdownState.isAvailable && !addressLoading && address && !isLoading;
+  const canYoink =
+    countdownState.isAvailable &&
+    !addressLoading &&
+    address &&
+    !isLoading &&
+    !deposit.isLoading &&
+    deposit.satisfied;
 
   return (
     <div className="space-y-3 px-6 w-full max-w-md mx-auto">
@@ -134,21 +160,65 @@ export function YoinkPage() {
           )}
 
           <Button
-            onClick={handleYoink}
-            disabled={!canYoink}
+            onClick={async () => {
+              if (!address) return;
+              if (!isConnected) {
+                setConnectOpen(true);
+                return;
+              }
+              try {
+                const useMainnet = process.env.NEXT_PUBLIC_USE_MAINNET === 'true';
+                await switchChainAsync({ chainId: useMainnet ? base.id : baseSepolia.id });
+              } catch {}
+
+              if (!deposit.satisfied) {
+                if (depositHook.needsApproval) {
+                  await depositHook.approve();
+                } else {
+                  await depositHook.deposit();
+                  await deposit.refresh();
+                }
+                return;
+              }
+
+              await handleYoink();
+            }}
+            disabled={
+              !countdownState.isAvailable ||
+              !address ||
+              isLoading ||
+              deposit.isLoading ||
+              depositHook.isApproving ||
+              depositHook.isDepositing ||
+              depositHook.isConfirming ||
+              isSwitching
+            }
             className="w-full mt-4 bg-purple-600 text-white border-white hover:bg-purple-700 disabled:opacity-50"
             variant="default"
           >
             <Typography variant="body" className="!text-white font-comic">
               {isLoading
                 ? 'Yoinking...'
-                : !address
-                  ? 'Ineligible'
-                  : canYoink
-                    ? 'Yoink ChooChoo!'
-                    : 'Please wait...'}
+                : !isConnected
+                  ? 'Connect wallet'
+                  : deposit.isLoading
+                    ? 'Loading...'
+                    : !deposit.satisfied
+                      ? depositHook.isApproving
+                        ? 'Approving USDC...'
+                        : depositHook.isDepositing || depositHook.isConfirming
+                          ? 'Depositing...'
+                          : 'Deposit 1 USDC'
+                      : !address
+                        ? 'Ineligible'
+                        : canYoink
+                          ? 'Yoink ChooChoo!'
+                          : 'Please wait...'}
             </Typography>
           </Button>
+
+          {/* @todo possibly switch to rainbowkit */}
+          <ConnectWalletDialog open={connectOpen} onOpenChange={setConnectOpen} />
         </Card.Content>
       </Card>
     </div>

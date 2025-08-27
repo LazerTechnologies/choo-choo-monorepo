@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 
 export interface UseYoinkFlowResult {
-  yoinkTrain: (targetAddress: string) => Promise<void>;
+  yoinkTrain: (targetAddress: string, userFid: number) => Promise<void>;
   isLoading: boolean;
   isSuccess: boolean;
   isError: boolean;
@@ -26,7 +26,7 @@ export function useYoinkFlow(): UseYoinkFlowResult {
   const [isError, setIsError] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const yoinkTrain = useCallback(async (targetAddress: string) => {
+  const yoinkTrain = useCallback(async (targetAddress: string, userFid: number) => {
     setIsLoading(true);
     setIsSuccess(false);
     setIsError(false);
@@ -36,7 +36,7 @@ export function useYoinkFlow(): UseYoinkFlowResult {
       const res = await fetch('/api/yoink', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetAddress }),
+        body: JSON.stringify({ targetAddress, userFid }),
       });
 
       if (!res.ok) {

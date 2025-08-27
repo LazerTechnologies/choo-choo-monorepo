@@ -380,6 +380,58 @@ export class ContractService {
   }
 
   /**
+   * Get the required USDC deposit amount
+   */
+  async getDepositCost(): Promise<bigint> {
+    const contract = this.createTypedContract();
+    const cost = await contract.read.getRequiredDeposit();
+    return cost as bigint;
+  }
+
+  /**
+   * Get the cumulative USDC deposited by a specific FID
+   */
+  async getFidDeposited(fid: number): Promise<bigint> {
+    const contract = this.createTypedContract();
+    const deposited = await contract.read.fidToUsdcDeposited([BigInt(fid)]);
+    return deposited as bigint;
+  }
+
+  /**
+   * Get the USDC token address configured on the contract
+   */
+  async getUsdcAddress(): Promise<Address> {
+    const contract = this.createTypedContract();
+    const usdcAddress = await contract.read.usdc();
+    return usdcAddress as Address;
+  }
+
+  /**
+   * Get the contract's USDC balance
+   */
+  async getUsdcBalance(): Promise<bigint> {
+    const contract = this.createTypedContract();
+    const balance = await contract.read.getUsdcBalance();
+    return balance as bigint;
+  }
+
+  /**
+   * Check if a FID has deposited enough USDC to perform manual actions
+   */
+  async hasDepositedEnough(fid: number): Promise<boolean> {
+    try {
+      const [deposited, required] = await Promise.all([
+        this.getFidDeposited(fid),
+        this.getDepositCost(),
+      ]);
+      return deposited >= required;
+    } catch (error) {
+      console.error(`[ContractService] Failed to check deposit status for FID ${fid}:`, error);
+      return false;
+    }
+  }
+
+  /**
    * Get contract information and status using typed contract calls
    */
   async getContractInfo() {

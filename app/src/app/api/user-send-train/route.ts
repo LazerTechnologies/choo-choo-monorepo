@@ -5,6 +5,7 @@ import { redis } from '@/lib/kv';
 import { getNextTokenId } from '@/lib/redis-token-utils';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
 import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
+import { getContractService } from '@/lib/services/contract';
 import axios from 'axios';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
@@ -150,7 +151,37 @@ export async function POST(request: Request) {
       );
     }
 
-    // 3. Parse and validate request body
+    // 3. Check USDC deposit requirement for current holder
+    const currentUserFid = currentHolderData.currentHolder.fid;
+    try {
+      const contractService = getContractService();
+      const hasDeposited = await contractService.hasDepositedEnough(currentUserFid);
+
+      if (!hasDeposited) {
+        const [deposited, required] = await Promise.all([
+          contractService.getFidDeposited(currentUserFid),
+          contractService.getDepositCost(),
+        ]);
+
+        return NextResponse.json(
+          {
+            error:
+              'Insufficient USDC deposit. You must deposit at least 1 USDC to manually send the train.',
+            depositStatus: {
+              required: required.toString(),
+              deposited: deposited.toString(),
+              satisfied: false,
+            },
+          },
+          { status: 402 } // Payment Required
+        );
+      }
+    } catch (err) {
+      console.error('[user-send-train] Failed to check deposit status:', err);
+      return NextResponse.json({ error: 'Failed to verify deposit status' }, { status: 500 });
+    }
+
+    // 4. Parse and validate request body
     let body: UserSendTrainRequest;
     try {
       const rawBody = await request.json();

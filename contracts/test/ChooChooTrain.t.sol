@@ -4,10 +4,12 @@ pragma solidity ^0.8.20;
 import "forge-std/Test.sol";
 import {ChooChooTrain} from "../src/ChooChooTrain.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
+import {MockUSDC} from "./mocks/MockUSDC.sol";
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
 
 contract ChooChooTrainTest is Test {
     ChooChooTrain train;
+    MockUSDC usdc;
     address owner = address(0x420);
     address admin1 = address(0x111);
     address admin2 = address(0x222);
@@ -22,10 +24,18 @@ contract ChooChooTrainTest is Test {
     event Yoink(address indexed by, address indexed to, uint256 timestamp);
     event AdminAdded(address indexed admin);
     event AdminRemoved(address indexed admin);
+    event UsdcDeposited(address indexed from, uint256 indexed fid, uint256 amount);
+    event UsdcWithdrawn(address indexed to, address indexed token, uint256 amount);
+    event UsdcAddressUpdated(address indexed previous, address indexed current);
+    event DepositCostUpdated(uint256 previous, uint256 current);
 
     function setUp() public {
         vm.prank(owner);
         train = new ChooChooTrain(address(0), owner);
+        usdc = new MockUSDC();
+
+        vm.prank(owner);
+        train.setUsdc(address(usdc));
     }
 
     function testInitialState() public view {
@@ -538,5 +548,199 @@ contract ChooChooTrainTest is Test {
         // Initial holder is not yet considered a passenger until they complete their journey
         assertFalse(validTrain.hasBeenPassenger(passenger1));
         assertEq(validTrain.getTrainJourneyLength(), 0);
+    }
+
+    // ========== USDC DEPOSIT TESTS ========== //
+
+    function testDepositUsdcAtLeastOne() public {
+        uint256 fid = 12345;
+        uint256 depositCost = train.getRequiredDeposit();
+
+        // Mint USDC to passenger1
+        usdc.mint(passenger1, depositCost * 2);
+
+        // Test insufficient deposit reverts
+        vm.prank(passenger1);
+        usdc.approve(address(train), depositCost - 1);
+        vm.prank(passenger1);
+        vm.expectRevert(abi.encodeWithSignature("InsufficientDeposit(uint256,uint256)", depositCost - 1, depositCost));
+        train.depositUSDC(fid, depositCost - 1);
+
+        // Test sufficient deposit succeeds
+        vm.prank(passenger1);
+        usdc.approve(address(train), depositCost);
+        vm.prank(passenger1);
+        train.depositUSDC(fid, depositCost);
+
+        assertEq(train.fidToUsdcDeposited(fid), depositCost);
+    }
+
+    function testDepositRecordsByFidAndEmitsEvent() public {
+        uint256 fid = 12345;
+        uint256 depositAmount = 2 * 10 ** 6; // 2 USDC
+
+        // Mint USDC to passenger1
+        usdc.mint(passenger1, depositAmount);
+
+        // Approve and deposit
+        vm.prank(passenger1);
+        usdc.approve(address(train), depositAmount);
+
+        // Expect event emission
+        vm.expectEmit(true, true, false, true);
+        emit UsdcDeposited(passenger1, fid, depositAmount);
+
+        vm.prank(passenger1);
+        train.depositUSDC(fid, depositAmount);
+
+        // Check mapping updated
+        assertEq(train.fidToUsdcDeposited(fid), depositAmount);
+
+        // Check contract received USDC
+        assertEq(usdc.balanceOf(address(train)), depositAmount);
+    }
+
+    function testAnyUserCanDeposit() public {
+        uint256 fid1 = 111;
+        uint256 fid2 = 222;
+        uint256 depositAmount = 1 * 10 ** 6; // 1 USDC
+
+        // Mint USDC to multiple users
+        usdc.mint(passenger1, depositAmount);
+        usdc.mint(passenger2, depositAmount);
+
+        // First user deposits
+        vm.prank(passenger1);
+        usdc.approve(address(train), depositAmount);
+        vm.prank(passenger1);
+        train.depositUSDC(fid1, depositAmount);
+
+        // Second user deposits
+        vm.prank(passenger2);
+        usdc.approve(address(train), depositAmount);
+        vm.prank(passenger2);
+        train.depositUSDC(fid2, depositAmount);
+
+        // Check both deposits recorded
+        assertEq(train.fidToUsdcDeposited(fid1), depositAmount);
+        assertEq(train.fidToUsdcDeposited(fid2), depositAmount);
+        assertEq(usdc.balanceOf(address(train)), depositAmount * 2);
+    }
+
+    function testWithdrawByAdmin() public {
+        uint256 fid = 12345;
+        uint256 depositAmount = 5 * 10 ** 6; // 5 USDC
+
+        // Setup: deposit some USDC
+        usdc.mint(passenger1, depositAmount);
+        vm.prank(passenger1);
+        usdc.approve(address(train), depositAmount);
+        vm.prank(passenger1);
+        train.depositUSDC(fid, depositAmount);
+
+        // Non-admin cannot withdraw
+        vm.prank(passenger1);
+        vm.expectRevert(bytes("Not an admin"));
+        train.withdrawERC20(address(usdc), passenger1);
+
+        // Admin can withdraw
+        uint256 balanceBefore = usdc.balanceOf(owner);
+
+        vm.expectEmit(true, true, false, true);
+        emit UsdcWithdrawn(owner, address(usdc), depositAmount);
+
+        vm.prank(owner); // owner is admin by default
+        train.withdrawERC20(address(usdc), owner);
+
+        assertEq(usdc.balanceOf(address(train)), 0);
+        assertEq(usdc.balanceOf(owner), balanceBefore + depositAmount);
+    }
+
+    function testSetUsdcAndSetDepositCostByAdmin() public {
+        address newUsdcAddress = address(0x999);
+        uint256 newDepositCost = 2 * 10 ** 6; // 2 USDC
+
+        // Non-admin cannot set USDC address
+        vm.prank(passenger1);
+        vm.expectRevert();
+        train.setUsdc(newUsdcAddress);
+
+        // Admin can set USDC address
+        vm.expectEmit(true, true, false, false);
+        emit UsdcAddressUpdated(address(usdc), newUsdcAddress);
+
+        vm.prank(owner);
+        train.setUsdc(newUsdcAddress);
+        assertEq(train.usdc(), newUsdcAddress);
+
+        // Non-admin cannot set deposit cost
+        vm.prank(passenger1);
+        vm.expectRevert();
+        train.setDepositCost(newDepositCost);
+
+        // Admin can set deposit cost
+        uint256 oldCost = train.depositCost();
+        vm.expectEmit(false, false, false, true);
+        emit DepositCostUpdated(oldCost, newDepositCost);
+
+        vm.prank(owner);
+        train.setDepositCost(newDepositCost);
+        assertEq(train.depositCost(), newDepositCost);
+    }
+
+    function testDepositWithInvalidFid() public {
+        uint256 invalidFid = 0;
+        uint256 depositAmount = 1 * 10 ** 6;
+
+        usdc.mint(passenger1, depositAmount);
+        vm.prank(passenger1);
+        usdc.approve(address(train), depositAmount);
+
+        vm.prank(passenger1);
+        vm.expectRevert(abi.encodeWithSignature("InvalidFid(uint256)", invalidFid));
+        train.depositUSDC(invalidFid, depositAmount);
+    }
+
+    function testMultipleDepositsForSameFid() public {
+        uint256 fid = 12345;
+        uint256 firstDeposit = 1 * 10 ** 6; // 1 USDC
+        uint256 secondDeposit = 2 * 10 ** 6; // 2 USDC
+
+        usdc.mint(passenger1, firstDeposit + secondDeposit);
+
+        // First deposit
+        vm.prank(passenger1);
+        usdc.approve(address(train), firstDeposit);
+        vm.prank(passenger1);
+        train.depositUSDC(fid, firstDeposit);
+
+        // Second deposit (cumulative)
+        vm.prank(passenger1);
+        usdc.approve(address(train), secondDeposit);
+        vm.prank(passenger1);
+        train.depositUSDC(fid, secondDeposit);
+
+        // Should be cumulative
+        assertEq(train.fidToUsdcDeposited(fid), firstDeposit + secondDeposit);
+    }
+
+    function testViewHelpers() public {
+        // Test getRequiredDeposit
+        assertEq(train.getRequiredDeposit(), 1 * 10 ** 6);
+
+        // Test getUsdcBalance
+        assertEq(train.getUsdcBalance(), 0);
+
+        // Deposit some USDC
+        uint256 fid = 12345;
+        uint256 depositAmount = 3 * 10 ** 6;
+        usdc.mint(passenger1, depositAmount);
+        vm.prank(passenger1);
+        usdc.approve(address(train), depositAmount);
+        vm.prank(passenger1);
+        train.depositUSDC(fid, depositAmount);
+
+        // Check balance updated
+        assertEq(train.getUsdcBalance(), depositAmount);
     }
 }

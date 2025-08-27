@@ -5,6 +5,13 @@ import Image from 'next/image';
 import { Card } from '@/components/base/Card';
 import { Button } from '@/components/base/Button';
 import { Typography } from '@/components/base/Typography';
+import { useDepositStatus } from '@/hooks/useDepositStatus';
+import { useDepositUsdc } from '@/hooks/useDepositUsdc';
+import { useAccount, useSwitchChain } from 'wagmi';
+import { base, baseSepolia } from 'wagmi/chains';
+import { ConnectWalletDialog } from '@/components/ui/ConnectWalletDialog';
+import { useNeynarContext } from '@neynar/react';
+import { useMiniApp } from '@neynar/react';
 import { UsernameInput } from '@/components/ui/UsernameInput';
 import axios from 'axios';
 
@@ -33,6 +40,22 @@ export function UserNextStopWidget({ onTokenMinted }: UserNextStopWidgetProps) {
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { user: neynarUser } = useNeynarContext();
+  const { context } = useMiniApp();
+  const currentUserFid = neynarUser?.fid || context?.user?.fid || null;
+  const deposit = useDepositStatus(currentUserFid);
+  const { isConnected } = useAccount();
+  const { switchChainAsync, isPending: isSwitching } = useSwitchChain();
+  const [connectOpen, setConnectOpen] = useState(false);
+
+  const depositHook = useDepositUsdc({
+    fid: currentUserFid ?? null,
+    contractAddress: process.env.NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS as `0x${string}`,
+    usdcAddress: (deposit.config?.usdcAddress ||
+      '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913') as `0x${string}`,
+    required: deposit.required,
+  });
 
   const handleSendChooChoo = useCallback(async () => {
     if (!selectedUser) {
@@ -108,16 +131,62 @@ export function UserNextStopWidget({ onTokenMinted }: UserNextStopWidgetProps) {
         </div>
 
         <Button
-          onClick={handleSendChooChoo}
-          disabled={loading || !selectedUser}
+          onClick={async () => {
+            // Connection gate
+            if (!isConnected) {
+              setConnectOpen(true);
+              return;
+            }
+            // Ensure network
+            try {
+              const useMainnet = process.env.NEXT_PUBLIC_USE_MAINNET === 'true';
+              await switchChainAsync({ chainId: useMainnet ? base.id : baseSepolia.id });
+            } catch {}
+
+            // If deposit not satisfied, run approve/deposit flow
+            if (!deposit.satisfied) {
+              if (depositHook.needsApproval) {
+                await depositHook.approve();
+              } else {
+                await depositHook.deposit();
+                await deposit.refresh();
+              }
+              return;
+            }
+
+            // Ready to send
+            await handleSendChooChoo();
+          }}
+          disabled={
+            loading ||
+            !selectedUser ||
+            deposit.isLoading ||
+            depositHook.isApproving ||
+            depositHook.isDepositing ||
+            depositHook.isConfirming ||
+            isSwitching
+          }
           className="w-full bg-purple-500 hover:bg-purple-600 text-white"
         >
           {loading
             ? 'Sending ChooChoo...'
-            : selectedUser
-              ? `🚂 Send ChooChoo to @${selectedUser.username}`
-              : 'Send ChooChoo'}
+            : !isConnected
+              ? 'Connect wallet'
+              : deposit.isLoading
+                ? 'Loading...'
+                : !deposit.satisfied
+                  ? depositHook.isApproving
+                    ? 'Approving USDC...'
+                    : depositHook.isDepositing || depositHook.isConfirming
+                      ? 'Depositing...'
+                      : 'Deposit 1 USDC'
+                  : selectedUser
+                    ? `🚂 Send ChooChoo to @${selectedUser.username}`
+                    : 'Send ChooChoo'}
         </Button>
+
+        {/* @todo possibly switch to rainbowkit */}
+        <ConnectWalletDialog open={connectOpen} onOpenChange={setConnectOpen} />
 
         {error && (
           <div className="text-xs text-red-500 p-2 bg-red-50 dark:bg-red-900/20 rounded">
