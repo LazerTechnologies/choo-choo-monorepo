@@ -7,6 +7,7 @@ import { requireAdmin } from '@/lib/auth/require-admin';
 import type { CurrentHolderData } from '@/types/nft';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
 import { CHOOCHOO_CAST_TEMPLATES, CHOOCHOO_TRAIN_METADATA_URI } from '@/lib/constants';
+import { DEFAULT_WORKFLOW_DATA } from '@/lib/workflow-types';
 
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
@@ -176,8 +177,12 @@ export async function POST(request: Request) {
       timestamp: new Date().toISOString(),
     };
 
-    // Store in Redis using the same key as the rest of the system
+    // Store current holder and initial workflow state in Redis
     await redis.set('current-holder', JSON.stringify(currentHolderData));
+    
+    // Set initial workflow state to NOT_CASTED for fresh deployment
+    await redis.set('workflowState', JSON.stringify(DEFAULT_WORKFLOW_DATA));
+    
     try {
       const { redisPub, CURRENT_HOLDER_CHANNEL } = await import('@/lib/kv');
       await redisPub.publish(CURRENT_HOLDER_CHANNEL, JSON.stringify({ type: 'holder-updated' }));
@@ -186,6 +191,7 @@ export async function POST(request: Request) {
     console.log(
       `[admin-set-initial-holder] Successfully set initial current holder: ${targetUser.username} (FID: ${targetUser.fid})`
     );
+    console.log('[admin-set-initial-holder] Set initial workflow state to NOT_CASTED');
 
     // Set the main token URI for the train (tokenId 0) on the contract
     if (!CHOOCHOO_TRAIN_METADATA_URI) {
