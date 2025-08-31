@@ -2,7 +2,10 @@ import path from 'path';
 import fs from 'fs';
 
 // [production] find generator package directory
-export const baseDir = path.resolve(__dirname, '../..');
+// Use process.cwd() if we're in the generator directory, otherwise resolve from __dirname
+export const baseDir = process.cwd().endsWith('generator') 
+  ? process.cwd() 
+  : path.resolve(__dirname, '../..');
 export const layersDir = path.join(baseDir, 'layers');
 
 export const imageDimensions = {
@@ -19,6 +22,7 @@ export const collectionDescription = 'ChooChoo on Base';
  */
 export const layerOrder = [
   'background',
+  'flowers',
   'sky',
   'smoke',
   'train',
@@ -26,6 +30,11 @@ export const layerOrder = [
   'eyes',
   'nose',
   'arch',
+  'poster1',
+  'poster2',
+  'poster3',
+  'poster4',
+  'object',
 ] as const;
 
 /**
@@ -36,6 +45,7 @@ export type LayerName = (typeof layerOrder)[number];
 /**
  * Validates that all layer names in layerOrder correspond to existing directories
  * in the layers folder, and that no extra directories exist.
+ * Handles numbered directory prefixes (e.g., "0_background", "1_flowers").
  * @throws Error if validation fails
  */
 export function validateLayerDirectories(): void {
@@ -52,20 +62,28 @@ export function validateLayerDirectories(): void {
       .map((dirent) => dirent.name)
       .sort();
 
+    // Extract layer names from numbered directory names (e.g., "0_background" -> "background")
+    const existingLayerNames = existingDirs
+      .map((dir) => {
+        const match = dir.match(/^\d+_(.+)$/);
+        return match ? match[1] : dir;
+      })
+      .sort();
+
     const layerNames = [...layerOrder].sort();
 
     // Check for missing directories
-    const missingDirs = layerNames.filter((layer) => !existingDirs.includes(layer));
+    const missingDirs = layerNames.filter((layer) => !existingLayerNames.includes(layer));
     if (missingDirs.length > 0) {
       throw new Error(
         `Missing layer directories: ${missingDirs.join(', ')}. ` +
-          `Expected directories in ${layersDir}: ${layerNames.join(', ')}`
+          `Expected directories in ${layersDir} with format "N_layername": ${layerNames.join(', ')}`
       );
     }
 
     // Check for extra directories
-    const extraDirs = existingDirs.filter(
-      (dir) => !(layerNames as readonly string[]).includes(dir)
+    const extraDirs = existingLayerNames.filter(
+      (layer) => !(layerNames as readonly string[]).includes(layer)
     );
     if (extraDirs.length > 0) {
       throw new Error(

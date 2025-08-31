@@ -124,8 +124,20 @@ export const composeImage = async (): Promise<{
   for (const layer of layerOrder) {
     const traitData = selectTrait(layer, rarities);
     selectedTraits.push({ layer, ...traitData });
+    
+    // Format trait_type: capitalize and handle poster naming
+    let formattedTraitType: string;
+    if (layer.startsWith('poster')) {
+      // Convert "poster1" to "Poster 1", "poster2" to "Poster 2", etc.
+      const posterNumber = layer.replace('poster', '');
+      formattedTraitType = `Poster ${posterNumber}`;
+    } else {
+      // Capitalize first letter for other traits
+      formattedTraitType = layer.charAt(0).toUpperCase() + layer.slice(1);
+    }
+    
     attributes.push({
-      trait_type: layer,
+      trait_type: formattedTraitType,
       value: traitData.formattedName, // Use formatted name for metadata
     });
   }
@@ -141,7 +153,21 @@ export const composeImage = async (): Promise<{
 
   // Draw each trait layer in order (background → foreground)
   for (const { layer, originalName, formattedName } of selectedTraits) {
-    const imagePath = path.join(baseDir, 'layers', layer, originalName);
+    // Find the numbered directory for this layer
+    const layersDir = path.join(baseDir, 'layers');
+    const directories = await fs.readdir(layersDir, { withFileTypes: true });
+    const layerDir = directories
+      .filter((dirent) => dirent.isDirectory())
+      .find((dirent) => {
+        const match = dirent.name.match(/^\d+_(.+)$/);
+        return match && match[1] === layer;
+      });
+
+    if (!layerDir) {
+      throw new Error(`Could not find directory for layer "${layer}"`);
+    }
+
+    const imagePath = path.join(layersDir, layerDir.name, originalName);
 
     try {
       const layerBuffer = await fs.readFile(imagePath);
