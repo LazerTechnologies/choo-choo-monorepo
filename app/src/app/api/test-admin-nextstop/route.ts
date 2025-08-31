@@ -47,33 +47,31 @@ export async function POST(request: Request) {
 
     const contractService = getContractService();
 
-    // Get current total supply to calculate token ID
-    const totalSupply = await contractService.getTotalSupply();
-    const tokenId = totalSupply + 1;
+    // Get next token ID from contract
+    const tokenId = await contractService.getNextOnChainTicketId();
 
     // Execute the transaction
     const txHash = await contractService.executeNextStop(recipient, fullTokenURI);
 
-    // Get the actual minted token ID after transaction
-    let actualTokenId;
+    // The actual token ID is the one we got from the contract before minting
+    const actualTokenId = tokenId;
+    
     try {
-      const updatedTotalSupply = await contractService.getTotalSupply();
-      actualTokenId = tokenId;
+      const updatedTotalTickets = await contractService.getTotalTickets();
       console.log(
-        `[test-admin-nextstop] Actual minted token ID: ${actualTokenId} (total supply now: ${updatedTotalSupply})`
+        `[test-admin-nextstop] Minted token ID: ${actualTokenId} (total tickets now: ${updatedTotalTickets})`
       );
 
-      if (updatedTotalSupply !== tokenId) {
+      if (updatedTotalTickets !== tokenId) {
         console.warn(
-          `[test-admin-nextstop] Warning: Total supply (${updatedTotalSupply}) doesn't match expected token ID (${tokenId})`
+          `[test-admin-nextstop] Warning: Total tickets (${updatedTotalTickets}) doesn't match expected token ID (${tokenId})`
         );
       }
     } catch (err) {
       console.error(
-        '[test-admin-nextstop] Failed to get updated total supply, using predicted token ID:',
+        '[test-admin-nextstop] Failed to get updated total tickets (non-critical):',
         err
       );
-      actualTokenId = tokenId; // Fallback to predicted ID
     }
 
     // Store last moved timestamp
@@ -175,7 +173,6 @@ export async function POST(request: Request) {
       tokenURI: fullTokenURI,
       tokenId: actualTokenId,
       contractInfo: {
-        currentSupply: totalSupply,
         nextTokenId: actualTokenId,
       },
       timestamp: new Date().toISOString(),

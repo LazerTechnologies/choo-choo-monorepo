@@ -1,53 +1,118 @@
 {
   "background": {
-    "background.jpg": 10
+    "background.jpg": 100
+  },
+  "flowers": {
+    "blue_flowers.png": 33.33,
+    "purple_flowers.png": 33.34,
+    "pink_flowers.png": 33.33
   },
   "sky": {
-    "afternoon.png": 10,
-    "midnight.png": 10,
-    "space.png": 10,
-    "sunrise.png": 10,
-    "sunset.png": 10
+    "bright_sunrise.png": 20,
+    "night_time.png": 20,
+    "blue_afternoon.png": 20,
+    "gloomy_sunrise.png": 20,
+    "pink_sunset.png": 20
   },
   "smoke": {
-    "smoke.png": 10
+    "smoke.png": 100
   },
   "train": {
-    "based_blue.png": 10,
-    "bubblegum_pink.png": 10,
-    "golden_yellow.png": 10,
-    "money_green.png": 10,
-    "nounish_red.png": 10
+    "dark_black.png": 1.2,
+    "based_blue.png": 23.95,
+    "bubblegum_pink.png": 5.99,
+    "optimist_red.png": 11.98,
+    "golden_yellow.png": 5.99,
+    "clean_white.png": 2.99,
+    "coral_pink.png": 11.98,
+    "higher_green.png": 11.98,
+    "farcaster_purple.png": 23.94
   },
   "mouth": {
-    "funny_guy.png": 10,
-    "gdupi.png": 10,
-    "golden_teeth.png": 10,
-    "little_star.png": 10,
-    "nerdy.png": 10,
-    "nirvana.png": 10,
-    "smile.png": 10
+    "nirvana.png": 12.12,
+    "good_time.png": 12.12,
+    "badass.png": 12.12,
+    "grumpy.png": 12.12,
+    "getting_higher.png": 6.06,
+    "good_boy.png": 12.12,
+    "stupi.png": 3.03,
+    "magical_tongue.png": 6.06,
+    "smile.png": 12.12,
+    "nerdy.png": 12.13
   },
   "eyes": {
-    "cartoon.png": 10,
-    "flower.png": 10,
-    "gdupi.png": 10,
-    "lover.png": 10,
-    "melted.png": 10,
-    "mogger.png": 10,
-    "nervous.png": 10,
-    "nounish.png": 10,
-    "patched.png": 10,
-    "relaxed.png": 10,
-    "smol.png": 10,
-    "squiggle_vr.png": 10,
-    "sunglasses.png": 10,
-    "tripping.png": 10
+    "melting_eyes.png": 5.25,
+    "gdupi_vision.png": 1.57,
+    "nounish.png": 5.25,
+    "mogged.png": 5.25,
+    "lover.png": 2.62,
+    "frozen_frame.png": 1.31,
+    "squiggle_VR.png": 1.31,
+    "smol.png": 2.62,
+    "dead.png": 5.25,
+    "deal_with_it.png": 2.62,
+    "five_eyed.png": 5.25,
+    "diamond_eyes.png": 2.62,
+    "a_la_dan.png": 2.62,
+    "starred_eyes.png": 5.25,
+    "sunglasses.png": 10.5,
+    "anxious.png": 5.25,
+    "bored.png": 18.37,
+    "3D_glasses.png": 1.31,
+    "cutesy.png": 5.25,
+    "floral_eyes.png": 5.28
   },
   "nose": {
-    "nose.png": 10
+    "nose.png": 100
   },
   "arch": {
-    "arch.png": 10
+    "arch.png": 100
+  },
+  "poster1": {
+    "tipn.png": 8.33,
+    "balanced_love.png": 8.33,
+    "cryptokongz.png": 8.33,
+    "morph.png": 8.33,
+    "higher.png": 8.33,
+    "nouns.png": 8.33,
+    "rainbow.png": 8.33,
+    "gltch.png": 8.33,
+    "clanker.png": 8.33,
+    "no_bad_trippers.png": 8.33,
+    "noice.png": 8.33,
+    "groupie.png": 8.38
+  },
+  "poster2": {
+    "horse.png": 25,
+    "redacted_gdupi.png": 25,
+    "cryptoadz.png": 25,
+    "ethereum.png": 25
+  },
+  "poster3": {
+    "ace.png": 12.5,
+    "world_wide_web.png": 12.5,
+    "zora.png": 12.5,
+    "higher_higher.png": 12.5,
+    "ethereum.png": 12.5,
+    "fair.png": 12.5,
+    "bitcoin.png": 12.5,
+    "whale_alert.png": 12.5
+  },
+  "poster4": {
+    "bracky.png": 10,
+    "golden_star.png": 10,
+    "ponder.png": 10,
+    "qr.png": 10,
+    "bankr.png": 10,
+    "checks.png": 10,
+    "betr.png": 10,
+    "degen.png": 10,
+    "base.png": 10,
+    "rainbow.png": 10
+  },
+  "object": {
+    "saratoga.png": 33.33,
+    "checks.png": 33.33,
+    "rekt.png": 33.34
   }
 }

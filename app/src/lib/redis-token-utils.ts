@@ -11,41 +11,23 @@ export const REDIS_KEYS = {
 } as const;
 
 /**
+ * @deprecated Use getContractService().getNextOnChainTicketId() instead
+ * 
  * Get the next available token ID for minting
- * This is the central source of truth for token ID allocation
+ * This function is deprecated in favor of using the contract as the authoritative source of truth
  */
 export async function getNextTokenId(): Promise<number> {
+  console.warn('[redis-token-utils] getNextTokenId() is deprecated. Use getContractService().getNextOnChainTicketId() instead');
+  
   try {
-    const currentTrackerData = await redis.get(REDIS_KEYS.currentTokenId);
-
-    if (!currentTrackerData) {
-      // First ticket token (train is token 0, first ticket is token 1)
-      const nextTokenId = 1;
-      console.log(
-        '[redis-token-utils] No current token tracker found, starting with token ID:',
-        nextTokenId
-      );
-      return nextTokenId;
-    }
-
-    const tracker = JSON.parse(currentTrackerData) as CurrentTokenTracker;
-    const nextTokenId = tracker.currentTokenId + 1;
-    console.log('[redis-token-utils] Next token ID calculated from Redis tracker:', nextTokenId);
+    const { getContractService } = await import('@/lib/services/contract');
+    const contractService = getContractService();
+    const nextTokenId = await contractService.getNextOnChainTicketId();
+    console.log('[redis-token-utils] Next token ID from contract (via deprecated function):', nextTokenId);
     return nextTokenId;
   } catch (error) {
-    console.error('[redis-token-utils] Failed to get next token ID from Redis:', error);
-    // Fallback: try to get from contract
-    try {
-      const { getContractService } = await import('@/lib/services/contract');
-      const contractService = getContractService();
-      const totalSupply = await contractService.getTotalSupply();
-      const nextTokenId = totalSupply + 1;
-      console.warn('[redis-token-utils] Using contract fallback for next token ID:', nextTokenId);
-      return nextTokenId;
-    } catch (contractError) {
-      console.error('[redis-token-utils] Contract fallback also failed:', contractError);
-      throw new Error('Failed to get next token ID from both Redis and contract');
-    }
+    console.error('[redis-token-utils] Failed to get next token ID from contract:', error);
+    throw new Error('Failed to get next token ID from contract');
   }
 }
 

@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAddress } from 'viem';
-import { getNextTokenId } from '@/lib/redis-token-utils';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
 import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
 import { requireAdmin } from '@/lib/auth/require-admin';
+import { getContractService } from '@/lib/services/contract';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
@@ -188,19 +188,21 @@ export async function POST(request: Request) {
       console.warn('[admin-send-train] Failed to get current holder (non-critical):', err);
     }
 
-    // 5. Get next token ID from centralized Redis tracker
+    // 5. Get next token ID from contract
     let tokenId;
     try {
-      tokenId = await getNextTokenId();
-      console.log(`[admin-send-train] Using centralized token ID: ${tokenId}`);
+      const contractService = getContractService();
+      tokenId = await contractService.getNextOnChainTicketId();
+      console.log(`[admin-send-train] Next token ID from contract: ${tokenId}`);
     } catch (err) {
-      console.error('[admin-send-train] Failed to get next token ID:', err);
-      return NextResponse.json({ error: 'Failed to get next token ID' }, { status: 500 });
+      console.error('[admin-send-train] Failed to get next token ID from contract:', err);
+      return NextResponse.json({ error: 'Failed to get next token ID from contract' }, { status: 500 });
     }
 
-    // 5. Generate NFT with winner's username
+    // 5. Generate NFT with departing passenger's username
     let generateResponse;
     try {
+      const passengerUsername = currentHolderData?.username || 'unknown';
       generateResponse = await fetch(
         `${process.env.NEXT_PUBLIC_APP_URL}/api/internal/generate-nft`,
         {
@@ -211,7 +213,7 @@ export async function POST(request: Request) {
           },
           body: JSON.stringify({
             tokenId,
-            passengerUsername: winnerData.username,
+            passengerUsername,
           }),
         }
       );
@@ -239,9 +241,22 @@ export async function POST(request: Request) {
           'x-internal-secret': INTERNAL_SECRET || '',
         },
         body: JSON.stringify({
-          tokenId,
-          recipientAddress: winnerData.address,
+          newHolderAddress: winnerData.address,
           tokenURI,
+          newHolderData: {
+            username: winnerData.username,
+            fid: winnerData.fid,
+            displayName: winnerData.displayName,
+            pfpUrl: winnerData.pfpUrl,
+          },
+          previousHolderData: currentHolderData || {
+            username: 'unknown',
+            fid: 0,
+            displayName: 'Unknown',
+            pfpUrl: '',
+          }, // Previous holder gets the NFT ticket
+          sourceCastHash: undefined, // No cast hash for admin selection
+          totalEligibleReactors: 1, // Admin selected, so only 1 "eligible" user
         }),
       });
     } catch (err) {
@@ -267,7 +282,7 @@ export async function POST(request: Request) {
             'x-internal-secret': INTERNAL_SECRET || '',
           },
           body: JSON.stringify({
-            text: CHOOCHOO_CAST_TEMPLATES.TICKET_ISSUED(currentHolderData.username, tokenId),
+            text: CHOOCHOO_CAST_TEMPLATES.TICKET_ISSUED(currentHolderData.username, mintData.actualTokenId),
           }),
         });
       }
@@ -279,7 +294,7 @@ export async function POST(request: Request) {
     const response: AdminSendTrainResponse = {
       success: true,
       winner: winnerData,
-      tokenId,
+      tokenId: mintData.actualTokenId,
       txHash: mintData.txHash,
       tokenURI,
     };

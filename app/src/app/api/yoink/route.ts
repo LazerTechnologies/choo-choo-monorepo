@@ -109,6 +109,7 @@ export async function POST(request: NextRequest) {
 
     // 5. Get current holder data before yoink (they will receive the ticket NFT)
     let currentHolderData = null;
+    let nftRecipientAddress = null;
     try {
       const currentHolderResponse = await fetch(
         `${process.env.NEXT_PUBLIC_APP_URL}/api/current-holder`
@@ -122,6 +123,7 @@ export async function POST(request: NextRequest) {
             displayName: data.currentHolder.displayName,
             pfpUrl: data.currentHolder.pfpUrl,
           };
+          nftRecipientAddress = data.currentHolder.address;
           console.log(
             `[yoink] Current holder: ${currentHolderData.username} (FID: ${currentHolderData.fid}) will receive NFT`
           );
@@ -155,16 +157,16 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. Get next token ID for the ticket that will be minted
-    let totalSupply, tokenId;
+    let tokenId;
     try {
-      totalSupply = await contractService.getTotalSupply();
-      tokenId = totalSupply + 1;
+      tokenId = await contractService.getNextOnChainTicketId();
+      console.log(`[yoink] Next token ID from contract: ${tokenId}`);
     } catch (err) {
-      console.error('[yoink] Failed to get contract state:', err);
-      return NextResponse.json({ error: 'Failed to get contract state' }, { status: 500 });
+      console.error('[yoink] Failed to get next token ID from contract:', err);
+      return NextResponse.json({ error: 'Failed to get next token ID from contract' }, { status: 500 });
     }
 
-    // 8. Generate NFT for the previous holder (current holder gets a ticket)
+    // 8. Generate NFT for the previous holder
     let nftData = null;
     if (currentHolderData?.username) {
       try {
@@ -237,9 +239,57 @@ export async function POST(request: NextRequest) {
       console.warn('[yoink] Failed to update Redis (non-critical):', err);
     }
 
-    // 10. If we have NFT data, set it on the contract
+    // 10. Store comprehensive token data in Redis and set ticket data on contract
     if (nftData?.tokenURI && currentHolderData) {
       try {
+        // Store token data in Redis using the same pattern as other endpoints
+        const { storeTokenData } = await import('@/lib/redis-token-utils');
+        const { createChooChooMetadata } = await import('@/lib/nft-metadata-utils');
+        
+        const metadataHash = nftData.metadataHash;
+        const imageHash = nftData.imageHash;
+        
+        // Create proper metadata with Passenger trait using departing passenger's username
+        const metadata = createChooChooMetadata(
+          tokenId,
+          imageHash,
+          nftData.metadata?.attributes || [],
+          currentHolderData.username
+        );
+
+        let actualTokenId = tokenId;
+        try {
+          const postNextId = await contractService.getNextOnChainTicketId();
+          actualTokenId = postNextId - 1;
+        } catch {}
+
+        const tokenData = {
+          tokenId: actualTokenId,
+          imageHash,
+          metadataHash,
+          tokenURI: nftData.tokenURI,
+          holderAddress: nftRecipientAddress || 'unknown', // NFT goes to departing passenger
+          holderUsername: currentHolderData.username,
+          holderFid: currentHolderData.fid,
+          holderDisplayName: currentHolderData.displayName,
+          holderPfpUrl: currentHolderData.pfpUrl,
+          transactionHash: txHash,
+          timestamp: new Date().toISOString(),
+          attributes: metadata.attributes || [],
+          sourceType: 'yoink' as const,
+          sourceCastHash: undefined,
+          totalEligibleReactors: 1,
+        };
+
+        await storeTokenData(tokenData);
+        console.log(`[yoink] Stored comprehensive token data in Redis for token ${actualTokenId}`);
+      } catch (err) {
+        console.error('[yoink] Failed to store token data in Redis:', err);
+      }
+
+      try {
+        // Set ticket data on contract
+        // Use actual token ID for contract metadata
         const setDataResponse = await fetch(
           `${process.env.NEXT_PUBLIC_APP_URL}/api/internal/set-ticket-data`,
           {
@@ -249,7 +299,14 @@ export async function POST(request: NextRequest) {
               'x-internal-secret': INTERNAL_SECRET || '',
             },
             body: JSON.stringify({
-              tokenId,
+              tokenId: (await (async () => {
+                try {
+                  const postNextId = await contractService.getNextOnChainTicketId();
+                  return postNextId - 1;
+                } catch {
+                  return tokenId;
+                }
+              })()),
               tokenURI: nftData.tokenURI,
               image: nftData.imageHash ? `ipfs://${nftData.imageHash}` : '',
               traits: '',
@@ -258,7 +315,7 @@ export async function POST(request: NextRequest) {
         );
 
         if (setDataResponse.ok) {
-          console.log(`[yoink] Set ticket data for token ${tokenId}`);
+          console.log(`[yoink] Set ticket data using actual minted token ID`);
         } else {
           console.warn('[yoink] Failed to set ticket data (non-critical)');
         }
@@ -295,10 +352,13 @@ export async function POST(request: NextRequest) {
         }
 
         if (currentHolderData?.username && nftData?.imageHash) {
-          const ticketCastText = CHOOCHOO_CAST_TEMPLATES.TICKET_ISSUED(
-            currentHolderData.username,
-            tokenId
-          );
+          // Announce using actual minted ID
+          let announceTokenId = tokenId;
+          try {
+            const postNextId = await contractService.getNextOnChainTicketId();
+            announceTokenId = postNextId - 1;
+          } catch {}
+          const ticketCastText = CHOOCHOO_CAST_TEMPLATES.TICKET_ISSUED(currentHolderData.username, announceTokenId);
 
           const imageUrl = `https://${process.env.NEXT_PUBLIC_PINATA_GATEWAY}/ipfs/${nftData.imageHash}`;
 

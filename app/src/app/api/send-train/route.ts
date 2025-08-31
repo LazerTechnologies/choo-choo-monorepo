@@ -110,20 +110,21 @@ export async function POST() {
       console.warn('[send-train] Failed to get current holder (non-critical):', err);
     }
 
-    // 5. Get next token ID
-    let contractService, totalSupply, tokenId;
+    // 5. Get next token ID from contract
+    let contractService, tokenId;
     try {
       contractService = getContractService();
-      totalSupply = await contractService.getTotalSupply();
-      tokenId = totalSupply + 1;
+      tokenId = await contractService.getNextOnChainTicketId();
+      console.log(`[send-train] Next token ID from contract: ${tokenId}`);
     } catch (err) {
-      console.error('[send-train] Failed to get contract state:', err);
-      return NextResponse.json({ error: 'Failed to get contract state' }, { status: 500 });
+      console.error('[send-train] Failed to get next token ID from contract:', err);
+      return NextResponse.json({ error: 'Failed to get next token ID from contract' }, { status: 500 });
     }
 
-    // 5. Generate NFT with winner's username
+    // 5. Generate NFT with departing passenger's username
     let generateResponse;
     try {
+      const passengerUsername = currentHolderData?.username || 'anon';
       generateResponse = await fetch(
         `${process.env.NEXT_PUBLIC_APP_URL}/api/internal/generate-nft`,
         {
@@ -134,7 +135,7 @@ export async function POST() {
           },
           body: JSON.stringify({
             tokenId,
-            passengerUsername: winnerData.winner.username,
+            passengerUsername,
           }),
         }
       );
@@ -170,7 +171,6 @@ export async function POST() {
         body: JSON.stringify({
           newHolderAddress: winnerData.winner.address,
           tokenURI: nftData.tokenURI,
-          tokenId,
           newHolderData: winnerData.winner,
           previousHolderData: currentHolderData, // Previous holder gets the NFT ticket
           sourceCastHash: castHash,

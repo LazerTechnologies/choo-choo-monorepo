@@ -62,7 +62,6 @@ interface WinnerData {
 interface MintTokenRequest {
   newHolderAddress: string;
   tokenURI: string;
-  tokenId: number;
   newHolderData: WinnerData;
   previousHolderData: WinnerData; // The person who gets the NFT (departing passenger)
   sourceCastHash?: string;
@@ -91,7 +90,6 @@ const winnerDataSchema = z.object({
 const mintTokenBodySchema = z.object({
   newHolderAddress: addressSchema,
   tokenURI: z.string().min(1, 'Token URI is required'),
-  tokenId: z.number().positive('Token ID must be positive'),
   newHolderData: winnerDataSchema,
   previousHolderData: winnerDataSchema, // Required - NFT tickets always go to departing passengers
   sourceCastHash: z.string().optional(),
@@ -134,7 +132,6 @@ export async function POST(request: Request) {
     const {
       newHolderAddress,
       tokenURI,
-      tokenId,
       newHolderData,
       previousHolderData,
       sourceCastHash,
@@ -159,6 +156,24 @@ export async function POST(request: Request) {
     const nftRecipient = await getRecipientAddress(previousHolderData);
     const nftRecipientData = previousHolderData;
 
+    const contractService = getContractService();
+
+    // Get the authoritative token ID from the contract (source of truth)
+    let tokenId: number;
+    try {
+      tokenId = await contractService.getNextOnChainTicketId();
+      console.log(`[internal/mint-token] Authoritative token ID from contract: ${tokenId}`);
+    } catch (err) {
+      console.error('[internal/mint-token] Failed to get next token ID from contract:', err);
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Failed to get next token ID from contract: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        },
+        { status: 500 }
+      );
+    }
+
     console.log(
       `[internal/mint-token] Minting token ${tokenId} for ${nftRecipientData.username} (${nftRecipient})`
     );
@@ -166,8 +181,6 @@ export async function POST(request: Request) {
     const fullTokenURI = (
       tokenURI.startsWith('ipfs://') ? tokenURI : `ipfs://${tokenURI}`
     ) as TokenURI;
-
-    const contractService = getContractService();
 
     let txHash;
     try {
@@ -187,25 +200,17 @@ export async function POST(request: Request) {
       );
     }
 
-    // The actual token ID is always the one we calculated from Redis
-    // since that's our centralized source of truth
-    const actualTokenId = tokenId;
-
+    let actualTokenId = tokenId;
     try {
-      const updatedTotalSupply = await contractService.getTotalSupply();
+      const postNextId = await contractService.getNextOnChainTicketId();
+      actualTokenId = postNextId - 1;
+      const updatedTotalTickets = await contractService.getTotalTickets();
       console.log(
-        `[internal/mint-token] Minted token ID: ${actualTokenId} (total supply now: ${updatedTotalSupply})`
+        `[internal/mint-token] Minted token ID: ${actualTokenId} (total tickets now: ${updatedTotalTickets})`
       );
-
-      // Verify the mint was successful by checking total supply increased correctly
-      if (updatedTotalSupply !== tokenId) {
-        console.warn(
-          `[internal/mint-token] Total supply (${updatedTotalSupply}) doesn't match expected token ID (${tokenId}). This may indicate a sync issue.`
-        );
-      }
     } catch (err) {
       console.error(
-        '[internal/mint-token] Failed to get updated total supply (non-critical):',
+        '[internal/mint-token] Failed to compute actual minted token ID (non-critical):',
         err
       );
     }

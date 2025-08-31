@@ -133,6 +133,24 @@ export class ContractService {
   }
 
   /**
+   * Get the next ticket ID that will be minted (authoritative source of truth)
+   * This is the ONLY method that should be used to determine the next token ID
+   */
+  async getNextOnChainTicketId(): Promise<number> {
+    const trainStatus = await this.getTrainStatus();
+    return Number(trainStatus.nextTicketId);
+  }
+
+  /**
+   * Get token URI for a specific token ID (public method for repair scripts)
+   */
+  async getTokenURI(tokenId: number): Promise<string> {
+    const contract = this.createTypedContract();
+    const tokenURI = await contract.read.tokenURI([BigInt(tokenId)]);
+    return tokenURI as string;
+  }
+
+  /**
    * Get the train journey length (number of stops made)
    */
   async getTrainJourneyLength(): Promise<number> {
@@ -452,7 +470,7 @@ export class ContractService {
         totalSupply: Number(totalSupply),
         totalTickets: Number(totalTickets),
         journeyLength: Number(journeyLength),
-        nextTokenId: Number(totalSupply) + 1,
+        nextTokenId: await this.getNextOnChainTicketId(),
         currentHolder,
         adminCount: (admins as Address[]).length,
         network: this.chain.name,

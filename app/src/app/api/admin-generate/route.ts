@@ -18,14 +18,13 @@ export async function POST(request: Request) {
 
     console.log(`[admin-generate] Admin ${auth.adminFid} generating test NFT`);
 
-    // Get the next token ID from contract (same as real tokens would get)
+    // Get the next token ID from contract
     let testTokenId;
     try {
       const contractService = getContractService();
-      const totalSupply = await contractService.getTotalSupply();
-      testTokenId = totalSupply + 1;
+      testTokenId = await contractService.getNextOnChainTicketId();
     } catch (err) {
-      console.error('[admin-generate] Failed to get contract total supply, using fallback:', err);
+      console.error('[admin-generate] Failed to get next token ID from contract, using fallback:', err);
       testTokenId = 1; // Fallback to token 1
     }
 

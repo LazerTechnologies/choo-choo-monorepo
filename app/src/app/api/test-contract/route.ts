@@ -73,15 +73,17 @@ async function testGetTotalSupply(contractService: ContractService): Promise<Tes
 async function testTokenIdCalculation(contractService: ContractService): Promise<TestResult> {
   try {
     const totalSupply = await contractService.getTotalSupply();
-    const nextTokenId = totalSupply + 1;
+    const totalTickets = await contractService.getTotalTickets();
+    const nextTokenId = await contractService.getNextOnChainTicketId();
 
     return {
       success: true,
       message: 'Token ID calculation accurate',
       data: {
         totalSupply,
+        totalTickets,
         calculatedNextTokenId: nextTokenId,
-        formula: 'totalSupply + 1',
+        formula: 'getNextOnChainTicketId() from contract',
       },
     };
   } catch (error) {

@@ -101,7 +101,7 @@ export interface TokenData {
   attributes?: Array<{ trait_type: string; value: string | number }>;
 
   // Source information
-  sourceType: 'send-train' | 'admin-test' | 'manual';
+  sourceType: 'send-train' | 'admin-test' | 'manual' | 'yoink' | 'repair-script';
   sourceCastHash?: string;
   totalEligibleReactors?: number;
 }

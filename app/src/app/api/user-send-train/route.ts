@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAddress } from 'viem';
 import { redis } from '@/lib/kv';
-import { getNextTokenId } from '@/lib/redis-token-utils';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
 import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
 import { getContractService } from '@/lib/services/contract';
@@ -238,17 +237,18 @@ export async function POST(request: Request) {
       pfpUrl: currentHolderData.currentHolder.pfpUrl,
     };
 
-    // 5. Get next token ID from centralized Redis tracker
+    // 5. Get next token ID from contract
     let tokenId;
     try {
-      tokenId = await getNextTokenId();
-      console.log(`[user-send-train] Using centralized token ID: ${tokenId}`);
+      const contractService = getContractService();
+      tokenId = await contractService.getNextOnChainTicketId();
+      console.log(`[user-send-train] Next token ID from contract: ${tokenId}`);
     } catch (err) {
-      console.error('[user-send-train] Failed to get next token ID:', err);
-      return NextResponse.json({ error: 'Failed to get next token ID' }, { status: 500 });
+      console.error('[user-send-train] Failed to get next token ID from contract:', err);
+      return NextResponse.json({ error: 'Failed to get next token ID from contract' }, { status: 500 });
     }
 
-    // 6. Generate NFT with winner's username
+    // 6. Generate NFT with departing passenger's username
     let generateResponse;
     try {
       generateResponse = await fetch(
@@ -261,7 +261,7 @@ export async function POST(request: Request) {
           },
           body: JSON.stringify({
             tokenId,
-            passengerUsername: winnerData.username,
+            passengerUsername: currentHolder.username,
           }),
         }
       );
@@ -297,7 +297,6 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           newHolderAddress: winnerData.address,
           tokenURI: nftData.tokenURI,
-          tokenId,
           newHolderData: {
             username: winnerData.username,
             fid: winnerData.fid,
