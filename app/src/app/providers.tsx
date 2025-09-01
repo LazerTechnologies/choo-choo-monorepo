@@ -22,7 +22,7 @@ export function Providers({
         <NeynarContextProvider
           settings={{
             clientId: process.env.NEXT_PUBLIC_NEYNAR_CLIENT_ID || '',
-            defaultTheme: Theme.Light,
+            defaultTheme: Theme.Dark,
             eventsCallbacks: {
               onAuthSuccess: () => {},
               onSignout: () => {},
