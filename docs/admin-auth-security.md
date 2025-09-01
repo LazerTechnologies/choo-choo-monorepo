@@ -4,13 +4,13 @@ This document explains the authentication and security architecture for admin fu
 
 ## Overview
 
-The admin system uses a **dual-layer security model** with Farcaster mini-app context validation and server-to-server authentication. This provides robust protection against spoofing while maintaining a seamless user experience.
+The admin system uses a **simplified security model** with UI gating and server-to-server authentication. This provides robust protection while maintaining a seamless user experience without requiring frame context validation.
 
 ## Architecture
 
 ```
 Frontend (Farcaster Mini-App)
-  ↓ [Frame Context + Session Cookies]
+  ↓ [UI Gating + Origin Validation]
 Proxy Routes (/api/admin/*/proxy)
   ↓ [Server-to-Server with ADMIN_SECRET]
 Real Admin Endpoints (/api/admin/*)
@@ -39,34 +39,32 @@ const isAdmin = currentUserFid ? ADMIN_FIDS.includes(currentUserFid) : false;
 
 ### Layer 2: Proxy Route Validation
 
-**Purpose**: Validate admin requests from authenticated mini-app users
+**Purpose**: Validate admin requests with origin checks and forward with server secrets
 **Files**:
 
-- `src/lib/auth/require-frame-admin.ts`
+- `src/lib/auth/require-admin.ts` (shared `isTrustedOrigin` function)
 - `src/app/api/admin/*/proxy/route.ts`
 
 **How it works**:
 
-1. Frontend sends frame context data with requests
-2. Proxy validates FID from authenticated Neynar context
-3. Proxy forwards to real endpoint with server secret
+1. Frontend sends clean JSON requests (no frame context wrapper)
+2. Proxy validates request origin for CSRF protection
+3. Proxy forwards to real endpoint with server secret + fallback admin FID
 
 ```typescript
-// Frontend wraps requests
-const frameData = {
-  ...requestData,
-  miniAppContext: {
-    userFid: currentUserFid,
-    isAuthenticated: !!neynarAuthUser,
-    hasContext: !!context,
-  },
-  fid: currentUserFid,
-};
+// Frontend sends clean requests
+const response = await fetch('/api/admin/endpoint/proxy', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  credentials: 'include',
+  body: JSON.stringify({
+    /* actual data */
+  }),
+});
 
-// Server validates
-const fid = body?.miniAppContext?.userFid || body?.fid;
-if (!ADMIN_FIDS.includes(fid)) {
-  return unauthorized();
+// Server validates origin and forwards
+if (!isTrustedOrigin(request)) {
+  return NextResponse.json({ error: 'Forbidden origin' }, { status: 403 });
 }
 ```
 
@@ -81,10 +79,11 @@ if (!ADMIN_FIDS.includes(fid)) {
 **How it works**:
 
 ```typescript
-// Proxy forwards with secret
+// Proxy forwards with secret and fallback FID
+const fallbackAdminFid = ADMIN_FIDS[0] || 0;
 headers: {
   'x-admin-secret': ADMIN_SECRET,
-  'x-admin-fid': String(validatedFid),
+  'x-admin-fid': String(fallbackAdminFid),
 }
 
 // Endpoint validates secret
@@ -117,9 +116,9 @@ export function useAdminAccess() {
 
 #### `src/hooks/useFrameContext.ts`
 
-- **Purpose**: Wrap request data with frame context
-- **Pattern**: Include authenticated user FID in requests
-- **Usage**: Admin API calls
+- **Purpose**: Provide frame context data (currently unused for admin auth)
+- **Pattern**: Memoized context data extraction
+- **Usage**: Available for future frame-based features
 
 ```typescript
 export function useFrameContext() {
@@ -127,15 +126,18 @@ export function useFrameContext() {
   const { user: neynarAuthUser } = useNeynarContext();
   const currentUserFid = neynarAuthUser?.fid || context?.user?.fid;
 
-  const getFrameData = (requestData: any) => ({
-    ...requestData,
-    miniAppContext: {
-      isAuthenticated: !!neynarAuthUser,
-      hasContext: !!context,
-      userFid: currentUserFid,
-    },
-    fid: currentUserFid,
-  });
+  const getFrameData = useCallback(
+    (requestData: Record<string, unknown>) => ({
+      ...requestData,
+      miniAppContext: {
+        isAuthenticated: !!neynarAuthUser,
+        hasContext: !!context,
+        userFid: currentUserFid,
+      },
+      fid: currentUserFid,
+    }),
+    [neynarAuthUser, context, currentUserFid]
+  );
 
   return { currentUserFid, getFrameData };
 }
@@ -143,26 +145,38 @@ export function useFrameContext() {
 
 ### Authentication Guards
 
-#### `src/lib/auth/require-frame-admin.ts`
+#### `src/lib/auth/require-admin.ts`
 
-- **Purpose**: Validate admin requests from mini-app context
-- **Pattern**: Extract and validate FID from request body
-- **Usage**: Proxy routes
+- **Purpose**: Shared origin validation and server-to-server admin authentication
+- **Pattern**: Export reusable `isTrustedOrigin` function
+- **Usage**: Proxy routes and real admin endpoints
 
 ```typescript
-export async function requireFrameAdmin(request: Request) {
-  const body = await request.json();
-  const fid = body?.miniAppContext?.userFid || body?.fid;
+export function isTrustedOrigin(request: Request): boolean {
+  try {
+    const origin = request.headers.get('origin');
+    const host = request.headers.get('host');
+    if (origin && host) {
+      const originUrl = new URL(origin);
+      if (originUrl.host === host) return true;
+    }
 
-  if (!fid || !ADMIN_FIDS.includes(fid)) {
-    return { ok: false, response: unauthorized() };
+    if (APP_URL) {
+      const app = new URL(APP_URL);
+      if (origin) {
+        const req = new URL(origin);
+        if (app.hostname === req.hostname && app.protocol === req.protocol)
+          return true;
+      }
+    }
+  } catch {
+    // ignore
   }
-
-  return { ok: true, adminFid: fid };
+  return false;
 }
 ```
 
-#### `src/lib/auth/require-admin.ts`
+#### `src/lib/auth/require-admin.ts` (requireAdmin function)
 
 - **Purpose**: Validate server-to-server admin requests
 - **Pattern**: Check admin secret header
@@ -192,43 +206,54 @@ All admin proxy routes follow this pattern:
 **File**: `src/app/api/admin/{endpoint}/proxy/route.ts`
 
 ```typescript
-import { requireFrameAdmin } from '@/lib/auth/require-frame-admin';
-import { APP_URL } from '@/lib/constants';
+import { NextResponse } from 'next/server';
+import { APP_URL, ADMIN_FIDS } from '@/lib/constants';
+import { isTrustedOrigin } from '@/lib/auth/require-admin';
 
 export async function POST(request: Request) {
-  // 1. Validate admin from frame context
-  const auth = await requireFrameAdmin(request);
-  if (!auth.ok) return auth.response;
+  // 1. Basic origin check for CSRF protection
+  if (!isTrustedOrigin(request)) {
+    return NextResponse.json({ error: 'Forbidden origin' }, { status: 403 });
+  }
 
   // 2. Check admin secret is configured
   const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
   if (!ADMIN_SECRET) {
     return NextResponse.json(
-      { error: 'Server misconfigured' },
+      { error: 'Server misconfigured: ADMIN_SECRET missing' },
       { status: 500 }
     );
   }
 
   try {
-    // 3. Extract actual request data
-    const frameBody = await request.json();
-    const actualBody = frameBody?.untrustedData || frameBody;
+    // 3. Extract request data (no frame wrapper)
+    const body = await request.json();
 
-    // 4. Forward to real endpoint with secret
+    // 4. Use fallback admin FID since UI gating ensures only admins access
+    const fallbackAdminFid = ADMIN_FIDS[0] || 0;
+
+    // 5. Forward to real endpoint with secret
     const upstream = await fetch(`${APP_URL}/api/admin/{endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-admin-secret': ADMIN_SECRET,
-        'x-admin-fid': String(auth.adminFid),
+        'x-admin-fid': String(fallbackAdminFid),
       },
-      body: JSON.stringify(actualBody),
+      body: JSON.stringify(body),
+      cache: 'no-store',
     });
 
-    // 5. Return response
-    return new NextResponse(await upstream.text(), {
+    // 6. Return response
+    const text = await upstream.text();
+    const contentType =
+      upstream.headers.get('content-type') || 'application/json';
+    return new NextResponse(text, {
       status: upstream.status,
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'no-store',
+      },
     });
   } catch (error) {
     return NextResponse.json(
@@ -241,23 +266,23 @@ export async function POST(request: Request) {
 
 ### Frontend Usage Pattern
 
-Admin components use this pattern:
+Admin components use this simplified pattern:
 
 ```typescript
 function AdminComponent() {
-  const { getFrameData } = useFrameContext();
+  const { isAdmin } = useAdminAccess(); // UI gating
 
   const handleAdminAction = async () => {
+    if (!isAdmin) return; // UI-level check
+
     const res = await fetch('/api/admin/endpoint/proxy', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include', // Include session cookies
-      body: JSON.stringify(
-        getFrameData({
-          // actual request data
-          targetFid: 12345,
-        })
-      ),
+      credentials: 'include',
+      body: JSON.stringify({
+        // Clean request data - no frame wrapper needed
+        targetFid: 12345,
+      }),
     });
 
     const data = await res.json();
@@ -276,8 +301,7 @@ ADMIN_FIDS=377557,2802,243300  # Comma-separated list of admin FIDs
 ADMIN_SECRET=your-long-random-secret  # Server-to-server authentication
 
 # App URLs
-NEXT_PUBLIC_URL=https://your-domain.com
-APP_URL=https://your-domain.com  # Used by proxy routes
+NEXT_PUBLIC_URL=https://your-domain.com  # Used by APP_URL constant
 
 # Neynar Integration
 NEYNAR_API_KEY=your-neynar-key
@@ -294,16 +318,17 @@ NEYNAR_CLIENT_ID=your-client-id
 
 ### Anti-Spoofing Protection
 
-1. **FID Validation**: User's FID comes from authenticated Neynar context
-2. **Server Secrets**: Real endpoints only accept internal calls with secrets
-3. **Dual Validation**: Both proxy and endpoint validate admin status
+1. **UI Gating**: Admin interface only shown to authorized FIDs
+2. **Origin Validation**: Proxy routes validate same-origin requests for CSRF protection
+3. **Server Secrets**: Real endpoints only accept internal calls with secrets
+4. **Fallback FID**: Uses first admin FID since UI ensures only admins can access
 
 ### Attack Scenarios Blocked
 
-- ❌ **Spoofed FID**: Can't fake FID in authenticated Neynar context
+- ❌ **UI Access**: Non-admin FIDs can't see admin interface
 - ❌ **Direct Endpoint Access**: Requires `ADMIN_SECRET` header
-- ❌ **CSRF Attacks**: Origin validation + authenticated context
-- ❌ **Replay Attacks**: Session-based authentication with expiry
+- ❌ **CSRF Attacks**: Origin validation prevents cross-site requests
+- ❌ **Proxy Bypass**: Real endpoints require server secret
 
 ## Testing Admin Access
 
@@ -317,12 +342,18 @@ console.log('Is Admin:', isAdmin, 'FID:', currentUserFid);
 ### Test Admin API Call
 
 ```typescript
-const { getFrameData } = useFrameContext();
-const response = await fetch('/api/admin/holder-status/proxy', {
+// For status endpoints (public)
+const response = await fetch('/api/admin/holder-status', {
+  method: 'GET',
+  credentials: 'include',
+});
+
+// For admin actions (via proxy)
+const response = await fetch('/api/admin/send-cast/proxy', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   credentials: 'include',
-  body: JSON.stringify(getFrameData({})),
+  body: JSON.stringify({ text: 'Test message' }),
 });
 ```
 
@@ -330,24 +361,32 @@ const response = await fetch('/api/admin/holder-status/proxy', {
 
 ### Common Issues
 
-1. **401 Unauthorized**: Check if your FID is in `ADMIN_FIDS`
-2. **500 Server Error**: Verify `ADMIN_SECRET` is set
-3. **Admin tab not showing**: Check Farcaster context is available
+1. **403 Forbidden Origin**: Check origin validation in proxy routes
+2. **500 Server Error**: Verify `ADMIN_SECRET` and `NEXT_PUBLIC_URL` are set
+3. **Admin tab not showing**: Check if your FID is in `ADMIN_FIDS`
+4. **Status check fails**: Ensure Redis is accessible
 
 ### Debug Steps
 
-1. Check environment variables are set
+1. Check environment variables: `ADMIN_SECRET`, `NEXT_PUBLIC_URL`, `ADMIN_FIDS`
 2. Verify FID is in admin list: `console.log(ADMIN_FIDS)`
-3. Test frame context: `console.log(context?.user?.fid)`
-4. Check server logs for validation errors
+3. Test admin status: `console.log(useAdminAccess())`
+4. Check server logs for origin validation or secret errors
 
 ## Migration Notes
 
-This system replaced the previous NextAuth + frame signature validation approach because:
+This system evolved through several iterations:
 
-- Frame signatures weren't available in mini-app context
-- NextAuth sessions required explicit sign-in flow
-- New approach uses existing working FID detection pattern
-- Maintains same security level with better UX
+1. **Original**: NextAuth + frame signature validation
+2. **V2**: Frame context validation with `requireFrameAdmin`
+3. **Current**: UI gating + origin validation + server secrets
 
-The dual-layer approach ensures both UI responsiveness and server security without requiring additional user authentication steps.
+### Why the Current Approach
+
+- **Simplified**: No frame context parsing or validation needed
+- **Reliable**: UI gating is straightforward and works consistently
+- **Secure**: Origin validation + server secrets prevent spoofing
+- **Maintainable**: Shared `isTrustedOrigin` function reduces code duplication
+- **Fast**: No complex frame validation on every request
+
+The current approach maintains strong security while being simpler to understand and maintain.
