@@ -42,6 +42,7 @@ export function UsernameInput({
   const [showDropdown, setShowDropdown] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [isUserSelected, setIsUserSelected] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -81,6 +82,11 @@ export function UsernameInput({
 
   // Debounced search effect
   useEffect(() => {
+    if (isUserSelected) {
+      setIsUserSelected(false);
+      return;
+    }
+
     const timeoutId = setTimeout(() => {
       if (searchTerm.trim().length > 0) {
         searchUsers(searchTerm.trim());
@@ -91,7 +97,7 @@ export function UsernameInput({
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, searchUsers]);
+  }, [searchTerm, searchUsers, isUserSelected]);
 
   // Handle clicks outside to close dropdown
   useEffect(() => {
@@ -111,6 +117,7 @@ export function UsernameInput({
       setSearchTerm(user.username);
       setShowDropdown(false);
       setSelectedIndex(-1);
+      setIsUserSelected(true);
       onUserSelect({
         fid: user.fid,
         username: user.username,
@@ -165,7 +172,10 @@ export function UsernameInput({
           type="text"
           placeholder={placeholder}
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setIsUserSelected(false);
+          }}
           onKeyDown={handleKeyDown}
           disabled={disabled || loading}
           className={cn(
