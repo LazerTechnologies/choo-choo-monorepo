@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { requireSessionAdmin } from '@/lib/auth/require-session-admin';
+import { requireFrameAdmin } from '@/lib/auth/require-frame-admin';
 import { APP_URL } from '@/lib/constants';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function POST(request: Request) {
-  const auth = await requireSessionAdmin(request);
+  const auth = await requireFrameAdmin(request);
   if (!auth.ok) return auth.response;
 
   const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
@@ -15,7 +15,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json();
+    // Extract the actual request data (not the frame wrapper)
+    const frameBody = await request.json();
+    const actualBody = frameBody?.untrustedData || frameBody;
+    
     const upstream = await fetch(`${APP_URL}/api/admin/set-ticket-data`, {
       method: 'POST',
       headers: {
@@ -23,7 +26,7 @@ export async function POST(request: Request) {
         'x-admin-secret': ADMIN_SECRET,
         'x-admin-fid': String(auth.adminFid),
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(actualBody),
       cache: 'no-store',
     });
 
