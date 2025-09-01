@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback } from 'react';
 import { useMiniApp, useNeynarContext } from '@neynar/react';
 
 export function useFrameContext() {
@@ -10,24 +11,22 @@ export function useFrameContext() {
   const currentUserFid = neynarAuthUser?.fid || context?.user?.fid;
 
   // Create mini-app context data for admin requests
-  const getFrameData = (requestData: Record<string, unknown>) => {
-    // For mini-apps, we send the user's FID and context info
-    // This matches the pattern used in Footer.tsx and useAdminAccess.ts
-    const frameData = {
-      // Include the actual request data
-      ...requestData,
-      // Include mini-app context for authentication
-      miniAppContext: {
-        isAuthenticated: !!neynarAuthUser,
-        hasContext: !!context,
-        userFid: currentUserFid,
-      },
-      // Also include FID at top level for compatibility
-      fid: currentUserFid,
-    };
+  const getFrameData = useCallback(
+    (requestData: Record<string, unknown>) => {
+      const frameData = {
+        ...requestData,
+        miniAppContext: {
+          isAuthenticated: !!neynarAuthUser,
+          hasContext: !!context,
+          userFid: currentUserFid,
+        },
+        fid: currentUserFid,
+      };
 
-    return frameData;
-  };
+      return frameData;
+    },
+    [neynarAuthUser, context, currentUserFid]
+  );
 
   return {
     currentUserFid,

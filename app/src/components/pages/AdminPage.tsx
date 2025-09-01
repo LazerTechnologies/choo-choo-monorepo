@@ -372,10 +372,8 @@ function SetInitialHolder({
         setIsLoadingStatus(true);
         setStatusError(null);
         const response = await fetch('/api/admin/holder-status/proxy', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'GET',
           credentials: 'include',
-          body: JSON.stringify(getFrameData({})),
         });
         if (!response.ok) {
           throw new Error('Failed to check holder status');
@@ -435,10 +433,8 @@ function SetInitialHolder({
         setResult(data.holder);
         onTokenMinted?.(); // Trigger refresh of current holder display
         const statusResponse = await fetch('/api/admin/holder-status/proxy', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'GET',
           credentials: 'include',
-          body: JSON.stringify(getFrameData({})),
         });
         if (statusResponse.ok) {
           const statusData = await statusResponse.json();
