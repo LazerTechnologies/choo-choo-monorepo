@@ -15,8 +15,8 @@ This document tracks API endpoints that can potentially be removed after moving 
 
 - [ ] `/api/test-contract/` - Development/testing only
 - [ ] `/api/test-neynar-replies/` - Development/testing only
-- [ ] `/api/test-admin-nextstop/` - Development/testing only
-- [x] `/api/test-pinata/` - ✅ Renamed to `/api/admin-generate/` with proper admin auth
+- [x] `/api/test-admin-nextstop/` - ✅ Moved to `/api/admin/nextstop/`
+- [x] `/api/test-pinata/` - ✅ Renamed to `/api/admin/generate/` with proper admin auth
 
 ### Old Cast Management (Pre-Webhook)
 
@@ -49,7 +49,7 @@ This document tracks API endpoints that can potentially be removed after moving 
 
 ### Core Functionality (Keep)
 
-- ✅ `/api/admin-*` - All admin endpoints (app-pause, check-holder-status, send-train, etc.)
+- ✅ `/api/admin/*` - All admin endpoints (app-pause, holder-status, send-train, etc.)
 - ✅ `/api/current-holder/` - Core functionality for train status
 - ✅ `/api/journey/` - Core functionality for displaying journey timeline
 - ✅ `/api/internal/*` - Core internal services (generate-nft, mint-token, send-cast, etc.)

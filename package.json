@@ -18,7 +18,8 @@
     "app:dev": "pnpm --filter app dev",
     "app:build": "pnpm --filter app build",
     "contracts:anvil": "turbo anvil",
-    "contracts:extract-abi": "turbo run extract-abi"
+    "contracts:extract-abi": "turbo run extract-abi",
+    "script:deploy": "bash scripts/deploy.sh"
   },
   "keywords": [
     "farcaster",

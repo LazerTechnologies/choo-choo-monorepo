@@ -44,7 +44,7 @@ async function sendMaintenanceCast(isPaused: boolean): Promise<void> {
 }
 
 /**
- * GET /api/admin-app-pause
+ * GET /api/admin/app-pause
  *
  * Returns the current app pause state
  */
@@ -61,7 +61,7 @@ export async function GET() {
 }
 
 /**
- * POST /api/admin-app-pause
+ * POST /api/admin/app-pause
  *
  * Sets the app pause state
  */

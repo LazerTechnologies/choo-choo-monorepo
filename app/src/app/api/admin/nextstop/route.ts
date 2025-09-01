@@ -18,7 +18,7 @@ const executeBodySchema = z.object({
 });
 
 /**
- * POST /api/test-admin-nextstop
+ * POST /api/admin/nextstop
  * Test endpoint for admin to manually execute nextStop function
  * WARNING: This is for testing purposes only - remove in production
  */

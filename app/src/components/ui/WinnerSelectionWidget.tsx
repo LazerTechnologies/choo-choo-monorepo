@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useNeynarContext } from '@neynar/react';
+import { useMiniApp } from '@neynar/react';
 import { Card } from '@/components/base/Card';
 import { Button } from '@/components/base/Button';
 import { Typography } from '@/components/base/Typography';
@@ -13,6 +14,11 @@ import axios from 'axios';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/base/Tabs';
 import { Dialog } from '@/components/base/Dialog';
 import { MessagePriority } from '@/lib/constants';
+import { useDepositStatus } from '@/hooks/useDepositStatus';
+import { useDepositUsdc } from '@/hooks/useDepositUsdc';
+import { useAccount } from 'wagmi';
+import { useEnsureCorrectNetwork } from '@/hooks/useEnsureCorrectNetwork';
+import { ConnectWalletDialog } from '@/components/ui/ConnectWalletDialog';
 
 interface WinnerSelectionWidgetProps {
   onTokenMinted?: () => void;
@@ -21,6 +27,7 @@ interface WinnerSelectionWidgetProps {
 export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetProps) {
   const { toast } = useMarqueeToast();
   const { user } = useNeynarContext();
+  const { context } = useMiniApp();
   const { updateWorkflowState } = useWorkflowState();
 
   const [selectedUser, setSelectedUser] = useState<{
@@ -33,6 +40,20 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
   const [loading, setLoading] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState<boolean>(false);
   const [tabValue, setTabValue] = useState<'send' | 'chance'>('send');
+
+  const currentUserFid = user?.fid || context?.user?.fid || null;
+  const deposit = useDepositStatus(currentUserFid);
+  const { isConnected } = useAccount();
+  const { ensureCorrectNetwork, isSwitching } = useEnsureCorrectNetwork();
+  const [connectOpen, setConnectOpen] = useState(false);
+
+  const depositHook = useDepositUsdc({
+    fid: currentUserFid ?? null,
+    contractAddress: process.env.NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS as `0x${string}`,
+    usdcAddress: (deposit.config?.usdcAddress ||
+      '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913') as `0x${string}`,
+    required: deposit.required,
+  });
 
   const handleManualSend = async () => {
     if (!selectedUser) {
@@ -119,6 +140,48 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
     }
   };
 
+  const handleSendButtonClick = async () => {
+    if (!isConnected) {
+      setConnectOpen(true);
+      return;
+    }
+    const ok = await ensureCorrectNetwork();
+    if (!ok) return;
+
+    if (!deposit.satisfied) {
+      if (depositHook.needsApproval) {
+        await depositHook.approve();
+      } else {
+        await depositHook.deposit();
+        await deposit.refresh();
+      }
+      return;
+    }
+
+    await handleManualSend();
+  };
+
+  const getButtonText = () => {
+    if (loading) return 'Sending ChooChoo...';
+    if (!isConnected) return 'Connect wallet';
+    if (deposit.isLoading) return 'Loading...';
+    if (!deposit.satisfied) {
+      if (depositHook.isApproving) return 'Approving USDC...';
+      if (depositHook.isDepositing || depositHook.isConfirming) return 'Depositing...';
+      return 'Deposit 1 USDC';
+    }
+    return selectedUser ? `Send ChooChoo to @${selectedUser.username}` : 'Send ChooChoo';
+  };
+
+  const isButtonDisabled =
+    loading ||
+    !selectedUser ||
+    deposit.isLoading ||
+    depositHook.isApproving ||
+    depositHook.isDepositing ||
+    depositHook.isConfirming ||
+    isSwitching;
+
   // This component only renders in CASTED state - HomePage handles the routing
   // No conditional rendering needed here since HomePage controls when this shows
 
@@ -166,16 +229,12 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
                 </Typography>
 
                 <Button
-                  onClick={handleManualSend}
-                  disabled={loading || !selectedUser}
+                  onClick={handleSendButtonClick}
+                  disabled={isButtonDisabled}
                   className="w-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white"
                   style={{ backgroundColor: '#a855f7' }}
                 >
-                  {loading
-                    ? 'Sending ChooChoo...'
-                    : selectedUser
-                      ? `Send ChooChoo to @${selectedUser.username}`
-                      : 'Send ChooChoo'}
+                  {getButtonText()}
                 </Button>
               </div>
             </TabsContent>
@@ -233,6 +292,8 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
             </TabsContent>
           </Tabs>
         </div>
+        {/* @todo possibly switch to rainbowkit */}
+        <ConnectWalletDialog open={connectOpen} onOpenChange={setConnectOpen} />
       </Card>
     </div>
   );

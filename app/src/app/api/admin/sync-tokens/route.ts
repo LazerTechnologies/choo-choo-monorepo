@@ -3,7 +3,7 @@ import { syncTokenTracker } from '@/lib/redis-token-utils';
 import { requireAdmin } from '@/lib/auth/require-admin';
 
 /**
- * POST /api/admin-sync-tokens
+ * POST /api/admin/sync-tokens
  *
  * Admin endpoint to sync the Redis token tracker with existing token data
  * This fixes any sync issues between the tracker and actual token data

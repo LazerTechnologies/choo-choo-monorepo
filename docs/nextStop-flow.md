@@ -61,7 +61,7 @@ This document describes how ChooChoo moves between Farcaster users using a micro
 6. Calls `/api/internal/send-cast` to send welcome notification from ChooChoo account
 7. Clears cast hash from Redis
 
-#### `/api/admin-send-train` (POST)
+#### `/api/admin/send-train` (POST)
 
 **Purpose**: Admin version allowing direct FID selection
 **Authentication**: Admin FID validation (not session-based)
@@ -89,7 +89,7 @@ This document describes how ChooChoo moves between Farcaster users using a micro
 7. Sends yoink announcement cast from ChooChoo account
 8. Updates Redis state
 
-#### `/api/admin-set-ticket-data` (POST)
+#### `/api/admin/set-ticket-data` (POST)
 
 **Purpose**: Admin function to update token metadata for any NFT
 **Authentication**: Admin FID validation
@@ -214,7 +214,7 @@ flowchart TD
     SendNotification --> ChooChooAccount[ChooChoo Farcaster Account]
 
     %% Admin Direct Send Flow
-    Admin[Admin User] --> AdminSendTrain[/api/admin-send-train]
+    Admin[Admin User] --> AdminSendTrain[/api/admin/send-train]
     AdminSendTrain --> DirectNeynar[Neynar API: Get User by FID]
     AdminSendTrain --> GenerateNFT
     AdminSendTrain --> MintToken
@@ -235,7 +235,7 @@ flowchart TD
     YoinkNotification --> YoinkChooChooAccount[ChooChoo Farcaster Account]
 
     %% Admin Metadata Management Flow
-    AdminMeta[Admin User] --> AdminSetData[/api/admin-set-ticket-data]
+    AdminMeta[Admin User] --> AdminSetData[/api/admin/set-ticket-data]
     AdminSetData --> AdminSetInternal[/api/internal/set-ticket-data]
     AdminSetInternal --> AdminContract[Contract: setTicketData]
 ```

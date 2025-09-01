@@ -219,7 +219,7 @@ function AdminGenerate({ adminFid }: { adminFid?: number }) {
     setError(null);
     setResult(null);
     try {
-      const res = await fetch('/api/admin-generate', {
+      const res = await fetch('/api/admin/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
@@ -367,7 +367,7 @@ function SetInitialHolder({
       try {
         setIsLoadingStatus(true);
         setStatusError(null);
-        const response = await fetch('/api/admin-check-holder-status');
+        const response = await fetch('/api/admin/holder-status');
         if (!response.ok) {
           throw new Error('Failed to check holder status');
         }
@@ -409,7 +409,7 @@ function SetInitialHolder({
     setResult(null);
 
     try {
-      const res = await fetch('/api/admin-set-initial-holder', {
+      const res = await fetch('/api/admin/initial-holder', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -422,7 +422,7 @@ function SetInitialHolder({
       if (res.ok && data.success) {
         setResult(data.holder);
         onTokenMinted?.(); // Trigger refresh of current holder display
-        const statusResponse = await fetch('/api/admin-check-holder-status');
+        const statusResponse = await fetch('/api/admin/holder-status');
         if (statusResponse.ok) {
           const statusData = await statusResponse.json();
           setHolderStatus(statusData);
@@ -581,7 +581,7 @@ function SetTicketMetadata({ adminFid }: { adminFid?: number }) {
       const trimmedHash = metadataHash.trim();
       const tokenURI = trimmedHash.startsWith('ipfs://') ? trimmedHash : `ipfs://${trimmedHash}`;
 
-      const res = await fetch('/api/admin-set-ticket-data', {
+      const res = await fetch('/api/admin/set-ticket-data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -740,7 +740,7 @@ function TestAdminNextStop({
     setResult(null);
 
     try {
-      const res = await fetch('/api/admin-send-train', {
+      const res = await fetch('/api/admin/send-train', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -879,7 +879,7 @@ function AppPauseToggle({ adminFid }: { adminFid?: number }) {
       try {
         setIsLoadingStatus(true);
         setError(null);
-        const response = await fetch('/api/admin-app-pause');
+        const response = await fetch('/api/admin/app-pause');
         if (!response.ok) {
           throw new Error('Failed to fetch pause state');
         }
@@ -917,7 +917,7 @@ function AppPauseToggle({ adminFid }: { adminFid?: number }) {
     setError(null);
 
     try {
-      const response = await fetch('/api/admin-app-pause', {
+      const response = await fetch('/api/admin/app-pause', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1066,7 +1066,7 @@ function JourneyAnnouncement({ adminFid }: { adminFid?: number }) {
     try {
       const text = CHOOCHOO_CAST_TEMPLATES.JOURNEY_CONTINUES();
       const today = new Date().toISOString().slice(0, 10);
-      const res = await fetch('/api/admin-send-cast', {
+      const res = await fetch('/api/admin/send-cast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, idem: `journey-continues-${today}` }),
@@ -1144,7 +1144,7 @@ function CustomCast({ adminFid }: { adminFid?: number }) {
     setResult(null);
 
     try {
-      const res = await fetch('/api/admin-send-cast', {
+      const res = await fetch('/api/admin/send-cast', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { redis } from '@/lib/kv';
 
 /**
- * GET /api/admin-check-holder-status
+ * GET /api/admin/holder-status
  *
  * Simple endpoint to check if a current holder exists in Redis.
  * Used by admin functions to determine if initial holder can be set.

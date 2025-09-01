@@ -22,8 +22,8 @@ export { redis };
 // All Redis keys used by the ChooChoo app for reference and documentation
 
 // Current train holder data (JSON: fid, username, displayName, pfpUrl, address, timestamp)
-// Written by: /api/internal/mint-token, /api/admin-set-initial-holder, /api/yoink
-// Read by: /api/current-holder, /api/webhook/cast-detection, /api/admin-check-holder-status
+// Written by: /api/internal/mint-token, /api/admin/initial-holder, /api/yoink
+// Read by: /api/current-holder, /api/webhook/cast-detection, /api/admin/holder-status
 // Used by: useCurrentHolder hook, CurrentHolderItem component
 export const CURRENT_HOLDER_KEY = 'current-holder';
 

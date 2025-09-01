@@ -111,7 +111,7 @@ flowchart LR
   subgraph "Backend (Vercel Serverless)"
     Orchestrator["/api/send-train"]
     YoinkAPI["/api/yoink"]
-    AdminAPI["/api/admin-send-train"]
+    AdminAPI["/api/admin/send-train"]
     Generator["Generator Package"]
     InternalAPI["Internal APIs"]
   end
@@ -160,8 +160,8 @@ flowchart LR
 
 - `/api/send-train`: Orchestrates normal journey transfers from cast reactions
 - `/api/yoink`: Handles emergency recovery of stuck trains (admin-only)
-- `/api/admin-send-train`: Direct transfers by admin FID selection
-- `/api/admin-set-ticket-data`: Admin metadata updates for any token
+- `/api/admin/send-train`: Direct transfers by admin FID selection
+- `/api/admin/set-ticket-data`: Admin metadata updates for any token
 - `/api/current-holder`: Returns current train holder information
 - `/api/journey`: Returns complete journey timeline with ticket data
 

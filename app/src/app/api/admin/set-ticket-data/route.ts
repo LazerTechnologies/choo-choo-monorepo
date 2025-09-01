@@ -19,7 +19,7 @@ interface AdminSetTicketDataResponse {
 }
 
 /**
- * POST /api/admin-set-ticket-data
+ * POST /api/admin/set-ticket-data
  *
  * Admin endpoint for setting ticket metadata on the contract.
  * Requires admin authentication and uses internal endpoint to execute.

@@ -27,6 +27,9 @@
     "fix-main-token-uri:mainnet": "forge script script/FixMainTokenURI.s.sol:FixMainTokenURI --rpc-url $BASE_RPC_URL --broadcast -vvvv",
     "fix-main-token-uri:dry-run": "forge script script/FixMainTokenURI.s.sol:FixMainTokenURI --fork-url $BASE_RPC_URL -vvvv",
     "check-main-token-uri:sepolia": "forge script script/CheckMainTokenURI.s.sol:CheckMainTokenURI --rpc-url $BASE_SEPOLIA_RPC_URL",
-    "check-main-token-uri:mainnet": "forge script script/CheckMainTokenURI.s.sol:CheckMainTokenURI --rpc-url $BASE_RPC_URL"
+    "check-main-token-uri:mainnet": "forge script script/CheckMainTokenURI.s.sol:CheckMainTokenURI --rpc-url $BASE_RPC_URL",
+    "set-data-0:sepolia": "forge script script/SetMainTokenData.s.sol:SetMainTokenData --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast -vvvv",
+    "set-data-0:mainnet": "forge script script/SetMainTokenData.s.sol:SetMainTokenData --rpc-url $BASE_RPC_URL --broadcast -vvvv",
+    "set-data-0:dry-run": "forge script script/SetMainTokenData.s.sol:SetMainTokenData --fork-url $BASE_RPC_URL -vvvv"
   }
 }

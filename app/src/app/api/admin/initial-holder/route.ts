@@ -99,7 +99,7 @@ async function fetchUserByFid(fid: number): Promise<{
 }
 
 /**
- * POST /api/admin-set-initial-holder
+ * POST /api/admin/initial-holder
  *
  * Sets the initial current holder in Redis for fresh mainnet deployment.
  * Only accessible by admin FIDs and only if no tokens have been minted yet.

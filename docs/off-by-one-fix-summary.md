@@ -54,7 +54,7 @@ The off-by-one issues were caused by:
 
 ### 5. Admin Send Train Route Fixes
 
-**File**: `app/src/app/api/admin-send-train/route.ts`
+**File**: `app/src/app/api/admin/send-train/route.ts`
 
 - Uses `getNextOnChainTicketId()` instead of Redis tracker
 - Generates NFT metadata with departing passenger's username
@@ -75,8 +75,8 @@ The off-by-one issues were caused by:
 
 **Files**:
 
-- `app/src/app/api/test-admin-nextstop/route.ts`
-- `app/src/app/api/admin-generate/route.ts`
+- `app/src/app/api/admin/nextstop/route.ts`
+- `app/src/app/api/admin/generate/route.ts`
 
 - Use `getNextOnChainTicketId()` consistently
 - Fixed validation logic to use `getTotalTickets()`

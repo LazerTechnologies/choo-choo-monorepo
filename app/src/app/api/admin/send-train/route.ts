@@ -98,7 +98,7 @@ async function fetchUserByFid(fid: number): Promise<{
 }
 
 /**
- * POST /api/admin-send-train
+ * POST /api/admin/send-train
  *
  * Admin version of send-train that works with just a FID instead of requiring a cast hash.
  * Orchestrates the next stop for the ChooChoo train journey for admin testing.
