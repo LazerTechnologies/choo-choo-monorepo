@@ -59,7 +59,9 @@ export default function Home({ title = 'Choo Choo on Base' }: HomeProps) {
     const fetchPauseState = async () => {
       try {
         setIsLoadingPauseState(true);
-        const response = await fetch('/api/admin/app-pause');
+        const response = await fetch('/api/admin/app-pause/proxy', {
+          credentials: 'include',
+        });
         if (response.ok) {
           const data = await response.json();
           setIsPaused(data.isPaused);

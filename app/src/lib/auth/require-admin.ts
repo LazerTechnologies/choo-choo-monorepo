@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { getServerSession, type Session } from 'next-auth';
 import { authOptions } from '@/auth';
 import { ADMIN_FIDS, APP_URL } from '@/lib/constants';
-import { NeynarAPIClient } from '@neynar/nodejs-sdk';
 
 interface RequireAdminOk {
   ok: true;
@@ -16,63 +15,44 @@ interface RequireAdminErr {
 
 export type RequireAdminResult = RequireAdminOk | RequireAdminErr;
 
-// Typed subset of Neynar frame/validate response used for fid extraction
-interface NeynarFrameValidateResponse {
-  action?: {
-    interactor?: { fid?: number };
-    requester?: { fid?: number };
-  };
-  fid?: number;
-}
 
 function isTrustedOrigin(request: Request): boolean {
+  // Prefer comparing request Host header with Origin host to avoid env drift
   try {
     const origin = request.headers.get('origin');
-    if (!origin) return false;
-    const app = new URL(APP_URL);
-    const req = new URL(origin);
-    return app.hostname === req.hostname && app.protocol === req.protocol;
+    const host = request.headers.get('host');
+    if (origin && host) {
+      const originUrl = new URL(origin);
+      // origin host may include port; host header also includes port
+      if (originUrl.host === host) return true;
+    }
+
+    // Fallback to configured APP_URL if present
+    if (APP_URL) {
+      const app = new URL(APP_URL);
+      if (origin) {
+        const req = new URL(origin);
+        if (app.hostname === req.hostname && app.protocol === req.protocol) return true;
+      }
+    }
   } catch {
-    return false;
+    // ignore
   }
-}
-
-async function getAdminFidFromFrame(request: Request): Promise<number | null> {
-  try {
-    const clone = request.clone();
-    const body = (await clone.json().catch(() => null)) as {
-      trustedData?: { messageBytes?: string };
-    } | null;
-    const messageBytes = body?.trustedData?.messageBytes;
-    if (!messageBytes) return null;
-
-    const apiKey = process.env.NEYNAR_API_KEY;
-    if (!apiKey) return null;
-
-    const client = new NeynarAPIClient({ apiKey });
-    const data = (await client.validateFrameAction({
-      messageBytesInHex: messageBytes,
-    })) as NeynarFrameValidateResponse;
-
-    const fid: number | undefined =
-      data?.action?.interactor?.fid ?? data?.action?.requester?.fid ?? data?.fid;
-
-    if (!fid || !Number.isFinite(fid)) return null;
-    if (!ADMIN_FIDS.includes(fid)) return null;
-    return fid;
-  } catch {
-    return null;
-  }
+  return false;
 }
 
 export async function requireAdmin(request: Request): Promise<RequireAdminResult> {
-  // 0) If this is a valid Frame request, allow without origin/session
-  const frameAdminFid = await getAdminFidFromFrame(request);
-  if (frameAdminFid) {
-    return { ok: true, adminFid: frameAdminFid };
+  // 0b) Optional header-based fallback for emergencies (checked early to allow server-to-server calls)
+  const adminSecret = process.env.ADMIN_SECRET;
+  const headerSecret = request.headers.get('x-admin-secret') || '';
+  if (adminSecret && headerSecret && adminSecret === headerSecret) {
+    const headerFid = parseInt(request.headers.get('x-admin-fid') || '', 10);
+    if (Number.isFinite(headerFid) && ADMIN_FIDS.includes(headerFid)) {
+      return { ok: true, adminFid: headerFid };
+    }
   }
 
-  // For non-frame requests, enforce JSON content type and same-origin CSRF check
+  // For non-frame, non-secret requests, enforce JSON content type and same-origin CSRF check
   const contentType = request.headers.get('content-type') || '';
   if (!contentType.toLowerCase().includes('application/json')) {
     return {
@@ -96,16 +76,6 @@ export async function requireAdmin(request: Request): Promise<RequireAdminResult
     }
   } catch {
     // fall through to other strategies
-  }
-
-  // 2) Optional header-based fallback for emergencies (disabled unless ADMIN_SECRET set)
-  const adminSecret = process.env.ADMIN_SECRET;
-  const headerSecret = request.headers.get('x-admin-secret') || '';
-  if (adminSecret && headerSecret && adminSecret === headerSecret) {
-    const headerFid = parseInt(request.headers.get('x-admin-fid') || '', 10);
-    if (Number.isFinite(headerFid) && ADMIN_FIDS.includes(headerFid)) {
-      return { ok: true, adminFid: headerFid };
-    }
   }
 
   // Not authorized
