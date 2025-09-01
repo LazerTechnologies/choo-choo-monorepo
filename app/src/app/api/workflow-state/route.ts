@@ -31,7 +31,27 @@ export async function GET() {
       });
     }
 
-    const workflowData = JSON.parse(workflowStateJson) as WorkflowData;
+    // Check if the data is corrupted with Redis command prefix
+    let cleanedJson = workflowStateJson;
+    if (typeof workflowStateJson === 'string' && workflowStateJson.startsWith('SET workflowState ')) {
+      console.warn('Detected corrupted workflow state data with SET prefix, cleaning...');
+      // Extract the JSON part after the SET command
+      const jsonMatch = workflowStateJson.match(/SET workflowState '(.+)'$/);
+      if (jsonMatch && jsonMatch[1]) {
+        cleanedJson = jsonMatch[1];
+        console.log('Cleaned workflow state data:', cleanedJson);
+        
+        // Store the cleaned data back to Redis
+        await redis.set('workflowState', cleanedJson);
+        console.log('Stored cleaned workflow state back to Redis');
+      } else {
+        console.error('Could not extract JSON from corrupted data, using default');
+        cleanedJson = JSON.stringify(DEFAULT_WORKFLOW_DATA);
+        await redis.set('workflowState', cleanedJson);
+      }
+    }
+
+    const workflowData = JSON.parse(cleanedJson) as WorkflowData;
     return NextResponse.json(workflowData, {
       headers: {
         'Cache-Control': 'no-store',
@@ -39,6 +59,16 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Error fetching workflow state:', error);
+    console.error('Raw workflow state data:', await redis.get('workflowState'));
+    
+    // Reset to default state if parsing fails
+    try {
+      await redis.set('workflowState', JSON.stringify(DEFAULT_WORKFLOW_DATA));
+      console.log('Reset workflow state to default due to parsing error');
+    } catch (resetError) {
+      console.error('Failed to reset workflow state:', resetError);
+    }
+    
     return NextResponse.json(DEFAULT_WORKFLOW_DATA, {
       headers: {
         'Cache-Control': 'no-store',
