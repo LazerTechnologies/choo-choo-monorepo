@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { isAddress } from 'viem';
 import { redis } from '@/lib/kv';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
-import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
+import { CHOOCHOO_CAST_TEMPLATES, APP_URL } from '@/lib/constants';
 import { getContractService } from '@/lib/services/contract';
 import axios from 'axios';
 
@@ -115,7 +115,7 @@ export async function POST(request: Request) {
   try {
     // 1. Get current holder info to verify authentication
     const currentHolderResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL}/api/current-holder`
+      `${APP_URL}/api/current-holder`
     );
 
     if (!currentHolderResponse.ok) {
@@ -143,7 +143,7 @@ export async function POST(request: Request) {
     }
 
     const workflowData = JSON.parse(workflowStateJson);
-    if (workflowData.state !== 'CASTED') {
+    if (workflowData.state !== 'CASTED' && workflowData.state !== 'MANUAL_SEND') {
       return NextResponse.json(
         { error: 'You must send a cast first before manually selecting the next passenger' },
         { status: 400 }
@@ -252,7 +252,7 @@ export async function POST(request: Request) {
     let generateResponse;
     try {
       generateResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL}/api/internal/generate-nft`,
+        `${APP_URL}/api/internal/generate-nft`,
         {
           method: 'POST',
           headers: {
@@ -288,7 +288,7 @@ export async function POST(request: Request) {
     // 7. Mint token on contract
     let mintResponse;
     try {
-      mintResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/mint-token`, {
+      mintResponse = await fetch(`${APP_URL}/api/internal/mint-token`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -330,7 +330,7 @@ export async function POST(request: Request) {
 
     // 8. Reset workflow state to NOT_CASTED for the new holder
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_APP_URL}/api/workflow-state`, {
+      await axios.post(`${APP_URL}/api/workflow-state`, {
         state: 'NOT_CASTED',
         winnerSelectionStart: null,
         currentCastHash: null,
@@ -348,7 +348,7 @@ export async function POST(request: Request) {
       const welcomeCastText = CHOOCHOO_CAST_TEMPLATES.WELCOME_PASSENGER(winnerData.username);
 
       const welcomeCastResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL}/api/internal/send-cast`,
+        `${APP_URL}/api/internal/send-cast`,
         {
           method: 'POST',
           headers: {
@@ -382,7 +382,7 @@ export async function POST(request: Request) {
       const imageUrl = `https://${process.env.NEXT_PUBLIC_PINATA_GATEWAY}/ipfs/${nftData.imageHash}`;
 
       const ticketCastResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL}/api/internal/send-cast`,
+        `${APP_URL}/api/internal/send-cast`,
         {
           method: 'POST',
           headers: {

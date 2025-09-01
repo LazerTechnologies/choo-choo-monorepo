@@ -117,7 +117,13 @@ export function UsernameInput({
       setSearchTerm(user.username);
       setShowDropdown(false);
       setSelectedIndex(-1);
+      setUsers([]);
       setIsUserSelected(true);
+
+      setTimeout(() => {
+        setShowDropdown(false);
+      }, 10);
+
       onUserSelect({
         fid: user.fid,
         username: user.username,

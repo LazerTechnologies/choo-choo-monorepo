@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNeynarContext } from '@neynar/react';
 import { useMiniApp } from '@neynar/react';
 import { Card } from '@/components/base/Card';
@@ -43,6 +43,7 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
 
   const currentUserFid = user?.fid || context?.user?.fid || null;
   const deposit = useDepositStatus(currentUserFid);
+  const { refresh: refreshDeposit } = deposit;
   const { isConnected } = useAccount();
   const { ensureCorrectNetwork, isSwitching } = useEnsureCorrectNetwork();
   const [connectOpen, setConnectOpen] = useState(false);
@@ -55,6 +56,13 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
     required: deposit.required,
   });
 
+  // Auto-refresh deposit status when deposit completes
+  useEffect(() => {
+    if (depositHook.isDone) {
+      void refreshDeposit();
+    }
+  }, [depositHook.isDone, refreshDeposit]);
+
   const handleManualSend = async () => {
     if (!selectedUser) {
       toast({
@@ -65,8 +73,6 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
     }
 
     setLoading(true);
-
-    await updateWorkflowState(WorkflowState.MANUAL_SEND);
 
     try {
       const response = await axios.post('/api/user-send-train', {
@@ -85,7 +91,6 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
         description: 'Failed to send ChooChoo',
         variant: 'destructive',
       });
-      await updateWorkflowState(WorkflowState.CASTED);
     } finally {
       setLoading(false);
     }
@@ -153,11 +158,12 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
         await depositHook.approve();
       } else {
         await depositHook.deposit();
-        await deposit.refresh();
+        await refreshDeposit();
       }
       return;
     }
 
+    await updateWorkflowState(WorkflowState.MANUAL_SEND);
     await handleManualSend();
   };
 
