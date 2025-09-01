@@ -209,7 +209,6 @@ function AdminGenerate({ adminFid }: { adminFid?: number }) {
   const [result, setResult] = useState<(PinataUploadResult & { message?: string }) | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { getFrameData } = useFrameContext();
 
   async function handleGenerateNFT() {
     if (!adminFid) {
@@ -225,7 +224,7 @@ function AdminGenerate({ adminFid }: { adminFid?: number }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(getFrameData({})),
+        body: JSON.stringify({}),
       });
       const data = await res.json();
 
@@ -420,11 +419,9 @@ function SetInitialHolder({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(
-          getFrameData({
-            targetFid: selectedUser.fid,
-          })
-        ),
+        body: JSON.stringify({
+          targetFid: selectedUser.fid,
+        }),
       });
 
       const data = await res.json();
@@ -449,7 +446,7 @@ function SetInitialHolder({
     } finally {
       setLoading(false);
     }
-  }, [selectedUser, adminFid, onTokenMinted, isDisabled, getFrameData]);
+  }, [selectedUser, adminFid, onTokenMinted, isDisabled]);
 
   return (
     <Card className={`my-8 w-full !border-white ${isDisabled ? '!bg-gray-400' : '!bg-purple-800'}`}>
@@ -566,7 +563,6 @@ function SetTicketMetadata({ adminFid }: { adminFid?: number }) {
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { getFrameData } = useFrameContext();
 
   const handleSetTicketMetadata = useCallback(async () => {
     const tokenIdNumber = parseInt(tokenId.trim());
@@ -599,14 +595,12 @@ function SetTicketMetadata({ adminFid }: { adminFid?: number }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(
-          getFrameData({
-            tokenId: tokenIdNumber,
-            tokenURI,
-            image: '', // Empty since metadata contains everything
-            traits: '', // Empty since metadata contains everything
-          })
-        ),
+        body: JSON.stringify({
+          tokenId: tokenIdNumber,
+          tokenURI,
+          image: '', // Empty since metadata contains everything
+          traits: '', // Empty since metadata contains everything
+        }),
       });
 
       const data = await res.json();
@@ -622,7 +616,7 @@ function SetTicketMetadata({ adminFid }: { adminFid?: number }) {
     } finally {
       setLoading(false);
     }
-  }, [tokenId, metadataHash, adminFid, getFrameData]);
+  }, [tokenId, metadataHash, adminFid]);
 
   return (
     <Card className="my-8 w-full !bg-blue-600 !border-white">
@@ -739,7 +733,6 @@ function TestAdminNextStop({
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { getFrameData } = useFrameContext();
 
   const handleExecuteNextStop = useCallback(async () => {
     if (!selectedUser) {
@@ -762,11 +755,9 @@ function TestAdminNextStop({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(
-          getFrameData({
-            targetFid: selectedUser.fid,
-          })
-        ),
+        body: JSON.stringify({
+          targetFid: selectedUser.fid,
+        }),
       });
 
       const data = await res.json();
@@ -783,7 +774,7 @@ function TestAdminNextStop({
     } finally {
       setLoading(false);
     }
-  }, [selectedUser, adminFid, onTokenMinted, getFrameData]);
+  }, [selectedUser, adminFid, onTokenMinted]);
 
   return (
     <Card className="my-8 w-full !bg-purple-600 !border-white">
@@ -893,15 +884,14 @@ function AppPauseToggle({ adminFid }: { adminFid?: number }) {
   const [loading, setLoading] = useState(false);
   const [isLoadingStatus, setIsLoadingStatus] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { getFrameData } = useFrameContext();
 
-  // Fetch current pause state on mount
+  // Fetch current pause state once on mount
   useEffect(() => {
     async function fetchPauseState() {
       try {
         setIsLoadingStatus(true);
         setError(null);
-        const response = await fetch('/api/admin/app-pause/proxy', {
+        const response = await fetch('/api/admin/app-pause', {
           method: 'GET',
           credentials: 'include',
         });
@@ -919,7 +909,7 @@ function AppPauseToggle({ adminFid }: { adminFid?: number }) {
     }
 
     fetchPauseState();
-  }, [getFrameData]);
+  }, []);
 
   const handleSwitchToggle = useCallback(
     (checked: boolean) => {
@@ -946,11 +936,9 @@ function AppPauseToggle({ adminFid }: { adminFid?: number }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(
-          getFrameData({
-            isPaused: pendingState,
-          })
-        ),
+        body: JSON.stringify({
+          isPaused: pendingState,
+        }),
       });
 
       const data = await response.json();
@@ -967,7 +955,7 @@ function AppPauseToggle({ adminFid }: { adminFid?: number }) {
     } finally {
       setLoading(false);
     }
-  }, [adminFid, pendingState, getFrameData]);
+  }, [adminFid, pendingState]);
 
   const handleCancelChange = useCallback(() => {
     setPendingState(null);
@@ -1080,7 +1068,6 @@ function JourneyAnnouncement({ adminFid }: { adminFid?: number }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { getFrameData } = useFrameContext();
 
   const handleSend = useCallback(async () => {
     if (!adminFid) {
@@ -1099,7 +1086,7 @@ function JourneyAnnouncement({ adminFid }: { adminFid?: number }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(getFrameData({ text, idem: `journey-continues-${today}` })),
+        body: JSON.stringify({ text, idem: `journey-continues-${today}` }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -1113,7 +1100,7 @@ function JourneyAnnouncement({ adminFid }: { adminFid?: number }) {
     } finally {
       setLoading(false);
     }
-  }, [adminFid, getFrameData]);
+  }, [adminFid]);
 
   return (
     <Card className="my-8 w-full !bg-purple-800 !border-white">
@@ -1158,7 +1145,6 @@ function CustomCast({ adminFid }: { adminFid?: number }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { getFrameData } = useFrameContext();
 
   const handleSend = useCallback(async () => {
     if (!adminFid) {
@@ -1179,7 +1165,7 @@ function CustomCast({ adminFid }: { adminFid?: number }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(getFrameData({ text })),
+        body: JSON.stringify({ text }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -1194,7 +1180,7 @@ function CustomCast({ adminFid }: { adminFid?: number }) {
     } finally {
       setLoading(false);
     }
-  }, [adminFid, text, getFrameData]);
+  }, [adminFid, text]);
 
   return (
     <Card className="my-8 w-full !bg-purple-800 !border-white">

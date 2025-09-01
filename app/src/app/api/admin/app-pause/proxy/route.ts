@@ -1,45 +1,15 @@
 import { NextResponse } from 'next/server';
-import { requireFrameAdmin } from '@/lib/auth/require-frame-admin';
 import { APP_URL } from '@/lib/constants';
+import { isTrustedOrigin } from '@/lib/auth/require-admin';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function GET() {
-  // For GET requests, we can't validate frame context, so we'll use a simple approach
-  const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
-  if (!ADMIN_SECRET) {
-    return NextResponse.json({ error: 'Server misconfigured: ADMIN_SECRET missing' }, { status: 500 });
-  }
-
-  try {
-    const upstream = await fetch(`${APP_URL}/api/admin/app-pause`, {
-      method: 'GET',
-      headers: {
-        'x-admin-secret': ADMIN_SECRET,
-        'x-admin-fid': '0',
-      },
-      cache: 'no-store',
-    });
-
-    const text = await upstream.text();
-    const contentType = upstream.headers.get('content-type') || 'application/json';
-    return new NextResponse(text, {
-      status: upstream.status,
-      headers: {
-        'Content-Type': contentType,
-        'Cache-Control': 'no-store',
-      },
-    });
-  } catch (error) {
-    console.error('[app-pause-proxy] Error forwarding GET request:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
-}
-
 export async function POST(request: Request) {
-  const auth = await requireFrameAdmin(request);
-  if (!auth.ok) return auth.response;
+  // Basic origin check for CSRF protection
+  if (!isTrustedOrigin(request)) {
+    return NextResponse.json({ error: 'Forbidden origin' }, { status: 403 });
+  }
 
   const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
   if (!ADMIN_SECRET) {
@@ -47,18 +17,20 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Extract the actual request data (not the frame wrapper)
-    const frameBody = await request.json();
-    const actualBody = frameBody?.untrustedData || frameBody;
+    // Extract the actual request data (no frame wrapper needed)
+    const body = await request.json();
+    
+    // Use first admin FID as fallback since we're relying on UI gating
+    const fallbackAdminFid = process.env.ADMIN_FIDS?.split(',')[0] || '0';
     
     const upstream = await fetch(`${APP_URL}/api/admin/app-pause`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-admin-secret': ADMIN_SECRET,
-        'x-admin-fid': String(auth.adminFid),
+        'x-admin-fid': fallbackAdminFid,
       },
-      body: JSON.stringify(actualBody),
+      body: JSON.stringify(body),
       cache: 'no-store',
     });
 

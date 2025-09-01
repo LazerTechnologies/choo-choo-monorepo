@@ -16,18 +16,15 @@ interface RequireAdminErr {
 export type RequireAdminResult = RequireAdminOk | RequireAdminErr;
 
 
-function isTrustedOrigin(request: Request): boolean {
-  // Prefer comparing request Host header with Origin host to avoid env drift
+export function isTrustedOrigin(request: Request): boolean {
   try {
     const origin = request.headers.get('origin');
     const host = request.headers.get('host');
     if (origin && host) {
       const originUrl = new URL(origin);
-      // origin host may include port; host header also includes port
       if (originUrl.host === host) return true;
     }
 
-    // Fallback to configured APP_URL if present
     if (APP_URL) {
       const app = new URL(APP_URL);
       if (origin) {
