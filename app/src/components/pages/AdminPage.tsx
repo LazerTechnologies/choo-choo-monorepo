@@ -370,7 +370,7 @@ function SetInitialHolder({
       try {
         setIsLoadingStatus(true);
         setStatusError(null);
-        const response = await fetch('/api/admin/holder-status/proxy', {
+        const response = await fetch('/api/admin/holder-status', {
           method: 'GET',
           credentials: 'include',
         });
@@ -429,7 +429,7 @@ function SetInitialHolder({
       if (res.ok && data.success) {
         setResult(data.holder);
         onTokenMinted?.(); // Trigger refresh of current holder display
-        const statusResponse = await fetch('/api/admin/holder-status/proxy', {
+        const statusResponse = await fetch('/api/admin/holder-status', {
           method: 'GET',
           credentials: 'include',
         });

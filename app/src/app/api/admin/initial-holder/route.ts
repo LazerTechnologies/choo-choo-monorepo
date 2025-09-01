@@ -6,7 +6,7 @@ import { requireAdmin } from '@/lib/auth/require-admin';
 
 import type { CurrentHolderData } from '@/types/nft';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
-import { CHOOCHOO_CAST_TEMPLATES, CHOOCHOO_TRAIN_METADATA_URI } from '@/lib/constants';
+import { CHOOCHOO_CAST_TEMPLATES, CHOOCHOO_TRAIN_METADATA_URI, APP_URL } from '@/lib/constants';
 import { DEFAULT_WORKFLOW_DATA } from '@/lib/workflow-types';
 
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
@@ -230,7 +230,7 @@ export async function POST(request: Request) {
 
     try {
       const setUriResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL}/api/internal/set-ticket-data`,
+        `${APP_URL}/api/internal/set-ticket-data`,
         {
           method: 'POST',
           headers: {
@@ -258,7 +258,7 @@ export async function POST(request: Request) {
 
     try {
       const journeyBeginsCastText = CHOOCHOO_CAST_TEMPLATES.JOURNEY_BEGINS(targetUser.username);
-      await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/send-cast`, {
+      await fetch(`${APP_URL}/api/internal/send-cast`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

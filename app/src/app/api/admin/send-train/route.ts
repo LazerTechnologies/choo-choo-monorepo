@@ -204,7 +204,7 @@ export async function POST(request: Request) {
     try {
       const passengerUsername = currentHolderData?.username || 'unknown';
       generateResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL}/api/internal/generate-nft`,
+        `${process.env.NEXT_PUBLIC_URL}/api/internal/generate-nft`,
         {
           method: 'POST',
           headers: {
