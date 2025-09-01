@@ -5,28 +5,28 @@ import "forge-std/Script.sol";
 import {ChooChooTrain} from "../src/ChooChooTrain.sol";
 
 contract SetMainTokenData is Script {
+    // IPFS URIs - update these values as needed
+    string constant MAIN_IMAGE = "ipfs://bafybeib7jkoiz4syrc7oxksatd2lytef5h2beomkbp6qxm6eqkdei6f65q";
+    string constant MAIN_TOKEN_URI = "ipfs://bafkreihj4ph4csbqmc7zcyjmou4qftbr37vboekgjnvld7gqjdqkll6lba";
+
     function run() public {
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
         address trainAddress = vm.envAddress("SEPOLIA_TRAIN_ADDRESS");
 
-        // Placeholder IPFS URLs - replace these with actual IPFS hashes/URLs
-        string memory newMainImage = "ipfs://QmYourImageHashHere";
-        string memory newMainTokenURI = "ipfs://QmYourMetadataHashHere";
-
         console2.log("Setting main token data for train at:", trainAddress);
-        console2.log("New main image:", newMainImage);
-        console2.log("New main token URI:", newMainTokenURI);
+        console2.log("New main image:", MAIN_IMAGE);
+        console2.log("New main token URI:", MAIN_TOKEN_URI);
 
         vm.startBroadcast(deployerPrivateKey);
 
         ChooChooTrain train = ChooChooTrain(trainAddress);
 
         // Set the main image (IPFS URL to the image)
-        train.setMainImage(newMainImage);
+        train.setMainImage(MAIN_IMAGE);
         console2.log("Main image updated successfully");
 
         // Set the main token URI (IPFS URL to the metadata JSON)
-        train.setMainTokenURI(newMainTokenURI);
+        train.setMainTokenURI(MAIN_TOKEN_URI);
         console2.log("Main token URI updated successfully");
 
         vm.stopBroadcast();
@@ -38,13 +38,11 @@ contract SetMainTokenData is Script {
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
         address trainAddress = vm.envAddress("SEPOLIA_TRAIN_ADDRESS");
 
-        string memory newMainImage = "ipfs://QmYourImageHashHere";
-
         console2.log("Setting main image for train at:", trainAddress);
-        console2.log("New main image:", newMainImage);
+        console2.log("New main image:", MAIN_IMAGE);
 
         vm.startBroadcast(deployerPrivateKey);
-        ChooChooTrain(trainAddress).setMainImage(newMainImage);
+        ChooChooTrain(trainAddress).setMainImage(MAIN_IMAGE);
         vm.stopBroadcast();
 
         console2.log("Main image updated successfully!");
@@ -54,13 +52,11 @@ contract SetMainTokenData is Script {
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
         address trainAddress = vm.envAddress("SEPOLIA_TRAIN_ADDRESS");
 
-        string memory newMainTokenURI = "ipfs://QmYourMetadataHashHere";
-
         console2.log("Setting main token URI for train at:", trainAddress);
-        console2.log("New main token URI:", newMainTokenURI);
+        console2.log("New main token URI:", MAIN_TOKEN_URI);
 
         vm.startBroadcast(deployerPrivateKey);
-        ChooChooTrain(trainAddress).setMainTokenURI(newMainTokenURI);
+        ChooChooTrain(trainAddress).setMainTokenURI(MAIN_TOKEN_URI);
         vm.stopBroadcast();
 
         console2.log("Main token URI updated successfully!");
