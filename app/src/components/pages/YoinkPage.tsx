@@ -93,8 +93,8 @@ export function YoinkPage() {
         <Card.Header>
           <Card.Title className="!text-white font-comic">Yoink ChooChoo</Card.Title>
           <Card.Description className="!text-white font-comic">
-            If ChooChoo hasn&apos;t moved in 48 hours, anyone who hasn&apos;t ridden before can hop
-            aboard and become the next passenger. Yoinking costs 1 USDC.
+            If ChooChoo hasn&apos;t moved in 48 hours, anyone who hasn&apos;t ridden before can pay
+            1 USDC to become the next passenger.
           </Card.Description>
         </Card.Header>
         <Card.Content>
@@ -133,7 +133,7 @@ export function YoinkPage() {
               <Typography variant="body" className="!text-white font-comic">
                 {countdownState.isAvailable
                   ? '🚂 ChooChoo can be yoinked now!'
-                  : `⏱️ ChooChoo can be yoinked in: ${countdownState.clockFormat}`}
+                  : `⏱️ Yoink in: ${countdownState.clockFormat}`}
               </Typography>
             )}
           </div>
@@ -145,22 +145,22 @@ export function YoinkPage() {
             </Typography>
             <div className="space-y-2">
               <Typography variant="small" className="!text-white font-comic block">
-                • If ChooChoo is stuck with an inactive holder, anyone who hasn&apos;t ridden the
-                train before can hop aboard and become the next passenger
+                • The &quot;Yoink&quot; feature prevents ChooChoo from getting stuck with an
+                inactive holder
               </Typography>
               <Typography variant="small" className="!text-white font-comic block">
-                • ChooChoo can be yoinked 48 hours after he last moved
+                • Yoink is available 48 hours after the last transfer
               </Typography>
               <Typography variant="small" className="!text-blue-300 font-comic-bold block">
-                • After yoinking, don&apos;t forget to send a cast from the home page to let
-                everyone know you&apos;re on board!
+                • After yoinking, send a cast from the home page to let everyone know you&apos;re on
+                board!
               </Typography>
             </div>
           </div>
 
           {!address && !addressLoading && (
-            <div className="bg-yellow-100 border border-yellow-400 rounded-lg p-3 mb-4 mt-4">
-              <Typography variant="small" className="!text-yellow-800 font-comic">
+            <div className="bg-purple-700 border border-white rounded-lg p-3 mb-4 mt-4">
+              <Typography variant="small" className="!text-white font-comic">
                 💡 You must verify an Ethereum address to participate. Go to{' '}
                 <span className="font-bold">Settings → Verified Addresses</span> in Farcaster to add
                 one.
