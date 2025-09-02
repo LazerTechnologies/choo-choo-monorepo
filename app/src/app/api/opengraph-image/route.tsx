@@ -8,9 +8,17 @@ export async function GET() {
 
   return new ImageResponse(
     (
-      <div tw="flex h-full w-full relative bg-purple-600">
+      <div tw="w-full h-full relative overflow-hidden bg-purple-600">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={iconUrl} alt="ChooChoo" tw="w-full h-full object-cover object-top" />
+        <img
+          src={iconUrl}
+          alt="ChooChoo"
+          tw="absolute top-0 left-0 w-full h-full object-cover"
+          style={{
+            objectFit: 'cover',
+            objectPosition: 'top center',
+          }}
+        />
       </div>
     ),
     {
