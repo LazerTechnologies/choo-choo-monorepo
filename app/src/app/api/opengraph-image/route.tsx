@@ -8,13 +8,26 @@ export async function GET() {
 
   return new ImageResponse(
     (
-      <div tw="w-full h-full relative overflow-hidden bg-purple-600">
+      <div
+        style={{
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          position: 'relative',
+          overflow: 'hidden',
+          backgroundColor: '#7c3aed',
+        }}
+      >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={iconUrl}
           alt="ChooChoo"
-          tw="absolute top-0 left-0 w-full h-full object-cover"
           style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
             objectFit: 'cover',
             objectPosition: 'top center',
           }}

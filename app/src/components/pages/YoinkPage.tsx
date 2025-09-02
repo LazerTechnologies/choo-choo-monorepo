@@ -220,7 +220,7 @@ export function YoinkPage() {
                         ? 'Ineligible'
                         : canYoink
                           ? 'Yoink ChooChoo!'
-                          : 'Please wait...'}
+                          : `${countdownState.clockFormat}`}
             </Typography>
           </Button>
 
