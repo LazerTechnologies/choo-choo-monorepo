@@ -7,6 +7,7 @@ import {
 } from 'generator';
 import { createChooChooMetadata } from '@/lib/nft-metadata-utils';
 import type { NFTMetadata } from '@/types/nft';
+import { getOrSetPendingGeneration } from '@/lib/redis-token-utils';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
@@ -58,87 +59,80 @@ export async function POST(request: Request) {
     }
 
     console.log(
-      `[internal/generate-nft] Generating NFT for token ${tokenId}, passenger: ${passengerUsername}`
+      `[internal/generate-nft] Resolving NFT for token ${tokenId}, passenger: ${passengerUsername}`
     );
 
-    // 1. Generate the unique NFT image and attributes using the generator
-    let imageBuffer, attributes;
-    try {
-      const result = await composeImage();
-      imageBuffer = result.imageBuffer;
-      attributes = result.attributes;
-      console.log(
-        '[internal/generate-nft] Successfully generated image with attributes:',
-        attributes
-      );
-    } catch (err) {
-      console.error('[internal/generate-nft] Failed to compose NFT image:', err);
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Failed to compose NFT image: ${err instanceof Error ? err.message : 'Unknown error'}`,
-        },
-        { status: 500 }
-      );
-    }
+    // Use pending cache to dedupe generation per tokenId
+    const pending = await getOrSetPendingGeneration(tokenId, async () => {
+      // 1. Generate unique NFT image
+      let imageBuffer, attributes;
+      try {
+        const result = await composeImage();
+        imageBuffer = result.imageBuffer;
+        attributes = result.attributes;
+        console.log('[internal/generate-nft] Generated image with attributes:', attributes);
+      } catch (err) {
+        console.error('[internal/generate-nft] Failed to compose NFT image:', err);
+        throw new Error(
+          `Failed to compose NFT image: ${err instanceof Error ? err.message : 'Unknown error'}`
+        );
+      }
 
-    // 2. Upload the image to Pinata via generator package
-    let imageHash;
-    try {
-      // Sanitize filename for Pinata (replace # with -)
-      const sanitizedFilename = `${collectionName}-${tokenId}-img.png`;
-      imageHash = await uploadImageToPinata(imageBuffer, sanitizedFilename);
-      console.log('[internal/generate-nft] Successfully uploaded image to Pinata:', imageHash);
-    } catch (err) {
-      console.error('[internal/generate-nft] Failed to upload image to Pinata:', err);
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Failed to upload image to Pinata: ${err instanceof Error ? err.message : 'Unknown error'}`,
-        },
-        { status: 500 }
-      );
-    }
+      // 2. Upload image to Pinata
+      let imageHash: string;
+      try {
+        const sanitizedFilename = `${collectionName}-${tokenId}-img.png`;
+        imageHash = await uploadImageToPinata(imageBuffer, sanitizedFilename);
+        console.log('[internal/generate-nft] Uploaded image to Pinata:', imageHash);
+      } catch (err) {
+        console.error('[internal/generate-nft] Failed to upload image to Pinata:', err);
+        throw new Error(
+          `Failed to upload image to Pinata: ${err instanceof Error ? err.message : 'Unknown error'}`
+        );
+      }
 
-    // 3. Upload the metadata to Pinata via generator package
-    let metadataHash;
-    try {
-      metadataHash = await uploadMetadataToPinata(
-        tokenId,
+      // 3. Upload metadata to Pinata
+      let metadataHash: string;
+      try {
+        metadataHash = await uploadMetadataToPinata(
+          tokenId,
+          imageHash,
+          attributes,
+          passengerUsername
+        );
+        console.log('[internal/generate-nft] Uploaded metadata to Pinata:', metadataHash);
+      } catch (err) {
+        console.error('[internal/generate-nft] Failed to upload metadata to Pinata:', err);
+        throw new Error(
+          `Failed to upload metadata to Pinata: ${err instanceof Error ? err.message : 'Unknown error'}`
+        );
+      }
+
+      return {
         imageHash,
+        metadataHash,
+        tokenURI: `ipfs://${metadataHash}`,
         attributes,
-        passengerUsername
-      );
-      console.log(
-        '[internal/generate-nft] Successfully uploaded metadata to Pinata:',
-        metadataHash
-      );
-    } catch (err) {
-      console.error('[internal/generate-nft] Failed to upload metadata to Pinata:', err);
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Failed to upload metadata to Pinata: ${err instanceof Error ? err.message : 'Unknown error'}`,
-        },
-        { status: 500 }
-      );
-    }
+        passengerUsername,
+      };
+    });
 
-    // 4. Create URLs and token URI
-    const tokenURI = `ipfs://${metadataHash}`;
-
-    // 5. Create the standardized metadata object using the utility function
-    const metadata = createChooChooMetadata(tokenId, imageHash, attributes, passengerUsername);
+    const metadata = createChooChooMetadata(
+      tokenId,
+      pending.imageHash,
+      pending.attributes,
+      passengerUsername
+    );
 
     const response: GenerateNFTResponse = {
       success: true,
-      imageHash,
-      metadataHash,
-      tokenURI,
+      imageHash: pending.imageHash,
+      metadataHash: pending.metadataHash,
+      tokenURI: pending.tokenURI,
       metadata,
     };
 
-    console.log(`[internal/generate-nft] Successfully generated NFT for token ${tokenId}`);
+    console.log(`[internal/generate-nft] Returning NFT payload for token ${tokenId}`);
     return NextResponse.json(response);
   } catch (error) {
     console.error('[internal/generate-nft] Error:', error);

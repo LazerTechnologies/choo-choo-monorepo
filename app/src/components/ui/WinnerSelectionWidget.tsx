@@ -84,13 +84,26 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
           description: `🚂 ChooChoo sent to @${selectedUser.username}!`,
         });
         onTokenMinted?.();
+      } else {
+        throw new Error(response.data.error || 'Unknown error');
       }
     } catch (error) {
       console.error('Error sending ChooChoo:', error);
-      toast({
-        description: 'Failed to send ChooChoo',
-        variant: 'destructive',
-      });
+      const maybeAxiosError = error as { response?: { status?: number } };
+      if (maybeAxiosError?.response?.status === 409) {
+        toast({ description: 'Sending in progress…', variant: 'default' });
+      } else {
+        toast({
+          description: 'Failed to send ChooChoo',
+          variant: 'destructive',
+        });
+      }
+      // Reset workflow state on error to prevent stuck state
+      try {
+        await updateWorkflowState(WorkflowState.CASTED);
+      } catch (resetError) {
+        console.error('Failed to reset workflow state:', resetError);
+      }
     } finally {
       setLoading(false);
     }

@@ -24,7 +24,10 @@ export async function POST(request: Request) {
       const contractService = getContractService();
       testTokenId = await contractService.getNextOnChainTicketId();
     } catch (err) {
-      console.error('[admin-generate] Failed to get next token ID from contract, using fallback:', err);
+      console.error(
+        '[admin-generate] Failed to get next token ID from contract, using fallback:',
+        err
+      );
       testTokenId = 1; // Fallback to token 1
     }
 

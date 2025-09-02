@@ -1,5 +1,15 @@
 import { redis } from '@/lib/kv';
-import type { TokenData, CurrentTokenTracker, LastMovedTimestamp } from '@/types/nft';
+import type { TokenData, CurrentTokenTracker, LastMovedTimestamp, PendingNFT } from '@/types/nft';
+
+interface RedisWithSetOptions {
+  set: (
+    key: string,
+    value: string,
+    options: { NX?: boolean; PX?: number; EX?: number }
+  ) => Promise<string | null>;
+  del: (key: string) => Promise<number>;
+  get: (key: string) => Promise<string | null>;
+}
 
 /**
  * Redis key patterns for token data
@@ -8,22 +18,156 @@ export const REDIS_KEYS = {
   token: (tokenId: number) => `token${tokenId}`,
   currentTokenId: 'current-token-id',
   lastMovedTimestamp: 'last-moved-timestamp',
+  pendingNFT: (tokenId: number) => `pending-nft:${tokenId}`,
 } as const;
+
+/** Simple distributed lock helpers (best-effort, no Lua) */
+export async function acquireLock(key: string, ttlMs: number): Promise<boolean> {
+  try {
+    const client = redis as unknown as RedisWithSetOptions;
+    const result = await client.set(key, '1', { NX: true, PX: ttlMs });
+    return result === 'OK';
+  } catch (error) {
+    console.error('[redis-token-utils] acquireLock error:', error);
+    return false;
+  }
+}
+
+export async function releaseLock(key: string): Promise<void> {
+  try {
+    await redis.del(key);
+  } catch (error) {
+    console.warn('[redis-token-utils] releaseLock error:', error);
+  }
+}
+
+/** Pending generation cache for idempotency while preserving randomness */
+export async function getOrSetPendingGeneration(
+  tokenId: number,
+  producer: () => Promise<PendingNFT>,
+  ttlSeconds: number = 15 * 60
+): Promise<PendingNFT> {
+  const key = REDIS_KEYS.pendingNFT(tokenId);
+  const genLockKey = `gen-lock:${tokenId}`;
+
+  try {
+    const existing = await redis.get(key);
+    if (existing) return JSON.parse(existing) as PendingNFT;
+  } catch (error) {
+    console.warn('[redis-token-utils] getOrSetPendingGeneration read error:', error);
+  }
+
+  // Try to acquire generation lock
+  let lockAcquired = false;
+  try {
+    const client = redis as unknown as RedisWithSetOptions;
+    const result = await client.set(genLockKey, '1', { NX: true, PX: 60000 });
+    lockAcquired = result === 'OK';
+  } catch (error) {
+    console.warn('[redis-token-utils] Generation lock acquisition error:', error);
+  }
+
+  if (lockAcquired) {
+    // We acquired the lock, generate the NFT
+    try {
+      const payload = await producer();
+      try {
+        const client = redis as unknown as RedisWithSetOptions;
+        await client.set(key, JSON.stringify(payload), { EX: ttlSeconds });
+      } catch (error) {
+        console.warn('[redis-token-utils] getOrSetPendingGeneration write error:', error);
+      }
+      return payload;
+    } finally {
+      try {
+        await redis.del(genLockKey);
+      } catch (error) {
+        console.warn('[redis-token-utils] Generation lock release error:', error);
+      }
+    }
+  } else {
+    // Someone else is generating, poll for result
+    const maxPolls = 30; // 30 * 200ms = 6 seconds max wait
+    for (let i = 0; i < maxPolls; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      try {
+        const existing = await redis.get(key);
+        if (existing) return JSON.parse(existing) as PendingNFT;
+      } catch (error) {
+        console.warn('[redis-token-utils] Polling read error:', error);
+      }
+    }
+
+    // Timeout fallback: try to generate ourselves
+    console.warn(
+      `[redis-token-utils] Generation timeout for token ${tokenId}, falling back to direct generation`
+    );
+    const payload = await producer();
+    try {
+      const client = redis as unknown as RedisWithSetOptions;
+      await client.set(key, JSON.stringify(payload), { EX: ttlSeconds });
+    } catch (error) {
+      console.warn('[redis-token-utils] getOrSetPendingGeneration fallback write error:', error);
+    }
+    return payload;
+  }
+}
+
+/** Write-once token data with monotonic tracker update */
+export async function storeTokenDataWriteOnce(tokenData: TokenData): Promise<'created' | 'exists'> {
+  const key = REDIS_KEYS.token(tokenData.tokenId);
+  try {
+    const client = redis as unknown as RedisWithSetOptions;
+    const setnx = await client.set(key, JSON.stringify(tokenData), { NX: true });
+    const created = setnx === 'OK';
+
+    // Update tracker monotonically if needed (best-effort)
+    try {
+      const data = await redis.get(REDIS_KEYS.currentTokenId);
+      let current = 0;
+      if (data) {
+        const tracker = JSON.parse(data) as CurrentTokenTracker;
+        current = tracker.currentTokenId;
+      }
+      if (tokenData.tokenId > current) {
+        const tracker: CurrentTokenTracker = {
+          currentTokenId: tokenData.tokenId,
+          lastUpdated: new Date().toISOString(),
+        };
+        await redis.set(REDIS_KEYS.currentTokenId, JSON.stringify(tracker));
+      }
+    } catch (err) {
+      console.warn('[redis-token-utils] tracker update error:', err);
+    }
+
+    return created ? 'created' : 'exists';
+  } catch (error) {
+    console.error('[redis-token-utils] storeTokenDataWriteOnce error:', error);
+    // Fallback to exists to avoid overwrites
+    return 'exists';
+  }
+}
 
 /**
  * @deprecated Use getContractService().getNextOnChainTicketId() instead
- * 
+ *
  * Get the next available token ID for minting
  * This function is deprecated in favor of using the contract as the authoritative source of truth
  */
 export async function getNextTokenId(): Promise<number> {
-  console.warn('[redis-token-utils] getNextTokenId() is deprecated. Use getContractService().getNextOnChainTicketId() instead');
-  
+  console.warn(
+    '[redis-token-utils] getNextTokenId() is deprecated. Use getContractService().getNextOnChainTicketId() instead'
+  );
+
   try {
     const { getContractService } = await import('@/lib/services/contract');
     const contractService = getContractService();
     const nextTokenId = await contractService.getNextOnChainTicketId();
-    console.log('[redis-token-utils] Next token ID from contract (via deprecated function):', nextTokenId);
+    console.log(
+      '[redis-token-utils] Next token ID from contract (via deprecated function):',
+      nextTokenId
+    );
     return nextTokenId;
   } catch (error) {
     console.error('[redis-token-utils] Failed to get next token ID from contract:', error);

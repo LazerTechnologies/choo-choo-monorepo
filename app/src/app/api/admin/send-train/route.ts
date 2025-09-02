@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { isAddress } from 'viem';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
-import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
+import { CHOOCHOO_CAST_TEMPLATES, APP_URL } from '@/lib/constants';
 import { requireAdmin } from '@/lib/auth/require-admin';
-import { getContractService } from '@/lib/services/contract';
+import { orchestrateManualSend } from '@/lib/train-orchestrator';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
@@ -167,9 +167,7 @@ export async function POST(request: Request) {
     // 4. Get current holder (who will receive the NFT as their journey ticket)
     let currentHolderData = null;
     try {
-      const currentHolderResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_APP_URL}/api/current-holder`
-      );
+      const currentHolderResponse = await fetch(`${APP_URL}/api/current-holder`);
       if (currentHolderResponse.ok) {
         const data = await currentHolderResponse.json();
         if (data.hasCurrentHolder) {
@@ -188,101 +186,31 @@ export async function POST(request: Request) {
       console.warn('[admin-send-train] Failed to get current holder (non-critical):', err);
     }
 
-    // 5. Get next token ID from contract
-    let tokenId;
-    try {
-      const contractService = getContractService();
-      tokenId = await contractService.getNextOnChainTicketId();
-      console.log(`[admin-send-train] Next token ID from contract: ${tokenId}`);
-    } catch (err) {
-      console.error('[admin-send-train] Failed to get next token ID from contract:', err);
-      return NextResponse.json({ error: 'Failed to get next token ID from contract' }, { status: 500 });
+    const outcome = await orchestrateManualSend(currentHolderData?.fid || 0, targetFid);
+    if (outcome.status === 409) {
+      return NextResponse.json({ error: 'Manual send already in progress' }, { status: 409 });
     }
-
-    // 5. Generate NFT with departing passenger's username
-    let generateResponse;
-    try {
-      const passengerUsername = currentHolderData?.username || 'unknown';
-      generateResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_URL}/api/internal/generate-nft`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-internal-secret': INTERNAL_SECRET || '',
-          },
-          body: JSON.stringify({
-            tokenId,
-            passengerUsername,
-          }),
-        }
+    if (outcome.status !== 200) {
+      return NextResponse.json(
+        { error: outcome.body.error || 'Manual send failed' },
+        { status: 500 }
       );
-    } catch (err) {
-      console.error('[admin-send-train] Failed to call generate-nft:', err);
-      return NextResponse.json({ error: 'Failed to generate NFT' }, { status: 500 });
     }
-
-    if (!generateResponse.ok) {
-      const text = await generateResponse.text();
-      console.error('[admin-send-train] generate-nft failed:', text);
-      return NextResponse.json({ error: 'Failed to generate NFT' }, { status: 500 });
-    }
-
-    const generateData = await generateResponse.json();
-    const { tokenURI } = generateData;
-
-    // 6. Mint NFT to winner
-    let mintResponse;
-    try {
-      mintResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/mint-token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-secret': INTERNAL_SECRET || '',
-        },
-        body: JSON.stringify({
-          newHolderAddress: winnerData.address,
-          tokenURI,
-          newHolderData: {
-            username: winnerData.username,
-            fid: winnerData.fid,
-            displayName: winnerData.displayName,
-            pfpUrl: winnerData.pfpUrl,
-          },
-          previousHolderData: currentHolderData || {
-            username: 'unknown',
-            fid: 0,
-            displayName: 'Unknown',
-            pfpUrl: '',
-          }, // Previous holder gets the NFT ticket
-          sourceCastHash: undefined, // No cast hash for admin selection
-          totalEligibleReactors: 1, // Admin selected, so only 1 "eligible" user
-        }),
-      });
-    } catch (err) {
-      console.error('[admin-send-train] Failed to call mint-token:', err);
-      return NextResponse.json({ error: 'Failed to mint token' }, { status: 500 });
-    }
-
-    if (!mintResponse.ok) {
-      const text = await mintResponse.text();
-      console.error('[admin-send-train] mint-token failed:', text);
-      return NextResponse.json({ error: 'Failed to mint token' }, { status: 500 });
-    }
-
-    const mintData = await mintResponse.json();
 
     // 7. Notify previous holder
     try {
       if (currentHolderData) {
-        await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/internal/send-cast`, {
+        await fetch(`${APP_URL}/api/internal/send-cast`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'x-internal-secret': INTERNAL_SECRET || '',
           },
           body: JSON.stringify({
-            text: CHOOCHOO_CAST_TEMPLATES.TICKET_ISSUED(currentHolderData.username, mintData.actualTokenId),
+            text: CHOOCHOO_CAST_TEMPLATES.TICKET_ISSUED(
+              currentHolderData.username,
+              outcome.body.tokenId
+            ),
           }),
         });
       }
@@ -294,9 +222,9 @@ export async function POST(request: Request) {
     const response: AdminSendTrainResponse = {
       success: true,
       winner: winnerData,
-      tokenId: mintData.actualTokenId,
-      txHash: mintData.txHash,
-      tokenURI,
+      tokenId: outcome.body.tokenId,
+      txHash: outcome.body.txHash,
+      tokenURI: outcome.body.tokenURI,
     };
 
     return NextResponse.json(response);

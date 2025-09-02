@@ -181,18 +181,21 @@ export async function POST(request: Request) {
     try {
       await redis.set('current-holder', JSON.stringify(currentHolderData));
       console.log('[admin-set-initial-holder] Successfully stored current holder data');
-      
+
       // Set initial workflow state to NOT_CASTED for fresh deployment
       const workflowDataJson = JSON.stringify(DEFAULT_WORKFLOW_DATA);
       console.log('[admin-set-initial-holder] Setting workflow state:', workflowDataJson);
-      
+
       await redis.set('workflowState', workflowDataJson);
       console.log('[admin-set-initial-holder] Successfully stored workflow state');
-      
+
       // Verify the data was stored correctly
       const storedWorkflowState = await redis.get('workflowState');
-      console.log('[admin-set-initial-holder] Verified stored workflow state:', storedWorkflowState);
-      
+      console.log(
+        '[admin-set-initial-holder] Verified stored workflow state:',
+        storedWorkflowState
+      );
+
       if (storedWorkflowState !== workflowDataJson) {
         console.error('[admin-set-initial-holder] Workflow state verification failed!');
         console.error('Expected:', workflowDataJson);
@@ -206,7 +209,7 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
-    
+
     try {
       const { redisPub, CURRENT_HOLDER_CHANNEL } = await import('@/lib/kv');
       await redisPub.publish(CURRENT_HOLDER_CHANNEL, JSON.stringify({ type: 'holder-updated' }));
@@ -229,22 +232,19 @@ export async function POST(request: Request) {
     }
 
     try {
-      const setUriResponse = await fetch(
-        `${APP_URL}/api/internal/set-ticket-data`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-internal-secret': INTERNAL_SECRET || '',
-          },
-          body: JSON.stringify({
-            tokenId: 0,
-            tokenURI: CHOOCHOO_TRAIN_METADATA_URI,
-            image: '',
-            traits: '',
-          }),
-        }
-      );
+      const setUriResponse = await fetch(`${APP_URL}/api/internal/set-ticket-data`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-internal-secret': INTERNAL_SECRET || '',
+        },
+        body: JSON.stringify({
+          tokenId: 0,
+          tokenURI: CHOOCHOO_TRAIN_METADATA_URI,
+          image: '',
+          traits: '',
+        }),
+      });
 
       if (!setUriResponse.ok) {
         const text = await setUriResponse.text();

@@ -33,14 +33,17 @@ export async function GET() {
 
     // Check if the data is corrupted with Redis command prefix
     let cleanedJson = workflowStateJson;
-    if (typeof workflowStateJson === 'string' && workflowStateJson.startsWith('SET workflowState ')) {
+    if (
+      typeof workflowStateJson === 'string' &&
+      workflowStateJson.startsWith('SET workflowState ')
+    ) {
       console.warn('Detected corrupted workflow state data with SET prefix, cleaning...');
       // Extract the JSON part after the SET command
       const jsonMatch = workflowStateJson.match(/SET workflowState '(.+)'$/);
       if (jsonMatch && jsonMatch[1]) {
         cleanedJson = jsonMatch[1];
         console.log('Cleaned workflow state data:', cleanedJson);
-        
+
         // Store the cleaned data back to Redis
         await redis.set('workflowState', cleanedJson);
         console.log('Stored cleaned workflow state back to Redis');
@@ -60,7 +63,7 @@ export async function GET() {
   } catch (error) {
     console.error('Error fetching workflow state:', error);
     console.error('Raw workflow state data:', await redis.get('workflowState'));
-    
+
     // Reset to default state if parsing fails
     try {
       await redis.set('workflowState', JSON.stringify(DEFAULT_WORKFLOW_DATA));
@@ -68,7 +71,7 @@ export async function GET() {
     } catch (resetError) {
       console.error('Failed to reset workflow state:', resetError);
     }
-    
+
     return NextResponse.json(DEFAULT_WORKFLOW_DATA, {
       headers: {
         'Cache-Control': 'no-store',

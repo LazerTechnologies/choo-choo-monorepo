@@ -15,7 +15,6 @@ interface RequireAdminErr {
 
 export type RequireAdminResult = RequireAdminOk | RequireAdminErr;
 
-
 export function isTrustedOrigin(request: Request): boolean {
   try {
     const origin = request.headers.get('origin');

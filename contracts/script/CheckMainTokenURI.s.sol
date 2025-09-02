@@ -35,7 +35,7 @@ contract CheckMainTokenURI is Script {
         console2.log("Current train holder:", owner);
 
         // Expected metadata URI
-        string memory expectedURI = "ipfs://bafkreihj4ph4csbqmc7zcyjmou4qftbr37vboekgjnvld7gqjdqkll6lba";
+        string memory expectedURI = "ipfs://bafkreih4woyxv6x4ypigqbvqxlugm5bz7qk4wh2sae7kse4horx2nknli4";
         console2.log("Expected URI:", expectedURI);
         console2.log("Is correct URI:", keccak256(bytes(mainURI)) == keccak256(bytes(expectedURI)));
     }

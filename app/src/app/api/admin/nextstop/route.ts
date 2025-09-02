@@ -55,7 +55,7 @@ export async function POST(request: Request) {
 
     // The actual token ID is the one we got from the contract before minting
     const actualTokenId = tokenId;
-    
+
     try {
       const updatedTotalTickets = await contractService.getTotalTickets();
       console.log(

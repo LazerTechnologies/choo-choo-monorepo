@@ -3,8 +3,8 @@ import fs from 'fs';
 
 // [production] find generator package directory
 // Use process.cwd() if we're in the generator directory, otherwise resolve from __dirname
-export const baseDir = process.cwd().endsWith('generator') 
-  ? process.cwd() 
+export const baseDir = process.cwd().endsWith('generator')
+  ? process.cwd()
   : path.resolve(__dirname, '../..');
 export const layersDir = path.join(baseDir, 'layers');
 

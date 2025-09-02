@@ -3,11 +3,12 @@ import { z } from 'zod';
 import { isAddress } from 'viem';
 import { redis } from '@/lib/kv';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
-import { CHOOCHOO_CAST_TEMPLATES, APP_URL } from '@/lib/constants';
+import { APP_URL } from '@/lib/constants';
 import { getContractService } from '@/lib/services/contract';
-import axios from 'axios';
+import { orchestrateManualSend } from '@/lib/train-orchestrator';
+// axios no longer needed after orchestrator refactor
 
-const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
+// INTERNAL_SECRET no longer used here after orchestrator refactor
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
 
 // Validation schema
@@ -19,20 +20,7 @@ interface UserSendTrainRequest {
   targetFid: number;
 }
 
-interface UserSendTrainResponse {
-  success: boolean;
-  winner: {
-    address: string;
-    username: string;
-    fid: number;
-    displayName: string;
-    pfpUrl: string;
-  };
-  tokenId: number;
-  txHash: string;
-  tokenURI: string;
-  error?: string;
-}
+// Response shape is returned directly from orchestrator outcome
 
 /**
  * Fetches user data from Neynar by FID
@@ -113,10 +101,33 @@ async function fetchUserByFid(fid: number): Promise<{
  */
 export async function POST(request: Request) {
   try {
+    // 0. Parse request body early for deduplication
+    let body: UserSendTrainRequest;
+    try {
+      const rawBody = await request.json();
+      const parsed = userSendTrainBodySchema.safeParse(rawBody);
+
+      if (!parsed.success) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Invalid request body',
+            details: parsed.error.flatten(),
+          },
+          { status: 400 }
+        );
+      }
+
+      body = parsed.data as UserSendTrainRequest;
+    } catch (err) {
+      console.error('[user-send-train] Error parsing request body:', err);
+      return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
+    }
+
+    const { targetFid } = body;
+
     // 1. Get current holder info to verify authentication
-    const currentHolderResponse = await fetch(
-      `${APP_URL}/api/current-holder`
-    );
+    const currentHolderResponse = await fetch(`${APP_URL}/api/current-holder`);
 
     if (!currentHolderResponse.ok) {
       return NextResponse.json(
@@ -180,56 +191,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Failed to verify deposit status' }, { status: 500 });
     }
 
-    // 4. Parse and validate request body
-    let body: UserSendTrainRequest;
-    try {
-      const rawBody = await request.json();
-      const parsed = userSendTrainBodySchema.safeParse(rawBody);
-
-      if (!parsed.success) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'Invalid request body',
-            details: parsed.error.flatten(),
-          },
-          { status: 400 }
-        );
-      }
-
-      body = parsed.data as UserSendTrainRequest;
-    } catch (err) {
-      console.error('[user-send-train] Error parsing request body:', err);
-      return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
-    }
-
-    const { targetFid } = body;
-
     console.log(`[user-send-train] 🚂 Manual selection request for target FID: ${targetFid}`);
 
-    // 4. Fetch user data from Neynar
-    let winnerData;
-    try {
-      winnerData = await fetchUserByFid(targetFid);
-      if (!winnerData) {
-        return NextResponse.json(
-          { success: false, error: `User with FID ${targetFid} not found` },
-          { status: 404 }
-        );
-      }
-    } catch (err) {
-      console.error('[user-send-train] Failed to fetch user data:', err);
-      return NextResponse.json(
-        {
-          error: `Failed to fetch user data: ${err instanceof Error ? err.message : 'Unknown error'}`,
-        },
-        { status: 500 }
-      );
-    }
-
-    console.log(`[user-send-train] Found user: ${winnerData.username} (${winnerData.address})`);
-
-    // Get current holder data for NFT minting
+    // Get current holder data for orchestrator
     const currentHolder = {
       username: currentHolderData.currentHolder.username,
       fid: currentHolderData.currentHolder.fid,
@@ -237,196 +201,40 @@ export async function POST(request: Request) {
       pfpUrl: currentHolderData.currentHolder.pfpUrl,
     };
 
-    // 5. Get next token ID from contract
-    let tokenId;
-    try {
-      const contractService = getContractService();
-      tokenId = await contractService.getNextOnChainTicketId();
-      console.log(`[user-send-train] Next token ID from contract: ${tokenId}`);
-    } catch (err) {
-      console.error('[user-send-train] Failed to get next token ID from contract:', err);
-      return NextResponse.json({ error: 'Failed to get next token ID from contract' }, { status: 500 });
+    // Call new single-writer orchestrator (it will fetch target user internally)
+    const outcome = await orchestrateManualSend(currentHolder.fid, targetFid);
+    if (outcome.status === 409) {
+      return NextResponse.json({ error: 'Manual send already in progress' }, { status: 409 });
     }
-
-    // 6. Generate NFT with departing passenger's username
-    let generateResponse;
-    try {
-      generateResponse = await fetch(
-        `${APP_URL}/api/internal/generate-nft`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-internal-secret': INTERNAL_SECRET || '',
-          },
-          body: JSON.stringify({
-            tokenId,
-            passengerUsername: currentHolder.username,
-          }),
-        }
-      );
-
-      if (!generateResponse.ok) {
-        const errorData = await generateResponse.json();
-        throw new Error(`NFT generation failed: ${errorData.error || 'Unknown error'}`);
-      }
-    } catch (err) {
-      console.error('[user-send-train] Failed to generate NFT:', err);
-      return NextResponse.json({ error: 'Failed to generate NFT' }, { status: 500 });
-    }
-
-    const nftData = await generateResponse.json();
-
-    if (!nftData.success) {
-      console.error('[user-send-train] NFT generation returned failure:', nftData.error);
+    if (outcome.status !== 200) {
       return NextResponse.json(
-        { error: nftData.error || 'Failed to generate NFT' },
+        { error: outcome.body.error || 'Manual send failed' },
         { status: 500 }
       );
     }
 
-    // 7. Mint token on contract
-    let mintResponse;
+    // Fetch winner data for response (orchestrator already validated it exists)
+    let winnerData;
     try {
-      mintResponse = await fetch(`${APP_URL}/api/internal/mint-token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-secret': INTERNAL_SECRET || '',
-        },
-        body: JSON.stringify({
-          newHolderAddress: winnerData.address,
-          tokenURI: nftData.tokenURI,
-          newHolderData: {
-            username: winnerData.username,
-            fid: winnerData.fid,
-            displayName: winnerData.displayName,
-            pfpUrl: winnerData.pfpUrl,
-          },
-          previousHolderData: currentHolder, // Previous holder gets the NFT ticket
-          sourceCastHash: undefined, // No cast hash for user manual selection
-          totalEligibleReactors: 1, // Manually selected, so only 1 "eligible" user
-        }),
-      });
-
-      if (!mintResponse.ok) {
-        const errorData = await mintResponse.json();
-        throw new Error(`Token minting failed: ${errorData.error || 'Unknown error'}`);
-      }
-    } catch (err) {
-      console.error('[user-send-train] Failed to mint token:', err);
-      return NextResponse.json({ error: 'Failed to mint token' }, { status: 500 });
+      winnerData = await fetchUserByFid(targetFid);
+    } catch {
+      // Fallback if fetch fails, but orchestrator succeeded
+      winnerData = {
+        username: 'unknown',
+        fid: targetFid,
+        displayName: 'Unknown',
+        pfpUrl: '',
+        address: '',
+      };
     }
 
-    const mintData = await mintResponse.json();
-
-    if (!mintData.success) {
-      console.error('[user-send-train] Token minting returned failure:', mintData.error);
-      return NextResponse.json(
-        { error: mintData.error || 'Failed to mint token' },
-        { status: 500 }
-      );
-    }
-
-    // 8. Reset workflow state to NOT_CASTED for the new holder
-    try {
-      await axios.post(`${APP_URL}/api/workflow-state`, {
-        state: 'NOT_CASTED',
-        winnerSelectionStart: null,
-        currentCastHash: null,
-      });
-      console.log(
-        '[user-send-train] Reset workflow state to NOT_CASTED after successful train movement'
-      );
-    } catch (err) {
-      console.error('[user-send-train] Failed to reset workflow state (non-critical):', err);
-    }
-
-    // 9. Send announcement casts from ChooChoo account
-    try {
-      // 9a. Send welcome cast to new holder
-      const welcomeCastText = CHOOCHOO_CAST_TEMPLATES.WELCOME_PASSENGER(winnerData.username);
-
-      const welcomeCastResponse = await fetch(
-        `${APP_URL}/api/internal/send-cast`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-internal-secret': INTERNAL_SECRET || '',
-          },
-          body: JSON.stringify({
-            text: welcomeCastText,
-            // channel_id: 'base', // @note: if we want to add a channel to the cast
-          }),
-        }
-      );
-
-      if (welcomeCastResponse.ok) {
-        const castData = await welcomeCastResponse.json();
-        console.log(`[user-send-train] Successfully sent welcome cast: ${castData.cast?.hash}`);
-      } else {
-        const errorData = await welcomeCastResponse.json();
-        console.warn(
-          '[user-send-train] Failed to send welcome cast (non-critical):',
-          errorData.error
-        );
-      }
-
-      // 9b. Send ticket issued cast for previous holder
-      const ticketCastText = CHOOCHOO_CAST_TEMPLATES.TICKET_ISSUED(
-        currentHolder.username,
-        mintData.actualTokenId
-      );
-
-      const imageUrl = `https://${process.env.NEXT_PUBLIC_PINATA_GATEWAY}/ipfs/${nftData.imageHash}`;
-
-      const ticketCastResponse = await fetch(
-        `${APP_URL}/api/internal/send-cast`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-internal-secret': INTERNAL_SECRET || '',
-          },
-          body: JSON.stringify({
-            text: ticketCastText,
-            embeds: [{ url: imageUrl }],
-          }),
-        }
-      );
-
-      if (ticketCastResponse.ok) {
-        const ticketCastData = await ticketCastResponse.json();
-        console.log(
-          `[user-send-train] Successfully sent ticket cast: ${ticketCastData.cast?.hash}`
-        );
-      } else {
-        const ticketErrorData = await ticketCastResponse.json();
-        console.warn(
-          '[user-send-train] Failed to send ticket cast (non-critical):',
-          ticketErrorData.error
-        );
-      }
-    } catch (err) {
-      console.warn('[user-send-train] Failed to send announcement casts (non-critical):', err);
-      // Don't fail the request for cast sending issues
-    }
-
-    // 10. Return combined result
-    console.log(
-      `[user-send-train] Successfully orchestrated user train movement for token ${mintData.actualTokenId}`
-    );
-
-    const response: UserSendTrainResponse = {
+    return NextResponse.json({
       success: true,
       winner: winnerData,
-      tokenId: mintData.actualTokenId,
-      txHash: mintData.txHash,
-      tokenURI: nftData.tokenURI,
-    };
-
-    return NextResponse.json(response);
+      tokenId: outcome.body.tokenId,
+      txHash: outcome.body.txHash,
+      tokenURI: outcome.body.tokenURI,
+    });
   } catch (error) {
     console.error('[user-send-train] User orchestration failed:', error);
     return NextResponse.json({ error: 'Failed to process user train movement' }, { status: 500 });

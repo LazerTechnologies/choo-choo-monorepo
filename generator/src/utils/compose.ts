@@ -124,7 +124,7 @@ export const composeImage = async (): Promise<{
   for (const layer of layerOrder) {
     const traitData = selectTrait(layer, rarities);
     selectedTraits.push({ layer, ...traitData });
-    
+
     // Format trait_type: capitalize and handle poster naming
     let formattedTraitType: string;
     if (layer.startsWith('poster')) {
@@ -135,7 +135,7 @@ export const composeImage = async (): Promise<{
       // Capitalize first letter for other traits
       formattedTraitType = layer.charAt(0).toUpperCase() + layer.slice(1);
     }
-    
+
     attributes.push({
       trait_type: formattedTraitType,
       value: traitData.formattedName, // Use formatted name for metadata

@@ -2,19 +2,19 @@
 
 /**
  * Redis Token Sync Repair Script
- * 
+ *
  * This script repairs inconsistencies between on-chain token data and Redis cache.
  * It should be run after the off-by-one fixes to ensure all existing data is consistent.
- * 
+ *
  * Usage: npx tsx src/scripts/repair-redis-token-sync.ts [--dry-run]
  */
 
 import { getContractService } from '../lib/services/contract';
-import { 
-  getCurrentTokenId, 
-  getTokenData, 
+import {
+  getCurrentTokenId,
+  getTokenData,
   storeTokenData,
-  REDIS_KEYS 
+  REDIS_KEYS,
 } from '../lib/redis-token-utils';
 import { redis } from '../lib/kv';
 import type { TokenData, CurrentTokenTracker } from '../types/nft';
@@ -63,7 +63,7 @@ async function repairRedisTokenSync(): Promise<RepairReport> {
     // 3. Check if tracker needs repair
     if (redisCurrentTokenId !== onChainTotalTickets) {
       console.log(`⚠️  Redis tracker mismatch: ${redisCurrentTokenId} vs ${onChainTotalTickets}`);
-      
+
       if (!isDryRun && onChainTotalTickets > 0) {
         const tracker: CurrentTokenTracker = {
           currentTokenId: onChainTotalTickets,
@@ -84,26 +84,26 @@ async function repairRedisTokenSync(): Promise<RepairReport> {
 
       for (let tokenId = 1; tokenId <= onChainTotalTickets; tokenId++) {
         report.tokensChecked++;
-        
+
         try {
           // Check if token data exists in Redis
           const redisTokenData = await getTokenData(tokenId);
-          
+
           if (!redisTokenData) {
             console.log(`❌ Missing Redis data for token ${tokenId}`);
             report.tokensWithMissingData.push(tokenId);
-            
+
             try {
               const tokenURI = await contractService.getTokenURI(tokenId);
-              
+
               if (tokenURI) {
                 // Extract metadata hash from token URI
                 const metadataHash = tokenURI.replace('ipfs://', '');
-                
+
                 // Try to fetch metadata to get image hash and attributes
                 let imageHash = 'unknown';
                 let attributes: Array<{ trait_type: string; value: string | number }> = [];
-                
+
                 try {
                   const metadataUrl = `${process.env.PINATA_GATEWAY_URL || 'https://gateway.pinata.cloud'}/ipfs/${metadataHash}`;
                   const metadataResponse = await fetch(metadataUrl);
@@ -113,7 +113,10 @@ async function repairRedisTokenSync(): Promise<RepairReport> {
                     attributes = metadata.attributes || [];
                   }
                 } catch (metadataError) {
-                  console.warn(`⚠️  Could not fetch metadata for token ${tokenId}, using fallback`, metadataError);
+                  console.warn(
+                    `⚠️  Could not fetch metadata for token ${tokenId}, using fallback`,
+                    metadataError
+                  );
                 }
 
                 const tokenData: TokenData = {
@@ -149,9 +152,11 @@ async function repairRedisTokenSync(): Promise<RepairReport> {
           } else {
             // Token data exists, check for inconsistencies
             if (redisTokenData.tokenId !== tokenId) {
-              console.log(`⚠️  Token ${tokenId} has incorrect tokenId in Redis: ${redisTokenData.tokenId}`);
+              console.log(
+                `⚠️  Token ${tokenId} has incorrect tokenId in Redis: ${redisTokenData.tokenId}`
+              );
               report.tokensWithIncorrectData.push(tokenId);
-              
+
               if (!isDryRun) {
                 // Fix the token ID
                 const correctedData = { ...redisTokenData, tokenId };
@@ -174,7 +179,7 @@ async function repairRedisTokenSync(): Promise<RepairReport> {
 
     // 5. Check for extra tokens in Redis that shouldn't exist
     console.log(`🔍 Checking for extra tokens beyond ${onChainTotalTickets}...`);
-    
+
     // Check a reasonable range beyond the expected tokens
     const maxCheckRange = Math.max(onChainTotalTickets + 10, 20);
     for (let tokenId = onChainTotalTickets + 1; tokenId <= maxCheckRange; tokenId++) {
@@ -182,7 +187,7 @@ async function repairRedisTokenSync(): Promise<RepairReport> {
         const redisTokenData = await getTokenData(tokenId);
         if (redisTokenData) {
           console.log(`⚠️  Found extra token data in Redis for token ${tokenId}`);
-          
+
           if (!isDryRun) {
             await redis.del(REDIS_KEYS.token(tokenId));
             console.log(`✅ Removed extra Redis data for token ${tokenId}`);
@@ -211,7 +216,7 @@ async function repairRedisTokenSync(): Promise<RepairReport> {
 
     if (report.errors.length > 0) {
       console.log(`\n❌ Errors encountered:`);
-      report.errors.forEach(error => console.log(`   - ${error}`));
+      report.errors.forEach((error) => console.log(`   - ${error}`));
     }
 
     if (isDryRun) {
@@ -219,7 +224,6 @@ async function repairRedisTokenSync(): Promise<RepairReport> {
     } else {
       console.log(`\n✅ Repair completed successfully!`);
     }
-
   } catch (error) {
     const errorMsg = `Fatal error during repair: ${error}`;
     console.error(`💥 ${errorMsg}`);

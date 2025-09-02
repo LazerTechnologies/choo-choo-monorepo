@@ -13,7 +13,6 @@ interface RequireFrameAdminErr {
 
 export type RequireFrameAdminResult = RequireFrameAdminOk | RequireFrameAdminErr;
 
-
 /**
  * Mini-app admin guard for proxy routes
  * Validates admin FID from mini-app context (no frame signatures needed)
@@ -31,9 +30,9 @@ export async function requireFrameAdmin(request: Request): Promise<RequireFrameA
   try {
     // Parse request body to get mini-app context data
     const body = await request.json();
-    
+
     const fid = body?.miniAppContext?.userFid || body?.untrustedData?.fid || body?.fid;
-    
+
     if (!fid || !Number.isFinite(fid)) {
       console.log('[require-frame-admin] No valid FID found in mini-app context');
       return {
@@ -55,7 +54,6 @@ export async function requireFrameAdmin(request: Request): Promise<RequireFrameA
 
     console.log('[require-frame-admin] Admin FID validated:', fid);
     return { ok: true, adminFid: fid };
-
   } catch (error) {
     console.error('[require-frame-admin] Mini-app context validation failed:', error);
     return {

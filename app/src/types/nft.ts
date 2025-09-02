@@ -107,6 +107,18 @@ export interface TokenData {
 }
 
 /**
+ * Pending NFT payload cached prior to minting to preserve randomness while
+ * enabling idempotent retries for a given tokenId.
+ */
+export interface PendingNFT {
+  imageHash: string;
+  metadataHash: string;
+  tokenURI: TokenURI;
+  attributes: Array<{ trait_type: string; value: string | number }>;
+  passengerUsername: string;
+}
+
+/**
  * Current token ID tracker
  */
 export interface CurrentTokenTracker {

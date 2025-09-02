@@ -13,16 +13,19 @@ export async function POST(request: Request) {
 
   const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
   if (!ADMIN_SECRET) {
-    return NextResponse.json({ error: 'Server misconfigured: ADMIN_SECRET missing' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Server misconfigured: ADMIN_SECRET missing' },
+      { status: 500 }
+    );
   }
 
   try {
     // Extract the actual request data (no frame wrapper needed)
     const body = await request.json();
-    
+
     // Use first admin FID as fallback since we're relying on UI gating
     const fallbackAdminFid = ADMIN_FIDS[0] || 0;
-    
+
     const upstream = await fetch(`${APP_URL}/api/admin/send-cast`, {
       method: 'POST',
       headers: {

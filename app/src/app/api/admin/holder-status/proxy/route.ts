@@ -13,13 +13,16 @@ export async function GET(request: Request) {
 
   const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
   if (!ADMIN_SECRET) {
-    return NextResponse.json({ error: 'Server misconfigured: ADMIN_SECRET missing' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Server misconfigured: ADMIN_SECRET missing' },
+      { status: 500 }
+    );
   }
 
   try {
     // Use first admin FID as fallback since we're relying on UI gating
     const fallbackAdminFid = ADMIN_FIDS[0] || 0;
-    
+
     const upstream = await fetch(`${APP_URL}/api/admin/holder-status`, {
       method: 'GET',
       headers: {
@@ -43,5 +46,3 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
-
-

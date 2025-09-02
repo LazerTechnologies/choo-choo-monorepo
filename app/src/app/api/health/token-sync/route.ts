@@ -15,7 +15,7 @@ interface TokenSyncHealthCheck {
 
 /**
  * GET /api/health/token-sync
- * 
+ *
  * Health check endpoint that validates Redis and on-chain token data are in sync.
  * This helps detect off-by-one issues and missing token data.
  */
@@ -28,10 +28,10 @@ export async function GET(): Promise<NextResponse<TokenSyncHealthCheck>> {
     // Get on-chain data
     const contractService = getContractService();
     const onChainTotalTickets = await contractService.getTotalTickets();
-    
+
     // Get Redis data
     const redisCurrentTokenId = await getCurrentTokenId();
-    
+
     console.log(`[health/token-sync] On-chain total tickets: ${onChainTotalTickets}`);
     console.log(`[health/token-sync] Redis current token ID: ${redisCurrentTokenId}`);
 
@@ -54,7 +54,7 @@ export async function GET(): Promise<NextResponse<TokenSyncHealthCheck>> {
       redisTokensFound = redisTokens.length;
 
       // Find missing tokens
-      const foundTokenIds = new Set(redisTokens.map(token => token.tokenId));
+      const foundTokenIds = new Set(redisTokens.map((token) => token.tokenId));
       for (let i = 1; i <= onChainTotalTickets; i++) {
         if (!foundTokenIds.has(i)) {
           missingTokenIds.push(i);
@@ -108,10 +108,9 @@ export async function GET(): Promise<NextResponse<TokenSyncHealthCheck>> {
     return NextResponse.json(result, {
       status: healthy ? 200 : 500,
     });
-
   } catch (error) {
     console.error('[health/token-sync] Health check failed:', error);
-    
+
     const result: TokenSyncHealthCheck = {
       healthy: false,
       onChainTotalTickets: 0,
