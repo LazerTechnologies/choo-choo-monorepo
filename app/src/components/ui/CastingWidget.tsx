@@ -26,18 +26,21 @@ function buildComposeUrl(text: string) {
   if (isAndroid()) {
     return `https://farcaster.xyz/~/compose?text=${encoded}`;
   }
-  // desktop: warpcast works
+  // desktop: using farcaster is tried and true
   // switch if they ever get rid of the forward
-  return `https://warpcast.com/~/compose?text=${encoded}`;
+  return `https://farcaster.xyz/~/compose?text=${encoded}`;
 }
 
-function buildAlternateComposeUrl(text: string) {
-  const encoded = encodeURIComponent(text);
-  // Alternate domain for fallback
-  return isIOS()
-    ? `https://farcaster.xyz/~/compose?text=${encoded}`
-    : `https://warpcast.com/~/compose?text=${encoded}`;
-}
+//function buildAlternateComposeUrl(text: string) {
+//  const encoded = encodeURIComponent(text);
+//  if (isIOS()) {
+//    return `https://farcaster.xyz/~/compose?text=${encoded}`;
+//  }
+//  if (isAndroid()) {
+//    return `https://warpcast.com/~/compose?text=${encoded}`;
+//  }
+//  return `https://warpcast.com/~/compose?text=${encoded}`;
+//}
 
 export function CastingWidget({ onCastSent }: CastingWidgetProps) {
   const { context } = useMiniApp();
@@ -51,28 +54,21 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
   const handlePostCast = () => {
     const castText = CHOOCHOO_CAST_TEMPLATES.USER_NEW_PASSENGER_CAST();
     const primaryUrl = buildComposeUrl(castText);
-    const fallbackUrl = buildAlternateComposeUrl(castText);
+    // uncomment if we have to go back to heuristic fallback and delay
+    //const fallbackUrl = buildAlternateComposeUrl(castText);
 
-    // use direct navigation for webviews
-    // @hack trying timed fallback to alt domain if nothing happens quickly
-    let navigated = false;
-    const t0 = Date.now();
-    try {
-      window.location.href = primaryUrl;
-      navigated = true;
-    } catch {}
-
-    // fallback after ~800ms if still within same context (heuristic)
-    // @dev this won't run if nav succeeded; should help if deep link didn't resolve and webview stayed
-    // might not work in cases where it goes to "download Farcaster app" page
-    setTimeout(() => {
-      // if we're still here after delay, try alt domain
-      if (!navigated || Date.now() - t0 < 800) {
-        try {
-          window.location.href = fallbackUrl;
-        } catch {}
+    // Navigation strategy:
+    // - iOS: warpcast.com via location.href; fallback farcaster.xyz
+    // - Android/Desktop: farcaster.xyz via window.open; fallback warpcast.com
+    const openPrimary = () => {
+      if (isIOS()) {
+        window.location.href = primaryUrl;
+      } else {
+        window.open(primaryUrl, '_blank');
       }
-    }, 800);
+    };
+
+    openPrimary();
 
     // Start waiting and polling (webhook should detect most cases)
     setIsWaitingForCast(true);
