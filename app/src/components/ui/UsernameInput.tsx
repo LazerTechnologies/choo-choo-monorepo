@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
@@ -165,7 +165,8 @@ export function UsernameInput({
           value={searchTerm}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
-          disabled={disabled || loading}
+          disabled={disabled}
+          readOnly={loading}
           className={cn(
             'w-full pr-10 !text-black dark:!text-black',
             error && 'border-red-500',
