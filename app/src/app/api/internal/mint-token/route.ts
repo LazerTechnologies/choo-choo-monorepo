@@ -156,7 +156,7 @@ export async function POST(request: Request) {
     try {
       const preNextId = await contractService.getNextOnChainTicketId();
       mintedLockKey = `lock:mint:${preNextId}`;
-      const locked = await acquireLock(mintedLockKey, 60_000);
+      const locked = await acquireLock(mintedLockKey, 30_000);
       if (!locked) {
         return NextResponse.json({ success: false, error: 'Mint in progress' }, { status: 409 });
       }

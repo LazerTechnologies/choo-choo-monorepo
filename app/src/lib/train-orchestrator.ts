@@ -179,7 +179,7 @@ export async function orchestrateManualSend(currentHolderFid: number, targetFid:
   const INTERNAL_SECRET = process.env.INTERNAL_SECRET || '';
 
   // 1) Acquire short-lived lock
-  const locked = await acquireLock(lockKey, 120_000);
+  const locked = await acquireLock(lockKey, 30_000);
   if (!locked) {
     return {
       status: 409,
@@ -412,7 +412,7 @@ export async function orchestrateRandomSend(castHash: string) {
   const INTERNAL_SECRET = process.env.INTERNAL_SECRET || '';
 
   // 1) Acquire short-lived lock
-  const locked = await acquireLock(lockKey, 120_000);
+  const locked = await acquireLock(lockKey, 30_000);
   if (!locked) {
     return {
       status: 409,
@@ -639,7 +639,7 @@ export async function orchestrateYoink(userFid: number, targetAddress: string) {
   const INTERNAL_SECRET = process.env.INTERNAL_SECRET || '';
 
   // 1) Acquire short-lived lock
-  const locked = await acquireLock(lockKey, 120_000);
+  const locked = await acquireLock(lockKey, 30_000);
   if (!locked) {
     return { status: 409, body: { success: false, error: 'Yoink already in progress' } } as const;
   }
@@ -731,7 +731,7 @@ export async function orchestrateYoink(userFid: number, targetAddress: string) {
 
     // 6) Acquire mint lock to prevent double yoink for same tokenId
     const mintLockKey = `lock:mint:${nextTokenId}`;
-    const mintLocked = await acquireLock(mintLockKey, 60_000);
+    const mintLocked = await acquireLock(mintLockKey, 30_000);
     if (!mintLocked) {
       throw new Error('Mint in progress for this token ID');
     }

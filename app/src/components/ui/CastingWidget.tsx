@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { isIOS, isAndroid } from '@/lib/platform';
 import { useMiniApp } from '@neynar/react';
 import { useCurrentHolder } from '@/hooks/useCurrentHolder';
 import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
@@ -11,36 +10,11 @@ import { Typography } from '@/components/base/Typography';
 import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
 import { WorkflowState } from '@/lib/workflow-types';
 import Image from 'next/image';
+import { sdk } from '@farcaster/miniapp-sdk';
 
 interface CastingWidgetProps {
   onCastSent?: () => void;
 }
-
-function buildComposeUrl(text: string) {
-  // iOS prefers Warpcast universal link domain; Android has historically worked better
-  // with farcaster.xyz for compose deep linking from webviews
-  const encoded = encodeURIComponent(text);
-  if (isIOS()) {
-    return `https://warpcast.com/~/compose?text=${encoded}`;
-  }
-  if (isAndroid()) {
-    return `https://farcaster.xyz/~/compose?text=${encoded}`;
-  }
-  // desktop: using farcaster is tried and true
-  // switch if they ever get rid of the forward
-  return `https://farcaster.xyz/~/compose?text=${encoded}`;
-}
-
-//function buildAlternateComposeUrl(text: string) {
-//  const encoded = encodeURIComponent(text);
-//  if (isIOS()) {
-//    return `https://farcaster.xyz/~/compose?text=${encoded}`;
-//  }
-//  if (isAndroid()) {
-//    return `https://warpcast.com/~/compose?text=${encoded}`;
-//  }
-//  return `https://warpcast.com/~/compose?text=${encoded}`;
-//}
 
 export function CastingWidget({ onCastSent }: CastingWidgetProps) {
   const { context } = useMiniApp();
@@ -51,32 +25,29 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
 
   const currentUserFid = context?.user?.fid;
 
-  const handlePostCast = () => {
+  const handlePostCast = async () => {
     const castText = CHOOCHOO_CAST_TEMPLATES.USER_NEW_PASSENGER_CAST();
-    const primaryUrl = buildComposeUrl(castText);
-    // uncomment if we have to go back to heuristic fallback and delay
-    //const fallbackUrl = buildAlternateComposeUrl(castText);
 
-    // Navigation strategy:
-    // - iOS: warpcast.com via location.href; fallback farcaster.xyz
-    // - Android/Desktop: farcaster.xyz via window.open; fallback warpcast.com
-    const openPrimary = () => {
-      if (isIOS()) {
-        window.location.href = primaryUrl;
-      } else {
-        window.open(primaryUrl, '_blank');
-      }
-    };
+    try {
+      await sdk.actions.composeCast({
+        text: castText,
+        embeds: [],
+      });
 
-    openPrimary();
+      // Start waiting and polling (webhook should detect most cases)
+      setIsWaitingForCast(true);
+      startPolling();
 
-    // Start waiting and polling (webhook should detect most cases)
-    setIsWaitingForCast(true);
-    startPolling();
-
-    toast({
-      description: "🗨️ Casting... Come back when you're done",
-    });
+      toast({
+        description: "🗨️ Casting... Come back when you're done",
+      });
+    } catch (error) {
+      console.error('Failed to compose cast:', error);
+      toast({
+        description: '❌ Failed to open cast composer',
+        variant: 'destructive',
+      });
+    }
   };
 
   const startPolling = () => {

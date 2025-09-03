@@ -2,11 +2,7 @@ import { redis } from '@/lib/kv';
 import type { TokenData, CurrentTokenTracker, LastMovedTimestamp, PendingNFT } from '@/types/nft';
 
 interface RedisWithSetOptions {
-  set: (
-    key: string,
-    value: string,
-    options: { NX?: boolean; PX?: number; EX?: number }
-  ) => Promise<string | null>;
+  set: (key: string, value: string, ...args: (string | number)[]) => Promise<string | null>;
   del: (key: string) => Promise<number>;
   get: (key: string) => Promise<string | null>;
 }
@@ -25,7 +21,7 @@ export const REDIS_KEYS = {
 export async function acquireLock(key: string, ttlMs: number): Promise<boolean> {
   try {
     const client = redis as unknown as RedisWithSetOptions;
-    const result = await client.set(key, '1', { NX: true, PX: ttlMs });
+    const result = await client.set(key, '1', 'NX', 'PX', ttlMs);
     return result === 'OK';
   } catch (error) {
     console.error('[redis-token-utils] acquireLock error:', error);
@@ -61,7 +57,7 @@ export async function getOrSetPendingGeneration(
   let lockAcquired = false;
   try {
     const client = redis as unknown as RedisWithSetOptions;
-    const result = await client.set(genLockKey, '1', { NX: true, PX: 60000 });
+    const result = await client.set(genLockKey, '1', 'NX', 'PX', 60000);
     lockAcquired = result === 'OK';
   } catch (error) {
     console.warn('[redis-token-utils] Generation lock acquisition error:', error);
@@ -73,7 +69,7 @@ export async function getOrSetPendingGeneration(
       const payload = await producer();
       try {
         const client = redis as unknown as RedisWithSetOptions;
-        await client.set(key, JSON.stringify(payload), { EX: ttlSeconds });
+        await client.set(key, JSON.stringify(payload), 'EX', ttlSeconds);
       } catch (error) {
         console.warn('[redis-token-utils] getOrSetPendingGeneration write error:', error);
       }
@@ -106,7 +102,7 @@ export async function getOrSetPendingGeneration(
     const payload = await producer();
     try {
       const client = redis as unknown as RedisWithSetOptions;
-      await client.set(key, JSON.stringify(payload), { EX: ttlSeconds });
+      await client.set(key, JSON.stringify(payload), 'EX', ttlSeconds);
     } catch (error) {
       console.warn('[redis-token-utils] getOrSetPendingGeneration fallback write error:', error);
     }
@@ -119,7 +115,7 @@ export async function storeTokenDataWriteOnce(tokenData: TokenData): Promise<'cr
   const key = REDIS_KEYS.token(tokenData.tokenId);
   try {
     const client = redis as unknown as RedisWithSetOptions;
-    const setnx = await client.set(key, JSON.stringify(tokenData), { NX: true });
+    const setnx = await client.set(key, JSON.stringify(tokenData), 'NX');
     const created = setnx === 'OK';
 
     // Update tracker monotonically if needed (best-effort)
