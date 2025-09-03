@@ -26,10 +26,11 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
 
   const handlePostCast = () => {
     const castText = encodeURIComponent(CHOOCHOO_CAST_TEMPLATES.USER_NEW_PASSENGER_CAST());
-    const warpcastUrl = `https://farcaster.xyz/~/compose?text=${castText}`;
+    // @dev use warpcast domain for iOS compatibility
+    const warpcastUrl = `https://warpcast.com/~/compose?text=${castText}`;
 
     // Open Warpcast
-    window.open(warpcastUrl, '_blank');
+    window.location.href = warpcastUrl;
 
     // Start waiting and polling (webhook should detect most cases)
     setIsWaitingForCast(true);
