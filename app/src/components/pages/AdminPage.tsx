@@ -1249,7 +1249,7 @@ function RedisRepair({ adminFid }: { adminFid?: number }) {
     setReport(null);
 
     try {
-      const response = await fetch('/api/admin/repair-redis', {
+      const response = await fetch('/api/admin/repair-redis/proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
