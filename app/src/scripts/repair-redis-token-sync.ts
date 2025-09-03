@@ -19,8 +19,6 @@ import {
 import { redis } from '../lib/kv';
 import type { TokenData, CurrentTokenTracker } from '../types/nft';
 
-const isDryRun = process.argv.includes('--dry-run');
-
 interface RepairReport {
   onChainTotalTickets: number;
   redisCurrentTokenId: number | null;
@@ -32,7 +30,7 @@ interface RepairReport {
   errors: string[];
 }
 
-async function repairRedisTokenSync(): Promise<RepairReport> {
+async function repairRedisTokenSync(isDryRun: boolean = false): Promise<RepairReport> {
   const report: RepairReport = {
     onChainTotalTickets: 0,
     redisCurrentTokenId: null,
@@ -234,8 +232,9 @@ async function repairRedisTokenSync(): Promise<RepairReport> {
 }
 
 // Run the repair if this script is executed directly
-if (require.main === module) {
-  repairRedisTokenSync()
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const isDryRun = process.argv.includes('--dry-run');
+  repairRedisTokenSync(isDryRun)
     .then((report) => {
       process.exit(report.errors.length > 0 ? 1 : 0);
     })

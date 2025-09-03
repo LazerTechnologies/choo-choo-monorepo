@@ -1223,7 +1223,116 @@ function CustomCast({ adminFid }: { adminFid?: number }) {
   );
 }
 
-// @todo: remove this when we go live
+function RedisRepair({ adminFid }: { adminFid?: number }) {
+  const [loading, setLoading] = useState(false);
+  const [report, setReport] = useState<{
+    onChainTotalTickets: number;
+    redisCurrentTokenId: number | null;
+    tokensChecked: number;
+    tokensRepaired: number;
+    tokensWithMissingData: number[];
+    tokensWithIncorrectData: number[];
+    trackerRepaired: boolean;
+    errors: string[];
+    dryRun?: boolean;
+  } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const runRepair = async (dryRun: boolean) => {
+    if (!adminFid) {
+      setError('You must be signed in to use admin functions');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setReport(null);
+
+    try {
+      const response = await fetch('/api/admin/repair-redis', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ dryRun }),
+        credentials: 'include',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Repair failed');
+      }
+
+      setReport(data.report);
+    } catch (err) {
+      console.error('Repair error:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Card className="my-8 w-full !bg-orange-100 !border-orange-300 dark:!bg-orange-900/20 dark:!border-orange-700">
+      <Card.Header>
+        <Card.Title className="text-orange-800 dark:text-orange-300">Redis Repair</Card.Title>
+        <Card.Description className="text-orange-700 dark:text-orange-400">
+          Sync Redis cache with on-chain token data. Use dry run first to see what would be changed.
+        </Card.Description>
+      </Card.Header>
+      <Card.Content>
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <Button
+              onClick={() => runRepair(true)}
+              disabled={loading || !adminFid}
+              variant="outline"
+              className="flex-1"
+            >
+              {loading ? 'Running...' : 'Dry Run'}
+            </Button>
+            <Button
+              onClick={() => runRepair(false)}
+              disabled={loading || !adminFid}
+              className="flex-1 !bg-orange-600 hover:!bg-orange-700"
+            >
+              {loading ? 'Running...' : 'Run Repair'}
+            </Button>
+          </div>
+
+          {error && (
+            <div className="p-3 bg-red-100 border border-red-300 rounded-md">
+              <Typography variant="small" className="text-red-800">
+                ❌ {error}
+              </Typography>
+            </div>
+          )}
+
+          {report && (
+            <div className="p-3 bg-blue-50 border border-blue-300 rounded-md">
+              <Typography variant="small" className="text-blue-800 font-semibold mb-2">
+                📋 Repair Report {report.dryRun && '(Dry Run)'}
+              </Typography>
+              <div className="text-xs text-blue-700 space-y-1">
+                <div>On-chain total tickets: {report.onChainTotalTickets}</div>
+                <div>Redis current token ID: {report.redisCurrentTokenId}</div>
+                <div>Tokens checked: {report.tokensChecked}</div>
+                <div>Tokens repaired: {report.tokensRepaired}</div>
+                <div>Missing tokens: {report.tokensWithMissingData.length}</div>
+                <div>Incorrect tokens: {report.tokensWithIncorrectData.length}</div>
+                <div>Tracker repaired: {report.trackerRepaired ? 'Yes' : 'No'}</div>
+                {report.errors.length > 0 && (
+                  <div className="text-red-600">Errors: {report.errors.length}</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      </Card.Content>
+    </Card>
+  );
+}
 
 export function AdminPage({ onTokenMinted }: AdminPageProps) {
   const { isAdmin, currentUserFid } = useAdminAccess();
@@ -1254,6 +1363,8 @@ export function AdminPage({ onTokenMinted }: AdminPageProps) {
       <AdminGenerate adminFid={currentUserFid} />
       <SetTicketMetadata adminFid={currentUserFid} />
       <TestAdminNextStop onTokenMinted={onTokenMinted} adminFid={currentUserFid} />
+      {/* Redis Repair */}
+      <RedisRepair adminFid={currentUserFid} />
       {/* App Pause Toggle */}
       <AppPauseToggle adminFid={currentUserFid} />
       {/* App State Testing */}
