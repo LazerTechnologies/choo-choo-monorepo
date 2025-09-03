@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { isIOS, isAndroid } from '@/lib/platform';
 import { useMiniApp } from '@neynar/react';
 import { useCurrentHolder } from '@/hooks/useCurrentHolder';
 import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
@@ -15,6 +16,29 @@ interface CastingWidgetProps {
   onCastSent?: () => void;
 }
 
+function buildComposeUrl(text: string) {
+  // iOS prefers Warpcast universal link domain; Android has historically worked better
+  // with farcaster.xyz for compose deep linking from webviews
+  const encoded = encodeURIComponent(text);
+  if (isIOS()) {
+    return `https://warpcast.com/~/compose?text=${encoded}`;
+  }
+  if (isAndroid()) {
+    return `https://farcaster.xyz/~/compose?text=${encoded}`;
+  }
+  // desktop: warpcast works
+  // switch if they ever get rid of the forward
+  return `https://warpcast.com/~/compose?text=${encoded}`;
+}
+
+function buildAlternateComposeUrl(text: string) {
+  const encoded = encodeURIComponent(text);
+  // Alternate domain for fallback
+  return isIOS()
+    ? `https://farcaster.xyz/~/compose?text=${encoded}`
+    : `https://warpcast.com/~/compose?text=${encoded}`;
+}
+
 export function CastingWidget({ onCastSent }: CastingWidgetProps) {
   const { context } = useMiniApp();
   const { isCurrentHolder, loading } = useCurrentHolder();
@@ -25,12 +49,30 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
   const currentUserFid = context?.user?.fid;
 
   const handlePostCast = () => {
-    const castText = encodeURIComponent(CHOOCHOO_CAST_TEMPLATES.USER_NEW_PASSENGER_CAST());
-    // @dev use warpcast domain for iOS compatibility
-    const warpcastUrl = `https://warpcast.com/~/compose?text=${castText}`;
+    const castText = CHOOCHOO_CAST_TEMPLATES.USER_NEW_PASSENGER_CAST();
+    const primaryUrl = buildComposeUrl(castText);
+    const fallbackUrl = buildAlternateComposeUrl(castText);
 
-    // Open Warpcast
-    window.location.href = warpcastUrl;
+    // use direct navigation for webviews
+    // @hack trying timed fallback to alt domain if nothing happens quickly
+    let navigated = false;
+    const t0 = Date.now();
+    try {
+      window.location.href = primaryUrl;
+      navigated = true;
+    } catch {}
+
+    // fallback after ~800ms if still within same context (heuristic)
+    // @dev this won't run if nav succeeded; should help if deep link didn't resolve and webview stayed
+    // might not work in cases where it goes to "download Farcaster app" page
+    setTimeout(() => {
+      // if we're still here after delay, try alt domain
+      if (!navigated || Date.now() - t0 < 800) {
+        try {
+          window.location.href = fallbackUrl;
+        } catch {}
+      }
+    }, 800);
 
     // Start waiting and polling (webhook should detect most cases)
     setIsWaitingForCast(true);
