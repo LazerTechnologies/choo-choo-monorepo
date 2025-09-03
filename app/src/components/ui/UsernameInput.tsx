@@ -139,15 +139,23 @@ export function UsernameInput({
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newSearchTerm = e.target.value;
-    setSearchTerm(newSearchTerm);
-    if (newSearchTerm.trim().length > 0) {
-      searchUsers(newSearchTerm.trim());
-    } else {
+    setSearchTerm(e.target.value);
+  };
+
+  useEffect(() => {
+    const term = searchTerm.trim();
+    if (term.length === 0) {
       setUsers([]);
       setShowDropdown(false);
+      return;
     }
-  };
+
+    const handler = setTimeout(() => {
+      searchUsers(term);
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [searchTerm, searchUsers]);
 
   return (
     <div className={cn('relative', className)} ref={dropdownRef}>
