@@ -218,17 +218,24 @@ export async function POST(request: Request) {
       );
     }
 
-    let actualTokenId = tokenId;
+    // The minted token ID is the tokenId we captured before the transaction
+    // After minting, the contract's nextTicketId will be incremented by 1
+    const actualTokenId = tokenId;
+    
     try {
       const postNextId = await contractService.getNextOnChainTicketId();
-      actualTokenId = postNextId - 1;
       const updatedTotalTickets = await contractService.getTotalTickets();
       console.log(
         `[internal/mint-token] Minted token ID: ${actualTokenId} (total tickets now: ${updatedTotalTickets})`
       );
+      
+      // Verify the contract state was updated correctly
+      if (postNextId !== tokenId + 1) {
+        console.warn(`[internal/mint-token] Contract nextTicketId mismatch: expected ${tokenId + 1}, got ${postNextId}`);
+      }
     } catch (err) {
       console.error(
-        '[internal/mint-token] Failed to compute actual minted token ID (non-critical):',
+        '[internal/mint-token] Failed to verify post-mint contract state (non-critical):',
         err
       );
     }

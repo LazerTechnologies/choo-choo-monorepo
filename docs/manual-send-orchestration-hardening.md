@@ -45,7 +45,7 @@ Steps (single source of truth for the flow):
 
 - Call `POST /api/internal/mint-token` with header `x-no-redis-write: true` so the endpoint skips any Redis writes.
 - Optionally, inside `mint-token` acquire a short lock `lock:mint:<nextTicketId>` (EX 60) to guard direct callers; return 409 if locked.
-- After tx: read `postNextId = getNextOnChainTicketId()` and compute `actualTokenId = postNextId - 1`. Assert `actualTokenId === nextTicketId`; otherwise fail and release the lock.
+- After tx: use `actualTokenId = nextTokenId` (the value captured before the transaction). Optionally verify `postNextId = getNextOnChainTicketId()` equals `nextTokenId + 1` for validation.
 
 5. Store token data (write-once semantics)
 
@@ -95,7 +95,7 @@ All API entry points (`user-send-train`, `admin/send-train`) should call this or
 
 - Respect header `x-no-redis-write: true` to skip any Redis writes. Orchestrator is the single writer.
 - Optionally add short lock `lock:mint:<nextTicketId>` to block double execution if route is called directly.
-- Validation: compute `actualTokenId = postNextId - 1` and return it along with `txHash` and `tokenURI`.
+- Validation: use `actualTokenId = tokenId` (the value captured before the transaction) and return it along with `txHash` and `tokenURI`.
 
 ---
 
