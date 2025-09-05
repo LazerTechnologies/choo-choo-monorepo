@@ -61,32 +61,24 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
           clearInterval(interval);
           setIsWaitingForCast(false);
 
-          // Update workflow state to CASTED
+          // Don't overwrite workflow state if webhook already set it
+          // The webhook sets CASTED with the actual currentCastHash
+          console.log(
+            '✅ Cast detected via polling - webhook should have already set CASTED state'
+          );
+
+          // Just broadcast UI update with the existing cast hash from the API response
           try {
-            await fetch('/api/workflow-state', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                state: 'CASTED',
-                winnerSelectionStart: null,
-                currentCastHash: null,
-              }),
-            });
-            // Broadcast immediate UI update
-            try {
-              window.dispatchEvent(
-                new CustomEvent('workflow-state-changed', {
-                  detail: {
-                    state: WorkflowState.CASTED,
-                    winnerSelectionStart: null,
-                    currentCastHash: null,
-                  },
-                })
-              );
-            } catch {}
-          } catch (error) {
-            console.error('Failed to update workflow state to CASTED:', error);
-          }
+            window.dispatchEvent(
+              new CustomEvent('workflow-state-changed', {
+                detail: {
+                  state: WorkflowState.CASTED,
+                  winnerSelectionStart: null,
+                  currentCastHash: statusData.currentCastHash, // Preserve webhook's cast hash
+                },
+              })
+            );
+          } catch {}
 
           toast({
             description: '✅ Cast found! Proceed to picking the next stop',
