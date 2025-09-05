@@ -220,26 +220,34 @@ export async function POST(request: Request) {
 
     // The minted token ID is the tokenId we captured before the transaction
     // After minting, the contract's nextTicketId will be incremented by 1
-    const actualTokenId = tokenId;
+    let actualTokenId = tokenId;
 
     try {
+      // Briefly poll to allow on-chain state to reflect the new nextTicketId
+      const retries = 3;
+      for (let i = 0; i < retries; i++) {
+        const postNextIdProbe = await contractService.getNextOnChainTicketId();
+        if (postNextIdProbe > tokenId) {
+          actualTokenId = postNextIdProbe - 1;
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 200 * (i + 1)));
+      }
+
       const postNextId = await contractService.getNextOnChainTicketId();
       const updatedTotalTickets = await contractService.getTotalTickets();
       console.log(
         `[internal/mint-token] Minted token ID: ${actualTokenId} (total tickets now: ${updatedTotalTickets})`
       );
 
-      // Verify the contract state was updated correctly
-      if (postNextId !== tokenId + 1) {
+      // Verify with tolerance for eventual consistency
+      if (postNextId <= actualTokenId) {
         console.warn(
-          `[internal/mint-token] Contract nextTicketId mismatch: expected ${tokenId + 1}, got ${postNextId}`
+          `[internal/mint-token] Contract nextTicketId verification: expected > ${actualTokenId}, got ${postNextId}`
         );
       }
     } catch (err) {
-      console.error(
-        '[internal/mint-token] Failed to verify post-mint contract state (non-critical):',
-        err
-      );
+      console.warn('[internal/mint-token] Post-mint verification skipped (non-critical):', err);
     }
 
     // Pure mint endpoint - all state management handled by orchestrator

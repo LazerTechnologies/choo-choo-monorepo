@@ -468,51 +468,44 @@ export class ContractService {
     try {
       const publicClient = this.createPublicClient();
 
-      // Get the transaction receipt
-      const receipt = await publicClient.getTransactionReceipt({ hash: txHash });
-
-      if (!receipt || !receipt.logs) {
-        console.warn(`[ContractService] No receipt or logs found for tx: ${txHash}`);
-        return null;
-      }
-
-      // Parse logs to find Transfer events from zero address (minting)
-      for (const log of receipt.logs) {
+      // Poll for receipt with exponential backoff (max ~2.5–3s)
+      let attempt = 0;
+      const maxAttempts = 6;
+      while (attempt < maxAttempts) {
         try {
-          // Check if this log is from our contract
-          if (log.address.toLowerCase() !== this.config.address.toLowerCase()) {
-            continue;
-          }
+          const receipt = await publicClient.getTransactionReceipt({ hash: txHash });
+          if (receipt && receipt.logs) {
+            for (const log of receipt.logs) {
+              try {
+                if (log.address.toLowerCase() !== this.config.address.toLowerCase()) continue;
+                const parsedLog = decodeEventLog({ abi: ChooChooTrainAbi, data: log.data, topics: log.topics });
 
-          // Parse the log using decodeEventLog
-          const parsedLog = decodeEventLog({
-            abi: ChooChooTrainAbi,
-            data: log.data,
-            topics: log.topics,
-          });
+                // Prefer custom TicketStamped event for direct tokenId
+                if (parsedLog.eventName === 'TicketStamped') {
+                  const args = parsedLog.args as unknown as { to: Address; tokenId: bigint; traits: string };
+                  console.log(`[ContractService] Found TicketStamped token ID ${Number(args.tokenId)} in tx: ${txHash}`);
+                  return Number(args.tokenId);
+                }
 
-          if (parsedLog.eventName === 'Transfer') {
-            const args = parsedLog.args as unknown as {
-              from: Address;
-              to: Address;
-              tokenId: bigint;
-            };
-
-            // Check if this is a mint (from zero address)
-            if (args.from === '0x0000000000000000000000000000000000000000') {
-              console.log(
-                `[ContractService] Found minted token ID ${Number(args.tokenId)} in tx: ${txHash}`
-              );
-              return Number(args.tokenId);
+                // Fallback: standard ERC721 mint Transfer(from=0x0)
+                if (parsedLog.eventName === 'Transfer') {
+                  const args = parsedLog.args as unknown as { from: Address; to: Address; tokenId: bigint };
+                  if (args.from === '0x0000000000000000000000000000000000000000') {
+                    console.log(`[ContractService] Found minted token ID ${Number(args.tokenId)} in tx: ${txHash}`);
+                    return Number(args.tokenId);
+                  }
+                }
+              } catch {}
             }
+            console.warn(`[ContractService] No Transfer-from-zero event found in tx logs: ${txHash}`);
+            return null;
           }
-        } catch {
-          // Skip logs that can't be parsed (might be from other contracts or events)
-          continue;
-        }
+        } catch {}
+        const delayMs = 300 * Math.pow(1.5, attempt);
+        await new Promise((r) => setTimeout(r, delayMs));
+        attempt++;
       }
-
-      console.warn(`[ContractService] No Transfer event from zero address found in tx: ${txHash}`);
+      console.warn(`[ContractService] Transaction receipt not available after retries: ${txHash}`);
       return null;
     } catch (error) {
       console.error(`[ContractService] Failed to get minted token ID from tx ${txHash}:`, error);

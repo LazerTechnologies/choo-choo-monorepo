@@ -123,15 +123,15 @@ export const MARQUEE_CONFIG = {
   scrollSpeed: parseInt(process.env.NEXT_PUBLIC_MARQUEE_SCROLL_SPEED || '10', 10),
   standardMessages: TRAIN_STATION_MESSAGES,
   toastScrollCycles: 2,
-  maxToastAge: 10000, // 10 seconds
+  maxToastAge: 10000,
   priorityDelayMs: 500,
-  userContextFrequency: 5, // Every 5th message cycle
+  userContextFrequency: 5, // USER_CONTEXT priorities can show every 5th message cycle to avoid spam
 } as const;
 
 // Message Priority Levels
 export enum MessagePriority {
-  EMERGENCY = 0, // Immediate injection (errors, critical alerts)
-  TOAST = 1, // Normal toast notifications
-  USER_CONTEXT = 2, // User info, achievements
-  STANDARD = 3, // Default train humor
+  EMERGENCY = 0, // immediate injection (errors, critical alerts)
+  TOAST = 1, // normal toast notifications
+  USER_CONTEXT = 2, // user info, achievements
+  STANDARD = 3, // default messages
 }
