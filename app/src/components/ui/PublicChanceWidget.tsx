@@ -98,11 +98,11 @@ export function PublicChanceWidget() {
               Chance Mode
             </Typography>
             <Typography variant="body" className="text-sm !text-white mt-1">
-              Send ChooChoo to a random reactor from the below cast
+              Send ChooChoo to a random reactor from the below cast 👇
             </Typography>
           </div>
 
-          {workflowData.state === WorkflowState.CHANCE_ACTIVE && (
+          {workflowData.state === WorkflowState.CHANCE_ACTIVE && timeRemaining !== '' && (
             <div className="p-3 bg-purple-700 border border-white rounded">
               <Typography variant="body" className="text-sm !text-white text-center">
                 ⏱️ Public sending will be enabled in: <strong>{timeRemaining}</strong>
