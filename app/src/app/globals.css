@@ -58,6 +58,11 @@
     --animate-marquee2: marquee2 5s linear infinite;
   }
 
+  /* Centralized background gradient */
+  .app-background {
+    @apply min-h-screen bg-gradient-to-br from-purple-800 via-purple-900 to-purple-950;
+  }
+
   @keyframes marquee {
     0% {
       transform: translateX(0%);

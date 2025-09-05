@@ -322,7 +322,7 @@ function AdminGenerate({ adminFid }: { adminFid?: number }) {
             {result.metadata && (
               <div className="border-t border-gray-400 pt-2">
                 <div className="font-semibold mb-1 text-gray-200">Uploaded Metadata:</div>
-                <pre className="bg-purple-800/50 p-2 rounded text-xs overflow-x-auto text-gray-300">
+                <pre className="bg-purple-600/50 p-2 rounded text-xs overflow-x-auto text-gray-300">
                   {JSON.stringify(result.metadata, null, 2)}
                 </pre>
               </div>
@@ -449,7 +449,7 @@ function SetInitialHolder({
   }, [selectedUser, adminFid, onTokenMinted, isDisabled]);
 
   return (
-    <Card className={`my-8 w-full !border-white ${isDisabled ? '!bg-gray-400' : '!bg-purple-800'}`}>
+    <Card className={`my-8 w-full !border-white ${isDisabled ? '!bg-gray-400' : '!bg-purple-600'}`}>
       <Card.Header>
         <Card.Title>Set Initial Holder</Card.Title>
         <Card.Description>
@@ -496,7 +496,7 @@ function SetInitialHolder({
             disabled={loading || !selectedUser || isDisabled || isLoadingStatus}
             isLoading={loading || isLoadingStatus}
             className={`w-full text-white border-white ${
-              isDisabled ? 'bg-gray-500 cursor-not-allowed' : 'bg-purple-800 hover:bg-purple-900'
+              isDisabled ? 'bg-gray-500 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'
             }`}
             variant="default"
           >
@@ -1103,7 +1103,7 @@ function JourneyAnnouncement({ adminFid }: { adminFid?: number }) {
   }, [adminFid]);
 
   return (
-    <Card className="my-8 w-full !bg-purple-800 !border-white">
+    <Card className="my-8 w-full !bg-purple-600 !border-white">
       <Card.Header>
         <Card.Title>Send Journey Announcement</Card.Title>
         <Card.Description>
@@ -1183,7 +1183,7 @@ function CustomCast({ adminFid }: { adminFid?: number }) {
   }, [adminFid, text]);
 
   return (
-    <Card className="my-8 w-full !bg-purple-800 !border-white">
+    <Card className="my-8 w-full !bg-purple-600 !border-white">
       <Card.Header>
         <Card.Title>Send Custom Cast</Card.Title>
         <Card.Description>Write and send a custom cast from @choochoo.</Card.Description>
@@ -1342,7 +1342,7 @@ export function AdminPage({ onTokenMinted }: AdminPageProps) {
       <div className="space-y-3 px-6 w-full max-w-md mx-auto">
         <div className="flex justify-center items-center min-h-[300px]">
           <Card
-            className="p-6 !bg-purple-500 !text-white !border-white"
+            className="p-6 !bg-purple-600 !text-white !border-white"
             style={{ backgroundColor: '#a855f7' }}
           >
             <Typography variant="h4" className="text-center !text-white mb-2">

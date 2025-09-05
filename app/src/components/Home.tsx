@@ -89,7 +89,7 @@ export default function Home({ title = 'Choo Choo on Base' }: HomeProps) {
   return (
     <MarqueeToastProvider>
       <div
-        className="min-h-screen bg-gradient-to-br from-purple-600 via-purple-700 to-purple-900"
+        className="app-background"
         style={{
           paddingTop: context?.client.safeAreaInsets?.top ?? 0,
           paddingBottom: context?.client.safeAreaInsets?.bottom ?? 0,
