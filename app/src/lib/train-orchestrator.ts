@@ -13,6 +13,34 @@ import { APP_URL } from '@/lib/constants';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
+/**
+ * Verifies that the contract's nextTicketId has advanced correctly after minting.
+ * Now tolerant of the actual minted token ID since we get it from transaction receipt.
+ * Logs a warning if the verification fails but does not throw (non-critical).
+ * 
+ * @param contractService - The contract service instance
+ * @param mintedTokenId - The actual minted token ID (from transaction receipt)
+ * @param context - Context string for logging (e.g., 'train-orchestrator', 'orchestrateYoink')
+ */
+async function verifyNextIdAdvanced(
+  contractService: ReturnType<typeof getContractService>,
+  mintedTokenId: number,
+  context: string
+): Promise<void> {
+  try {
+    const postNextId = await contractService.getNextOnChainTicketId();
+    // The next ID should be at least one more than the minted token ID
+    // This is more tolerant since we're using the authoritative minted ID
+    if (postNextId <= mintedTokenId) {
+      console.warn(`[${context}] Contract nextTicketId verification: expected > ${mintedTokenId}, got ${postNextId}`);
+    } else {
+      console.log(`[${context}] Contract nextTicketId verification passed: ${postNextId} > ${mintedTokenId}`);
+    }
+  } catch (err) {
+    console.warn(`[${context}] Failed to verify post-mint contract state (non-critical):`, err);
+  }
+}
+
 export interface PassengerData {
   username: string;
   fid: number;
@@ -170,17 +198,23 @@ export async function orchestrateTrainMovement(
 }
 
 /**
- * Manual send orchestrator with single-writer semantics and idempotency.
- * Follows the hardening plan: lock → get tokenId → pending generate → mint (no redis) → store write-once → casts → state.
+ * Manual send orchestrator using prepare-then-commit pattern
+ * 
+ * This function implements a two-phase approach:
+ * 1. Preparation Phase: Fetch all data, validate, prepare structures (reversible)
+ * 2. Commit Phase: Execute blockchain transaction (point of no return)
+ * 3. Post-Commit Phase: Update app state with prepared data (should rarely fail)
  */
 export async function orchestrateManualSend(currentHolderFid: number, targetFid: number) {
-  const contractService = getContractService();
   const lockKey = `lock:manual:${currentHolderFid}:${targetFid}`;
   const INTERNAL_SECRET = process.env.INTERNAL_SECRET || '';
+  
+  console.log(`[orchestrateManualSend] Starting manual send orchestration: FID ${currentHolderFid} -> ${targetFid}`);
 
-  // 1) Acquire short-lived lock
+  // Acquire distributed lock
   const locked = await acquireLock(lockKey, 30_000);
   if (!locked) {
+    console.warn(`[orchestrateManualSend] Lock acquisition failed for ${currentHolderFid} -> ${targetFid}`);
     return {
       status: 409,
       body: { success: false, error: 'Manual send already in progress' },
@@ -189,6 +223,7 @@ export async function orchestrateManualSend(currentHolderFid: number, targetFid:
 
   try {
     // 2) Authoritative next token id
+    const contractService = getContractService();
     const nextTokenId = await contractService.getNextOnChainTicketId();
 
     // Resolve departing passenger (current holder) + target from external sources
@@ -283,19 +318,19 @@ export async function orchestrateManualSend(currentHolderFid: number, targetFid:
     }
     const mint = await mintRes.json();
     
-    // minted tokenId is the nextTokenId captured before the transaction
-    // after minting, the contract's nextTicketId will be incremented by 1
-    const actualTokenId = nextTokenId;
-    
-    // Verify the contract state was updated correctly
-    try {
-      const postNextId = await contractService.getNextOnChainTicketId();
-      if (postNextId !== nextTokenId + 1) {
-        console.warn(`[train-orchestrator] Contract nextTicketId mismatch: expected ${nextTokenId + 1}, got ${postNextId}`);
-      }
-    } catch (err) {
-      console.warn('[train-orchestrator] Failed to verify post-mint contract state (non-critical):', err);
+    // Get the actual minted token ID from the transaction receipt
+    let actualTokenId: number;
+    const mintedTokenId = await contractService.getMintedTokenIdFromTx(mint.txHash as `0x${string}`);
+    if (mintedTokenId !== null) {
+      actualTokenId = mintedTokenId;
+      console.log(`[train-orchestrator] Using authoritative token ID from transaction: ${actualTokenId}`);
+    } else {
+      actualTokenId = nextTokenId;
+      console.warn(`[train-orchestrator] Failed to get token ID from transaction receipt, falling back to pre-mint nextTokenId: ${actualTokenId}`);
     }
+    
+    // Verify the contract state was updated correctly (now using authoritative token ID)
+    await verifyNextIdAdvanced(contractService, actualTokenId, 'train-orchestrator');
 
     // 5) Store last moved timestamp
     try {
@@ -517,19 +552,19 @@ export async function orchestrateRandomSend(castHash: string) {
     }
     const mint = await mintRes.json();
     
-    // The minted token ID is the nextTokenId we captured before the transaction
-    // After minting, the contract's nextTicketId will be incremented by 1
-    const actualTokenId = nextTokenId;
-    
-    // Verify the contract state was updated correctly (optional validation)
-    try {
-      const postNextId = await contractService.getNextOnChainTicketId();
-      if (postNextId !== nextTokenId + 1) {
-        console.warn(`[train-orchestrator] Contract nextTicketId mismatch: expected ${nextTokenId + 1}, got ${postNextId}`);
-      }
-    } catch (err) {
-      console.warn('[train-orchestrator] Failed to verify post-mint contract state (non-critical):', err);
+    // Get the actual minted token ID from the transaction receipt
+    let actualTokenId: number;
+    const mintedTokenId = await contractService.getMintedTokenIdFromTx(mint.txHash as `0x${string}`);
+    if (mintedTokenId !== null) {
+      actualTokenId = mintedTokenId;
+      console.log(`[train-orchestrator] Using authoritative token ID from transaction: ${actualTokenId}`);
+    } else {
+      actualTokenId = nextTokenId;
+      console.warn(`[train-orchestrator] Failed to get token ID from transaction receipt, falling back to pre-mint nextTokenId: ${actualTokenId}`);
     }
+    
+    // Verify the contract state was updated correctly (now using authoritative token ID)
+    await verifyNextIdAdvanced(contractService, actualTokenId, 'train-orchestrator');
 
     // 7) Store last moved timestamp
     try {
@@ -767,19 +802,19 @@ export async function orchestrateYoink(userFid: number, targetAddress: string) {
       await releaseLock(mintLockKey);
     }
 
-    // The minted token ID is the nextTokenId we captured before the transaction
-    // After minting, the contract's nextTicketId will be incremented by 1
-    const actualTokenId = nextTokenId;
-    
-    // Verify the contract state was updated correctly (optional validation)
-    try {
-      const postNextId = await contractService.getNextOnChainTicketId();
-      if (postNextId !== nextTokenId + 1) {
-        console.warn(`[orchestrateYoink] Contract nextTicketId mismatch: expected ${nextTokenId + 1}, got ${postNextId}`);
-      }
-    } catch (err) {
-      console.warn('[orchestrateYoink] Failed to verify post-mint contract state (non-critical):', err);
+    // Get the actual minted token ID from the transaction receipt
+    let actualTokenId: number;
+    const mintedTokenId = await contractService.getMintedTokenIdFromTx(txHash as `0x${string}`);
+    if (mintedTokenId !== null) {
+      actualTokenId = mintedTokenId;
+      console.log(`[orchestrateYoink] Using authoritative token ID from transaction: ${actualTokenId}`);
+    } else {
+      actualTokenId = nextTokenId;
+      console.warn(`[orchestrateYoink] Failed to get token ID from transaction receipt, falling back to pre-mint nextTokenId: ${actualTokenId}`);
     }
+    
+    // Verify the contract state was updated correctly (optional validation, now tolerant)
+    await verifyNextIdAdvanced(contractService, actualTokenId, 'orchestrateYoink');
 
     // 7) Store last moved timestamp
     try {
