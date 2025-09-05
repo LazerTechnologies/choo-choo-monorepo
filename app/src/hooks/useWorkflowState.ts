@@ -9,6 +9,7 @@ export function useWorkflowState() {
   const latestWorkflowRef = useRef<WorkflowData>(DEFAULT_WORKFLOW_DATA);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const refetchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     latestWorkflowRef.current = workflowData;
@@ -72,7 +73,12 @@ export function useWorkflowState() {
       if (detail) {
         setWorkflowData((prev) => ({ ...prev, ...detail }));
       }
-      void fetchWorkflowState();
+      if (refetchDebounceRef.current) {
+        clearTimeout(refetchDebounceRef.current);
+      }
+      refetchDebounceRef.current = setTimeout(() => {
+        void fetchWorkflowState();
+      }, 200);
     };
 
     window.addEventListener('workflow-state-changed', handleWorkflowChange as EventListener);
@@ -81,6 +87,9 @@ export function useWorkflowState() {
     return () => {
       window.removeEventListener('workflow-state-changed', handleWorkflowChange as EventListener);
       window.removeEventListener('choo-random-enabled', handleWorkflowChange as EventListener);
+      if (refetchDebounceRef.current) {
+        clearTimeout(refetchDebounceRef.current);
+      }
     };
   }, [fetchWorkflowState]);
 
