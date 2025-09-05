@@ -110,16 +110,27 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
   };
 
   const confirmEnableChance = async () => {
-    if (!user?.username) {
+    console.log('🎲 confirmEnableChance called');
+    const username = user?.username || context?.user?.username;
+    console.log('🎲 Username resolved:', {
+      neynarUsername: user?.username,
+      contextUsername: context?.user?.username,
+      finalUsername: username,
+    });
+
+    if (!username) {
+      console.log('🎲 No username found, showing error toast');
       toast({ description: 'User not authenticated', variant: 'destructive' });
       return;
     }
 
+    console.log('🎲 Starting API call to /api/enable-random-winner');
     setLoading(true);
     try {
       const response = await axios.post('/api/enable-random-winner', {
-        username: user.username,
+        username: username,
       });
+      console.log('🎲 API response:', response.data);
 
       if (response.data.success) {
         await updateWorkflowState(WorkflowState.CHANCE_ACTIVE, {
@@ -297,7 +308,10 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
                           Cancel
                         </Button>
                         <Button
-                          onClick={confirmEnableChance}
+                          onClick={() => {
+                            console.log('🎲 Confirm button clicked, loading state:', loading);
+                            confirmEnableChance();
+                          }}
                           disabled={loading}
                           className="!bg-purple-500 hover:!bg-purple-600 !text-white !border-2 !border-white"
                         >
