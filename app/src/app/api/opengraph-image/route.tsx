@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const iconUrl =
-    'https://scarlet-quick-grouse-388.mypinata.cloud/ipfs/bafybeibrvjscvkspyexa6lcio2lk72e6l3faqzdgr7pcmrebtwkt75lpbu';
+    'https://scarlet-quick-grouse-388.mypinata.cloud/ipfs/bafybeifqhbreqpgymacaw2l6q2ntjlbdz7s2ssl7yjantdprftorz23ltu';
 
   return new ImageResponse(
     (
@@ -29,7 +29,7 @@ export async function GET() {
             width: '100%',
             height: '100%',
             objectFit: 'cover',
-            objectPosition: 'center top',
+            objectPosition: 'center',
           }}
         />
       </div>

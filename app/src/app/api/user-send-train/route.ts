@@ -144,7 +144,7 @@ export async function POST(request: Request) {
     // Note: Authentication is handled via the current holder check since this endpoint
     // should only be accessible to the current holder in the UI
 
-    // 2. Check workflow state - user must be in CASTED state
+    // 2. Check workflow state - user must be in CASTED state (not chance mode)
     const workflowStateJson = await redis.get('workflowState');
     if (!workflowStateJson) {
       return NextResponse.json(
@@ -155,6 +155,12 @@ export async function POST(request: Request) {
 
     const workflowData = JSON.parse(workflowStateJson);
     if (workflowData.state !== 'CASTED' && workflowData.state !== 'MANUAL_SEND') {
+      if (workflowData.state === 'CHANCE_ACTIVE' || workflowData.state === 'CHANCE_EXPIRED') {
+        return NextResponse.json(
+          { error: 'Manual sending is disabled in chance mode' },
+          { status: 400 }
+        );
+      }
       return NextResponse.json(
         { error: 'You must send a cast first before manually selecting the next passenger' },
         { status: 400 }
