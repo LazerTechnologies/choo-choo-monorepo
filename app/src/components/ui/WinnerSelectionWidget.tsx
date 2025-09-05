@@ -291,7 +291,14 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
                   >
                     <div className="p-4 space-y-4">
                       <Typography variant="body" className="!text-white">
-                        Once you confirm, you cannot manually send. Leave it up to chance?
+                        In 30 minutes anyone will be able to select a random reactor to your
+                        previous cast to receive ChooChoo. Leave it up to chance?
+                      </Typography>
+                      <Typography
+                        variant="body"
+                        className="!text-white text-center text-sm opacity-80"
+                      >
+                        This will disable manual sending
                       </Typography>
                       <div className="flex gap-2 justify-end">
                         <Button
