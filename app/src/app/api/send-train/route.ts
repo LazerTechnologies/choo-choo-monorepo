@@ -15,8 +15,8 @@ export async function POST() {
   try {
     console.log('[send-train] 🫡 Public random winner selection request');
 
-    // 1. Get current cast hash from workflow state
-    let castHash;
+    // 1. Get current workflow state and validate timer
+    let castHash, workflowData;
     try {
       const workflowStateJson = await redis.get('workflowState');
       if (!workflowStateJson) {
@@ -24,7 +24,7 @@ export async function POST() {
         return NextResponse.json({ error: 'No active workflow state found.' }, { status: 400 });
       }
 
-      const workflowData = JSON.parse(workflowStateJson);
+      workflowData = JSON.parse(workflowStateJson);
       castHash = workflowData.currentCastHash;
 
       if (!castHash) {
@@ -34,9 +34,39 @@ export async function POST() {
           { status: 400 }
         );
       }
+
+      // 2. Validate timer has expired
+      if (workflowData.state === 'CHANCE_ACTIVE' && workflowData.winnerSelectionStart) {
+        const now = new Date().getTime();
+        const targetTime = new Date(workflowData.winnerSelectionStart).getTime();
+        
+        if (now < targetTime) {
+          const remainingMs = targetTime - now;
+          const remainingMinutes = Math.ceil(remainingMs / (1000 * 60));
+          console.log(`[send-train] Timer has not expired yet. ${remainingMinutes} minutes remaining.`);
+          return NextResponse.json(
+            { error: `Timer has not expired yet. Please wait ${remainingMinutes} more minutes.` },
+            { status: 400 }
+          );
+        }
+        
+        // Timer has expired, transition to CHANCE_EXPIRED
+        console.log('[send-train] Timer expired, transitioning to CHANCE_EXPIRED');
+        workflowData.state = 'CHANCE_EXPIRED';
+        await redis.set('workflowState', JSON.stringify(workflowData));
+      }
+
+      // 3. Validate we're in the correct state for random selection
+      if (workflowData.state !== 'CHANCE_EXPIRED') {
+        console.error(`[send-train] Invalid state for random selection: ${workflowData.state}`);
+        return NextResponse.json(
+          { error: 'Random selection is not currently available.' },
+          { status: 400 }
+        );
+      }
     } catch (err) {
-      console.error('[send-train] Failed to get cast hash from Redis:', err);
-      return NextResponse.json({ error: 'Failed to retrieve current cast' }, { status: 500 });
+      console.error('[send-train] Failed to validate workflow state:', err);
+      return NextResponse.json({ error: 'Failed to validate current state' }, { status: 500 });
     }
 
     console.log(`[send-train] Starting orchestration for cast: ${castHash}`);

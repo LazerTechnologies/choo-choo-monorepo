@@ -31,10 +31,6 @@ export function PublicChanceWidget() {
         setTimeRemaining(`${minutes}m ${seconds}s`);
       } else {
         setTimeRemaining('');
-        // Auto-transition to CHANCE_EXPIRED when timer expires
-        if (workflowData.state === WorkflowState.CHANCE_ACTIVE) {
-          updateWorkflowState(WorkflowState.CHANCE_EXPIRED);
-        }
       }
     }, 1000);
 
@@ -53,7 +49,30 @@ export function PublicChanceWidget() {
       }
     } catch (error) {
       console.error('Error sending to random winner:', error);
-      toast({ description: 'Failed to select random winner', variant: 'destructive' });
+      const maybeAxiosError = error as {
+        response?: { status?: number; data?: { error?: string } };
+      };
+
+      if (maybeAxiosError?.response?.status === 409) {
+        toast({
+          description: 'Someone else just selected the winner!',
+          variant: 'default',
+        });
+        setTimeout(() => window.location.reload(), 1000);
+      } else if (
+        maybeAxiosError?.response?.status === 400 &&
+        maybeAxiosError?.response?.data?.error?.includes('Timer has not expired')
+      ) {
+        toast({
+          description: "Timer hasn't expired yet, please wait...",
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          description: 'Failed to select random winner',
+          variant: 'destructive',
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -93,13 +112,13 @@ export function PublicChanceWidget() {
 
           <Button
             onClick={handlePublicRandomSend}
-            disabled={loading || workflowData.state !== WorkflowState.CHANCE_EXPIRED}
+            disabled={loading || timeRemaining !== ''}
             className="w-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white"
             style={{ backgroundColor: '#a855f7' }}
           >
             {loading
               ? 'Selecting Winner...'
-              : workflowData.state === WorkflowState.CHANCE_EXPIRED
+              : timeRemaining === ''
                 ? '🎲 Send ChooChoo'
                 : 'Come back later...'}
           </Button>
