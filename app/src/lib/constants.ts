@@ -66,14 +66,14 @@ export const CHOOCHOO_CAST_TEMPLATES = {
   RANDOM_WINNER_ENABLED: (username: string) =>
     `🎲 @${username} has decided to leave ChooChoo's next stop up to chance!\n\n` +
     `React to their cast for a chance to ride next! Anyone can ` +
-    `pick a random reactor in 30 minutes. 🚂\n\n` +
+    `trigger ChooChoo to be randomly sent to an account who reacted to the current holder's cast in 30 minutes. 🚂\n\n` +
     `All aboard! 🎫`,
 
   // [@choochoo] Cast sent when public send mode is enabled (30 minute timer expires)
-  PUBLIC_SEND_OPEN: () =>
+  PUBLIC_SEND_OPEN: (username: string) =>
     `🚂 All aboard!\n\n` +
     `Head to the mini-app and pick a random user to receive ChooChoo! ` +
-    `The current passenger left it up to chance - who will be next? 🎲\n\n` +
+    `@${username} left it up to chance! Anyone can now trigger ChooChoo to be randomly sent to someone who reacted to their cast! 🎲\n\n` +
     `Don't miss your chance to join the journey! 🚂`,
 
   // [@choochoo] Cast sent when the journey begins with initial holder

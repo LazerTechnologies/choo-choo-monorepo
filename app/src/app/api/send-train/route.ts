@@ -39,17 +39,19 @@ export async function POST() {
       if (workflowData.state === 'CHANCE_ACTIVE' && workflowData.winnerSelectionStart) {
         const now = new Date().getTime();
         const targetTime = new Date(workflowData.winnerSelectionStart).getTime();
-        
+
         if (now < targetTime) {
           const remainingMs = targetTime - now;
           const remainingMinutes = Math.ceil(remainingMs / (1000 * 60));
-          console.log(`[send-train] Timer has not expired yet. ${remainingMinutes} minutes remaining.`);
+          console.log(
+            `[send-train] Timer has not expired yet. ${remainingMinutes} minutes remaining.`
+          );
           return NextResponse.json(
             { error: `Timer has not expired yet. Please wait ${remainingMinutes} more minutes.` },
             { status: 400 }
           );
         }
-        
+
         // Timer has expired, transition to CHANCE_EXPIRED
         console.log('[send-train] Timer expired, transitioning to CHANCE_EXPIRED');
         workflowData.state = 'CHANCE_EXPIRED';

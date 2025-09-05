@@ -221,17 +221,19 @@ export async function POST(request: Request) {
     // The minted token ID is the tokenId we captured before the transaction
     // After minting, the contract's nextTicketId will be incremented by 1
     const actualTokenId = tokenId;
-    
+
     try {
       const postNextId = await contractService.getNextOnChainTicketId();
       const updatedTotalTickets = await contractService.getTotalTickets();
       console.log(
         `[internal/mint-token] Minted token ID: ${actualTokenId} (total tickets now: ${updatedTotalTickets})`
       );
-      
+
       // Verify the contract state was updated correctly
       if (postNextId !== tokenId + 1) {
-        console.warn(`[internal/mint-token] Contract nextTicketId mismatch: expected ${tokenId + 1}, got ${postNextId}`);
+        console.warn(
+          `[internal/mint-token] Contract nextTicketId mismatch: expected ${tokenId + 1}, got ${postNextId}`
+        );
       }
     } catch (err) {
       console.error(

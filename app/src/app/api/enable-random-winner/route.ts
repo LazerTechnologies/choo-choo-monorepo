@@ -28,21 +28,24 @@ export async function POST(request: NextRequest) {
     try {
       if (NEYNAR_API_KEY) {
         console.log('[enable-random-winner] Calling Neynar API for FID:', fid);
-        const userResponse = await fetch(`https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`, {
-          headers: {
-            accept: 'application/json',
-            'x-api-key': NEYNAR_API_KEY,
-          },
-        });
-        
+        const userResponse = await fetch(
+          `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fid}`,
+          {
+            headers: {
+              accept: 'application/json',
+              'x-api-key': NEYNAR_API_KEY,
+            },
+          }
+        );
+
         console.log('[enable-random-winner] Neynar API response status:', userResponse.status);
-        
+
         if (userResponse.ok) {
           const userData: NeynarBulkUsersResponse = await userResponse.json();
           const users = userData?.users || [];
-          
+
           console.log('[enable-random-winner] Neynar API returned users count:', users.length);
-          
+
           if (users.length > 0 && users[0].username) {
             username = users[0].username;
             console.log('[enable-random-winner] Resolved username:', username);
@@ -50,7 +53,10 @@ export async function POST(request: NextRequest) {
             console.log('[enable-random-winner] No username found, using fallback');
           }
         } else {
-          console.warn('[enable-random-winner] Neynar API returned non-OK status:', userResponse.status);
+          console.warn(
+            '[enable-random-winner] Neynar API returned non-OK status:',
+            userResponse.status
+          );
         }
       } else {
         console.warn('[enable-random-winner] No Neynar API key configured');
@@ -59,7 +65,7 @@ export async function POST(request: NextRequest) {
       console.warn('[enable-random-winner] Failed to resolve username for FID:', fid, error);
       // Continue with fallback username
     }
-    
+
     console.log('[enable-random-winner] Final username for cast:', username);
 
     const startTime = new Date(Date.now() + 30 * 60 * 1000).toISOString();

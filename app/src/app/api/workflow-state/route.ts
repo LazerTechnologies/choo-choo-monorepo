@@ -111,11 +111,11 @@ export async function POST(request: Request) {
       // If field present in request: use validated value (can be null to clear)
       // If absent: preserve existing value
       winnerSelectionStart: bodyHasWinnerStart
-        ? validated.winnerSelectionStart ?? null
-        : existing.winnerSelectionStart ?? null,
+        ? (validated.winnerSelectionStart ?? null)
+        : (existing.winnerSelectionStart ?? null),
       currentCastHash: bodyHasCastHash
-        ? validated.currentCastHash ?? null
-        : existing.currentCastHash ?? null,
+        ? (validated.currentCastHash ?? null)
+        : (existing.currentCastHash ?? null),
     };
 
     await redis.set('workflowState', JSON.stringify(merged));

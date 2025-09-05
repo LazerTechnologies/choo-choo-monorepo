@@ -1,4 +1,12 @@
-import { createPublicClient, createWalletClient, http, Address, type Abi, getContract, decodeEventLog } from 'viem';
+import {
+  createPublicClient,
+  createWalletClient,
+  http,
+  Address,
+  type Abi,
+  getContract,
+  decodeEventLog,
+} from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { base, baseSepolia } from 'wagmi/chains';
 import ChooChooTrainAbiJson from '@/abi/ChooChooTrain.abi.json';
@@ -452,17 +460,17 @@ export class ContractService {
   /**
    * Get the actual minted token ID from a transaction receipt by parsing Transfer events.
    * Looks for Transfer events where from == zero address (minting) and returns the tokenId.
-   * 
+   *
    * @param txHash - The transaction hash to analyze
    * @returns The minted token ID as a number, or null if not found or on error
    */
   async getMintedTokenIdFromTx(txHash: `0x${string}`): Promise<number | null> {
     try {
       const publicClient = this.createPublicClient();
-      
+
       // Get the transaction receipt
       const receipt = await publicClient.getTransactionReceipt({ hash: txHash });
-      
+
       if (!receipt || !receipt.logs) {
         console.warn(`[ContractService] No receipt or logs found for tx: ${txHash}`);
         return null;
@@ -492,7 +500,9 @@ export class ContractService {
 
             // Check if this is a mint (from zero address)
             if (args.from === '0x0000000000000000000000000000000000000000') {
-              console.log(`[ContractService] Found minted token ID ${Number(args.tokenId)} in tx: ${txHash}`);
+              console.log(
+                `[ContractService] Found minted token ID ${Number(args.tokenId)} in tx: ${txHash}`
+              );
               return Number(args.tokenId);
             }
           }
