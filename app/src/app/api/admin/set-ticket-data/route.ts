@@ -6,7 +6,7 @@ const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
 // Validation schema
 const adminSetTicketDataSchema = z.object({
-  tokenId: z.number().positive('Token ID must be positive'),
+  tokenId: z.number().min(0, 'Token ID must be non-negative'),
   tokenURI: z.string().min(1, 'Token URI is required'),
   image: z.string().optional().default(''),
   traits: z.string().optional().default(''),
