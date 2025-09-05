@@ -8,7 +8,6 @@ import { Button } from '@/components/base/Button';
 import { Typography } from '@/components/base/Typography';
 import { UsernameInput } from './UsernameInput';
 import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
-import { useWorkflowState } from '@/hooks/useWorkflowState';
 import { WorkflowState } from '@/lib/workflow-types';
 import axios from 'axios';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/base/Tabs';
@@ -28,7 +27,7 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
   const { toast } = useMarqueeToast();
   const { user } = useNeynarContext();
   const { context } = useMiniApp();
-  const { updateWorkflowState } = useWorkflowState();
+  // Rely on backend to persist workflow state; UI only broadcasts local updates when needed
 
   const [selectedUser, setSelectedUser] = useState<{
     fid: number;
@@ -98,12 +97,7 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
           variant: 'destructive',
         });
       }
-      // Reset workflow state on error to prevent stuck state
-      try {
-        await updateWorkflowState(WorkflowState.CASTED);
-      } catch (resetError) {
-        console.error('Failed to reset workflow state:', resetError);
-      }
+      // UI will refresh workflow state from server
     } finally {
       setLoading(false);
     }
@@ -127,11 +121,6 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
       console.log('🎲 API response:', response.data);
 
       if (response.data.success) {
-        await updateWorkflowState(WorkflowState.CHANCE_ACTIVE, {
-          winnerSelectionStart: response.data.winnerSelectionStart,
-          currentCastHash: response.data.castHash,
-        });
-
         setIsConfirmOpen(false);
 
         toast({
@@ -181,7 +170,14 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
       return;
     }
 
-    await updateWorkflowState(WorkflowState.MANUAL_SEND);
+    // Broadcast local UI state only; backend orchestrator handles persistence
+    try {
+      window.dispatchEvent(
+        new CustomEvent('workflow-state-changed', {
+          detail: { state: WorkflowState.MANUAL_SEND },
+        })
+      );
+    } catch {}
     await handleManualSend();
   };
 

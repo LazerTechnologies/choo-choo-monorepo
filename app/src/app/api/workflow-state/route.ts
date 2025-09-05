@@ -93,15 +93,34 @@ export async function POST(request: Request) {
     const body = await request.json();
     const validated = updateWorkflowSchema.parse(body);
 
-    const workflowData: WorkflowData = {
+    // Read existing workflow state to support partial updates (preserve unspecified fields)
+    let existing: WorkflowData = DEFAULT_WORKFLOW_DATA;
+    try {
+      const existingJson = await redis.get('workflowState');
+      if (existingJson) existing = JSON.parse(existingJson) as WorkflowData;
+    } catch (err) {
+      console.warn('[workflow-state] Failed to read existing state, using defaults:', err);
+    }
+
+    // Determine whether the request explicitly included these fields
+    const bodyHasWinnerStart = Object.prototype.hasOwnProperty.call(body, 'winnerSelectionStart');
+    const bodyHasCastHash = Object.prototype.hasOwnProperty.call(body, 'currentCastHash');
+
+    const merged: WorkflowData = {
       state: validated.state,
-      winnerSelectionStart: validated.winnerSelectionStart || null,
-      currentCastHash: validated.currentCastHash || null,
+      // If field present in request: use validated value (can be null to clear)
+      // If absent: preserve existing value
+      winnerSelectionStart: bodyHasWinnerStart
+        ? validated.winnerSelectionStart ?? null
+        : existing.winnerSelectionStart ?? null,
+      currentCastHash: bodyHasCastHash
+        ? validated.currentCastHash ?? null
+        : existing.currentCastHash ?? null,
     };
 
-    await redis.set('workflowState', JSON.stringify(workflowData));
+    await redis.set('workflowState', JSON.stringify(merged));
 
-    return NextResponse.json(workflowData, {
+    return NextResponse.json(merged, {
       headers: {
         'Cache-Control': 'no-store',
       },

@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
     console.log('[enable-random-winner] Final username for cast:', username);
 
     const startTime = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+    let castHash: string | null = null;
 
     try {
       const castText = CHOOCHOO_CAST_TEMPLATES.RANDOM_WINNER_ENABLED(username);
@@ -87,10 +88,12 @@ export async function POST(request: NextRequest) {
           `[enable-random-winner] Successfully sent random winner enabled cast: ${castData.cast?.hash}`
         );
 
+        castHash = castData.cast?.hash || null;
+
         const workflowData = {
           state: 'CHANCE_ACTIVE',
           winnerSelectionStart: startTime,
-          currentCastHash: castData.cast?.hash || null,
+          currentCastHash: castHash,
         };
 
         await redis.set('workflowState', JSON.stringify(workflowData));
@@ -119,7 +122,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       winnerSelectionStart: startTime,
-      castHash: null,
+      castHash,
     });
   } catch (error) {
     console.error('[enable-random-winner] Error:', error);

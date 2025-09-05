@@ -11,7 +11,7 @@ import { WorkflowState } from '@/lib/workflow-types';
 
 export function PublicChanceWidget() {
   const { toast } = useMarqueeToast();
-  const { workflowData, updateWorkflowState } = useWorkflowState();
+  const { workflowData } = useWorkflowState();
   const [loading, setLoading] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<string>('');
 
@@ -35,7 +35,7 @@ export function PublicChanceWidget() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [workflowData.winnerSelectionStart, workflowData.state, updateWorkflowState]);
+  }, [workflowData.winnerSelectionStart, workflowData.state]);
 
   const handlePublicRandomSend = async () => {
     setLoading(true);
