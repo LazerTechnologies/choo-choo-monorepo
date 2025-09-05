@@ -111,24 +111,18 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
 
   const confirmEnableChance = async () => {
     console.log('🎲 confirmEnableChance called');
-    const username = user?.username || context?.user?.username;
-    console.log('🎲 Username resolved:', {
-      neynarUsername: user?.username,
-      contextUsername: context?.user?.username,
-      finalUsername: username,
-    });
 
-    if (!username) {
-      console.log('🎲 No username found, showing error toast');
+    if (!currentUserFid) {
+      console.log('🎲 No FID found, showing error toast');
       toast({ description: 'User not authenticated', variant: 'destructive' });
       return;
     }
 
-    console.log('🎲 Starting API call to /api/enable-random-winner');
+    console.log('🎲 Starting API call to /api/enable-random-winner with FID:', currentUserFid);
     setLoading(true);
     try {
       const response = await axios.post('/api/enable-random-winner', {
-        username: username,
+        fid: currentUserFid,
       });
       console.log('🎲 API response:', response.data);
 
