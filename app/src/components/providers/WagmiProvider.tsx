@@ -48,7 +48,7 @@ export const config = createConfig({
     [base.id]: http(),
     [optimism.id]: http(),
     [mainnet.id]: http(),
-    [baseSepolia.id]: http(),
+    [baseSepolia.id]: http(process.env.NEXT_PUBLIC_RPC_URL),
     [degen.id]: http(),
     [unichain.id]: http(),
     [celo.id]: http(),
