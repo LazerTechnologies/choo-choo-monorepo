@@ -6,7 +6,7 @@ import { requireAdmin } from '@/lib/auth/require-admin';
 
 import type { CurrentHolderData } from '@/types/nft';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
-import { CHOOCHOO_CAST_TEMPLATES, CHOOCHOO_TRAIN_METADATA_URI, APP_URL } from '@/lib/constants';
+import { CHOOCHOO_CAST_TEMPLATES, APP_URL } from '@/lib/constants';
 import { DEFAULT_WORKFLOW_DATA } from '@/lib/workflow-types';
 
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
@@ -220,40 +220,7 @@ export async function POST(request: Request) {
     );
     console.log('[admin-set-initial-holder] Set initial workflow state to NOT_CASTED');
 
-    // Set the main token URI for the train (tokenId 0) on the contract
-    if (!CHOOCHOO_TRAIN_METADATA_URI) {
-      console.error(
-        '[admin-set-initial-holder] CHOOCHOO_TRAIN_METADATA_URI environment variable is required but not configured'
-      );
-      return NextResponse.json(
-        { error: 'Server misconfigured: CHOOCHOO_TRAIN_METADATA_URI missing' },
-        { status: 500 }
-      );
-    }
-
-    try {
-      const setUriResponse = await fetch(`${APP_URL}/api/internal/set-ticket-data`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-secret': INTERNAL_SECRET || '',
-        },
-        body: JSON.stringify({
-          tokenId: 0,
-          tokenURI: CHOOCHOO_TRAIN_METADATA_URI,
-          image: '',
-        }),
-      });
-
-      if (!setUriResponse.ok) {
-        const text = await setUriResponse.text();
-        console.error('[admin-set-initial-holder] Failed to set token 0 URI:', text);
-        return NextResponse.json({ error: 'Failed to set token 0 metadata URI' }, { status: 500 });
-      }
-    } catch (err) {
-      console.error('[admin-set-initial-holder] Error setting token 0 URI:', err);
-      return NextResponse.json({ error: 'Failed to set token 0 metadata URI' }, { status: 500 });
-    }
+    // Metadata for token 0 is set manually, skipping automatic metadata update
 
     try {
       const journeyBeginsCastText = CHOOCHOO_CAST_TEMPLATES.JOURNEY_BEGINS(targetUser.username);
