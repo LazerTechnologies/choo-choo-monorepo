@@ -846,8 +846,7 @@ export async function orchestrateYoink(userFid: number, targetAddress: string) {
       await contractService.setTicketData(
         actualTokenId,
         pending.tokenURI,
-        `ipfs://${pending.imageHash}`,
-        '' // traits - empty for now, could include traits JSON URL if needed
+        `ipfs://${pending.imageHash}`
       );
       console.log(`[orchestrateYoink] Ticket metadata set for token ${actualTokenId}`);
     } catch (err) {

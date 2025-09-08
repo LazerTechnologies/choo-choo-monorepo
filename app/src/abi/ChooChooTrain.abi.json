@@ -532,11 +532,6 @@
         "name": "image",
         "type": "string",
         "internalType": "string"
-      },
-      {
-        "name": "traits",
-        "type": "string",
-        "internalType": "string"
       }
     ],
     "outputs": [],
@@ -769,11 +764,6 @@
         "name": "image",
         "type": "string",
         "internalType": "string"
-      },
-      {
-        "name": "traits",
-        "type": "string",
-        "internalType": "string"
       }
     ],
     "outputs": [],
@@ -808,24 +798,6 @@
       },
       {
         "name": "newTokenURI",
-        "type": "string",
-        "internalType": "string"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setTicketTraits",
-    "inputs": [
-      {
-        "name": "tokenId",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "newTraits",
         "type": "string",
         "internalType": "string"
       }
@@ -909,11 +881,6 @@
       },
       {
         "name": "image",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
-        "name": "traits",
         "type": "string",
         "internalType": "string"
       }
@@ -1343,12 +1310,6 @@
         "type": "uint256",
         "indexed": true,
         "internalType": "uint256"
-      },
-      {
-        "name": "traits",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
       }
     ],
     "anonymous": false

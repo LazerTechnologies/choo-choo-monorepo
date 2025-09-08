@@ -35,12 +35,10 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
      * @dev Stores per-ticket metadata.
      * - tokenURI: IPFS URL to the metadata JSON
      * - image: IPFS URL to the image (optional, for convenience)
-     * - traits: IPFS URL to a traits JSON (optional, for convenience)
      */
     struct TicketData {
         string tokenURI;
         string image;
-        string traits;
     }
 
     mapping(uint256 => TicketData) public ticketData;
@@ -74,7 +72,7 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
 
     // ========== EVENTS ========== //
     /// @dev Emitted when a previous holder receives a ticket NFT.
-    event TicketStamped(address indexed to, uint256 indexed tokenId, string traits);
+    event TicketStamped(address indexed to, uint256 indexed tokenId);
 
     /// @dev Emitted when the main train NFT (tokenId 0) is transferred to a new passenger.
     event TrainDeparted(address indexed from, address indexed to, uint256 timestamp);
@@ -241,7 +239,7 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
         _safeMint(to, tokenId);
         ticketMintedAt[tokenId] = block.timestamp;
         nextTicketId++;
-        emit TicketStamped(to, tokenId, "");
+        emit TicketStamped(to, tokenId);
     }
 
     /**
@@ -249,19 +247,18 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
      * @param to The address to receive the ticket.
      * @param fullTokenURI URL to the metadata JSON for the ticket.
      * @param image URL to the image for the ticket.
-     * @param traits URL to the traits JSON for the ticket.
      */
-    function ownerMintTicket(address to, string memory fullTokenURI, string memory image, string memory traits)
+    function ownerMintTicket(address to, string memory fullTokenURI, string memory image)
         external
         onlyOwner
         notInvalidAddress(to)
     {
         uint256 tokenId = nextTicketId;
         _safeMint(to, tokenId);
-        ticketData[tokenId] = TicketData({tokenURI: fullTokenURI, image: image, traits: traits});
+        ticketData[tokenId] = TicketData({tokenURI: fullTokenURI, image: image});
         ticketMintedAt[tokenId] = block.timestamp;
         nextTicketId++;
-        emit TicketStamped(to, tokenId, traits);
+        emit TicketStamped(to, tokenId);
     }
 
     // ========== OWNER CONTROLS ========== //
@@ -299,16 +296,6 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
     function setTicketImage(uint256 tokenId, string memory newImage) external onlyOwner {
         require(tokenId != 0, "Cannot update train NFT");
         ticketData[tokenId].image = newImage;
-    }
-
-    /**
-     * @notice Allows the owner to update the traits for a ticket NFT (tokenId > 0).
-     * @param tokenId The ticket tokenId to update.
-     * @param newTraits The new URL to the traits JSON.
-     */
-    function setTicketTraits(uint256 tokenId, string memory newTraits) external onlyOwner {
-        require(tokenId != 0, "Cannot update train NFT");
-        ticketData[tokenId].traits = newTraits;
     }
 
     /**
@@ -451,15 +438,11 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
      * @param tokenId The ticket tokenId to update.
      * @param fullTokenURI URL to the metadata JSON for the ticket.
      * @param image URL to the image for the ticket.
-     * @param traits URL to the traits JSON for the ticket.
      */
-    function setTicketData(uint256 tokenId, string memory fullTokenURI, string memory image, string memory traits)
-        external
-        onlyAdmin
-    {
+    function setTicketData(uint256 tokenId, string memory fullTokenURI, string memory image) external onlyAdmin {
         require(tokenId != 0, "Cannot update train NFT");
         require(_ownerOf(tokenId) != address(0), "Token does not exist");
-        ticketData[tokenId] = TicketData({tokenURI: fullTokenURI, image: image, traits: traits});
+        ticketData[tokenId] = TicketData({tokenURI: fullTokenURI, image: image});
     }
 
     /**

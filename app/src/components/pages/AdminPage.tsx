@@ -599,8 +599,7 @@ function SetTicketMetadata({ adminFid }: { adminFid?: number }) {
         body: JSON.stringify({
           tokenId: tokenIdNumber,
           tokenURI,
-          image: '', // Empty since metadata contains everything
-          traits: '', // Empty since metadata contains everything
+          image: '',
         }),
       });
 

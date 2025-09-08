@@ -242,7 +242,6 @@ export async function POST(request: Request) {
           tokenId: 0,
           tokenURI: CHOOCHOO_TRAIN_METADATA_URI,
           image: '',
-          traits: '',
         }),
       });
 

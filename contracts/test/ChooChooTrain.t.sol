@@ -21,7 +21,7 @@ contract ChooChooTrainTest is Test {
     string tokenURI = "ipfs://QmTestMetadata";
 
     event TrainDeparted(address indexed from, address indexed to, uint256 timestamp);
-    event TicketStamped(address indexed to, uint256 indexed tokenId, string traits);
+    event TicketStamped(address indexed to, uint256 indexed tokenId);
     event Yoink(address indexed by, address indexed to, uint256 timestamp);
     event AdminAdded(address indexed admin);
     event AdminRemoved(address indexed admin);
@@ -70,7 +70,7 @@ contract ChooChooTrainTest is Test {
         assertFalse(train.hasBeenPassenger(passenger1));
 
         assertEq(train.ownerOf(1), owner);
-        (string memory tUri,,) = train.ticketData(1);
+        (string memory tUri,) = train.ticketData(1);
         assertEq(tUri, tokenURI);
     }
 
@@ -187,21 +187,19 @@ contract ChooChooTrainTest is Test {
         train.nextStop(passenger2, tokenURI);
 
         assertEq(train.ownerOf(0), passenger2);
-        (string memory tUri,,) = train.ticketData(2);
+        (string memory tUri,) = train.ticketData(2);
         assertEq(tUri, tokenURI);
     }
 
     function testOwnerMintTicket() public {
         string memory uri = "ipfs://QmMetaHash";
         string memory img = "ipfs://QmImageHash";
-        string memory traits = "ipfs://QmTraitsHash";
         vm.prank(owner);
-        train.ownerMintTicket(passenger1, uri, img, traits);
+        train.ownerMintTicket(passenger1, uri, img);
         assertEq(train.ownerOf(1), passenger1);
-        (string memory tUri, string memory tImg, string memory tTraits) = train.ticketData(1);
+        (string memory tUri, string memory tImg) = train.ticketData(1);
         assertEq(tUri, uri);
         assertEq(tImg, img);
-        assertEq(tTraits, traits);
     }
 
     function testSetMainImageAndTokenURI() public {
@@ -417,15 +415,13 @@ contract ChooChooTrainTest is Test {
 
         string memory uri = "ipfs://QmMetaHash";
         string memory img = "ipfs://QmImageHash";
-        string memory traits = "ipfs://QmTraitsHash";
 
         vm.prank(owner);
-        train.setTicketData(1, uri, img, traits);
+        train.setTicketData(1, uri, img);
 
-        (string memory tUri, string memory tImg, string memory tTraits) = train.ticketData(1);
+        (string memory tUri, string memory tImg) = train.ticketData(1);
         assertEq(tUri, uri);
         assertEq(tImg, img);
-        assertEq(tTraits, traits);
     }
 
     function testSetTicketDataByAddedAdmin() public {
@@ -437,15 +433,13 @@ contract ChooChooTrainTest is Test {
 
         string memory uri = "ipfs://QmMetaHash";
         string memory img = "ipfs://QmImageHash";
-        string memory traits = "ipfs://QmTraitsHash";
 
         vm.prank(admin1);
-        train.setTicketData(1, uri, img, traits);
+        train.setTicketData(1, uri, img);
 
-        (string memory tUri, string memory tImg, string memory tTraits) = train.ticketData(1);
+        (string memory tUri, string memory tImg) = train.ticketData(1);
         assertEq(tUri, uri);
         assertEq(tImg, img);
-        assertEq(tTraits, traits);
     }
 
     function testOnlyAdminCanSetTicketData() public {
@@ -454,19 +448,19 @@ contract ChooChooTrainTest is Test {
         // sorry normie
         vm.prank(passenger1);
         vm.expectRevert(bytes("Not an admin"));
-        train.setTicketData(1, "ipfs://test", "ipfs://img", "ipfs://traits");
+        train.setTicketData(1, "ipfs://test", "ipfs://img");
     }
 
     function testCannotSetTicketDataForTrainNFT() public {
         vm.prank(owner);
         vm.expectRevert(bytes("Cannot update train NFT"));
-        train.setTicketData(0, "ipfs://test", "ipfs://img", "ipfs://traits");
+        train.setTicketData(0, "ipfs://test", "ipfs://img");
     }
 
     function testCannotSetTicketDataForNonExistentToken() public {
         vm.prank(owner);
         vm.expectRevert(bytes("Token does not exist"));
-        train.setTicketData(999, "ipfs://test", "ipfs://img", "ipfs://traits");
+        train.setTicketData(999, "ipfs://test", "ipfs://img");
     }
 
     function testConstructorValidatesInitialHolder() public {

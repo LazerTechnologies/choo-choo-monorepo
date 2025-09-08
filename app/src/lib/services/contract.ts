@@ -255,8 +255,7 @@ export class ContractService {
   async setTicketData(
     tokenId: number,
     tokenURI: string,
-    image: string,
-    traits: string
+    image: string
   ): Promise<`0x${string}`> {
     if (!this.config.adminPrivateKey) {
       throw new Error(
@@ -278,7 +277,7 @@ export class ContractService {
         client: walletClient,
       });
 
-      const hash = await contract.write.setTicketData([BigInt(tokenId), tokenURI, image, traits]);
+      const hash = await contract.write.setTicketData([BigInt(tokenId), tokenURI, image]);
       return hash;
     } catch (error) {
       // Enhanced error handling for setTicketData-specific restrictions
@@ -498,7 +497,6 @@ export class ContractService {
                   const args = parsedLog.args as unknown as {
                     to: Address;
                     tokenId: bigint;
-                    traits: string;
                   };
                   console.log(
                     `[ContractService] Found TicketStamped token ID ${Number(args.tokenId)} in tx: ${txHash}`

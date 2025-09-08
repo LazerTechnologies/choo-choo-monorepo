@@ -9,7 +9,6 @@ const setTicketDataSchema = z.object({
   tokenId: z.number().min(0, 'Token ID must be non-negative'),
   tokenURI: z.string().min(1, 'Token URI is required'),
   image: z.string().optional().default(''),
-  traits: z.string().optional().default(''),
 });
 
 interface SetTicketDataResponse {
@@ -51,13 +50,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { tokenId, tokenURI, image, traits } = validation.data;
+    const { tokenId, tokenURI, image } = validation.data;
 
     console.log(`[internal/set-ticket-data] Setting ticket data for token ${tokenId}`);
 
     try {
       const contractService = getContractService();
-      const hash = await contractService.setTicketData(tokenId, tokenURI, image, traits);
+      const hash = await contractService.setTicketData(tokenId, tokenURI, image);
 
       console.log(
         `[internal/set-ticket-data] Successfully set ticket data for token ${tokenId}, tx: ${hash}`

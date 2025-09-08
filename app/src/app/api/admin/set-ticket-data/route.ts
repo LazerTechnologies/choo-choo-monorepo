@@ -9,7 +9,6 @@ const adminSetTicketDataSchema = z.object({
   tokenId: z.number().min(0, 'Token ID must be non-negative'),
   tokenURI: z.string().min(1, 'Token URI is required'),
   image: z.string().optional().default(''),
-  traits: z.string().optional().default(''),
 });
 
 interface AdminSetTicketDataResponse {
@@ -48,7 +47,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { tokenId, tokenURI, image, traits } = validation.data;
+    const { tokenId, tokenURI, image } = validation.data;
 
     console.log(
       `[admin-set-ticket-data] Admin FID ${auth.adminFid} setting ticket data for token ${tokenId}`
@@ -68,7 +67,6 @@ export async function POST(request: NextRequest) {
             tokenId,
             tokenURI,
             image,
-            traits,
           }),
         }
       );
