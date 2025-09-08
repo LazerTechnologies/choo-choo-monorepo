@@ -37,6 +37,7 @@ vi.mock('@/lib/services/contract', () => ({
   getContractService: vi.fn(() => ({
     getNextOnChainTicketId: vi.fn().mockResolvedValueOnce(500).mockResolvedValueOnce(501),
     executeYoink: vi.fn().mockResolvedValue('0xtx'),
+    getMintedTokenIdFromTx: vi.fn().mockResolvedValue(500),
   })),
 }));
 
@@ -101,6 +102,12 @@ describe('Concurrent Protection', () => {
         return new Response(JSON.stringify({ success: true, actualTokenId: 500, txHash: '0xtx' }), {
           status: 200,
         });
+      }
+      if (url.includes('/api/internal/send-cast')) {
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+      }
+      if (url.includes('/api/workflow-state')) {
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
       }
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     });

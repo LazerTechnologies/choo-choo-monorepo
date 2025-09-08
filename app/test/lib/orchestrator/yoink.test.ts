@@ -35,6 +35,8 @@ vi.mock('@/lib/services/contract', () => {
     hasDepositedEnough: vi.fn().mockResolvedValue(true),
     getNextOnChainTicketId: vi.fn(() => Promise.resolve(yoinkNextId++)),
     executeYoink: vi.fn().mockResolvedValue('0xtx'),
+    getMintedTokenIdFromTx: vi.fn().mockResolvedValue(300),
+    setTicketData: vi.fn().mockResolvedValue(undefined),
   };
   return {
     __esModule: true,

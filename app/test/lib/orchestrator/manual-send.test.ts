@@ -31,6 +31,7 @@ vi.mock('@/lib/services/contract', () => ({
   __esModule: true,
   getContractService: vi.fn(() => ({
     getNextOnChainTicketId: vi.fn().mockResolvedValueOnce(100).mockResolvedValueOnce(101),
+    getMintedTokenIdFromTx: vi.fn().mockResolvedValue(100),
   })),
 }));
 

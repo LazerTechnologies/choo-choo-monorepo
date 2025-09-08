@@ -252,11 +252,7 @@ export class ContractService {
   /**
    * Set ticket metadata on the contract (admin-only)
    */
-  async setTicketData(
-    tokenId: number,
-    tokenURI: string,
-    image: string
-  ): Promise<`0x${string}`> {
+  async setTicketData(tokenId: number, tokenURI: string, image: string): Promise<`0x${string}`> {
     if (!this.config.adminPrivateKey) {
       throw new Error(
         'Missing ADMIN_PRIVATE_KEY for contract execution. Admin role required for setting ticket data.'

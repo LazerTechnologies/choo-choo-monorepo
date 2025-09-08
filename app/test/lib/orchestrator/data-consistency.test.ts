@@ -29,6 +29,7 @@ vi.mock('@/lib/services/contract', () => ({
   __esModule: true,
   getContractService: vi.fn(() => ({
     getNextOnChainTicketId: vi.fn().mockResolvedValueOnce(400).mockResolvedValueOnce(401),
+    getMintedTokenIdFromTx: vi.fn().mockResolvedValue(400),
   })),
 }));
 
@@ -112,6 +113,12 @@ describe('Data Consistency', () => {
         return new Response(JSON.stringify({ success: true, actualTokenId: 400, txHash: '0xtx' }), {
           status: 200,
         });
+      }
+      if (url.includes('/api/internal/send-cast')) {
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
+      }
+      if (url.includes('/api/workflow-state')) {
+        return new Response(JSON.stringify({ success: true }), { status: 200 });
       }
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     });
