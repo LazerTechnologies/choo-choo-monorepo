@@ -410,6 +410,7 @@ export async function orchestrateManualSend(currentHolderFid: number, targetFid:
         headers: { 'Content-Type': 'application/json', 'x-internal-secret': INTERNAL_SECRET },
         body: JSON.stringify({
           text: `🚂 ChooChoo is heading to @${user.username}!`,
+          embeds: [{ url: APP_URL }],
           idem: `welcome-${actualTokenId}-${timestamp}`,
         }),
       });
@@ -418,12 +419,14 @@ export async function orchestrateManualSend(currentHolderFid: number, targetFid:
         console.warn(`[train-orchestrator] Welcome cast failed: ${welcomeResponse.status} - ${errorData.error}`);
       }
 
-      // Ticket issued cast for departing passenger
+      // Ticket issued cast for departing passenger with image
+      const imageUrl = `https://${process.env.NEXT_PUBLIC_PINATA_GATEWAY}/ipfs/${pending.imageHash}`;
       const ticketResponse = await fetch(`${APP_URL}/api/internal/send-cast`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-internal-secret': INTERNAL_SECRET },
         body: JSON.stringify({
           text: `🎫 Ticket #${actualTokenId} minted to @${departingPassengerData.currentHolder.username}!`,
+          embeds: [{ url: imageUrl }],
           idem: `ticket-${actualTokenId}-${timestamp}`,
         }),
       });
