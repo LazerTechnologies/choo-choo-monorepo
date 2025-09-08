@@ -11,7 +11,7 @@ contract SetMainTokenData is Script {
 
     function run() public {
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        address trainAddress = vm.envAddress("SEPOLIA_TRAIN_ADDRESS");
+        address trainAddress = vm.envAddress("MAINNET_TRAIN_ADDRESS");
 
         console2.log("Setting main token data for train at:", trainAddress);
         console2.log("New main image:", MAIN_IMAGE);
@@ -36,7 +36,7 @@ contract SetMainTokenData is Script {
 
     function setImageOnly() public {
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        address trainAddress = vm.envAddress("SEPOLIA_TRAIN_ADDRESS");
+        address trainAddress = vm.envAddress("MAINNET_TRAIN_ADDRESS");
 
         console2.log("Setting main image for train at:", trainAddress);
         console2.log("New main image:", MAIN_IMAGE);
@@ -50,7 +50,7 @@ contract SetMainTokenData is Script {
 
     function setTokenURIOnly() public {
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        address trainAddress = vm.envAddress("SEPOLIA_TRAIN_ADDRESS");
+        address trainAddress = vm.envAddress("MAINNET_TRAIN_ADDRESS");
 
         console2.log("Setting main token URI for train at:", trainAddress);
         console2.log("New main token URI:", MAIN_TOKEN_URI);

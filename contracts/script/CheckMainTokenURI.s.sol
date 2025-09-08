@@ -12,7 +12,7 @@ interface IChooChooTrain {
 
 contract CheckMainTokenURI is Script {
     function run() public view {
-        address trainAddress = vm.envAddress("SEPOLIA_TRAIN_ADDRESS");
+        address trainAddress = vm.envAddress("MAINNET_TRAIN_ADDRESS");
 
         console2.log("=== Contract State Check ===");
         console2.log("Train Address:", trainAddress);
