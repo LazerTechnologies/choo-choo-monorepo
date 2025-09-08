@@ -80,9 +80,17 @@ export default {
       fontFamily: {
         mono: ['var(--font-mono)'],
         comic: ['var(--font-comic)'],
-        sans: ['var(--font-sans)'],
-        heading: ['var(--font-heading, var(--font-comic))'], // fallback to comic
-        base: ['var(--font-base, var(--font-sans))'], // fallback to sans
+        sans: [
+          'var(--font-futura)',
+          'var(--font-sans)',
+          'system-ui',
+          '-apple-system',
+          'sans-serif',
+        ], // Now uses Futura first
+        futura: ['var(--font-futura)'],
+        'spotted-rail': ['var(--font-spotted-rail)'],
+        heading: ['var(--font-heading, var(--font-futura))'], // fallback to futura
+        base: ['var(--font-base, var(--font-futura))'], // fallback to futura
       },
       keyframes: {
         'accordion-down': {

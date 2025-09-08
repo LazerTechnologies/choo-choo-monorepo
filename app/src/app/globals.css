@@ -2,6 +2,28 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Futura font definitions */
+@font-face {
+  font-family: 'Futura';
+  src:
+    url('/fonts/Futura.woff2') format('woff2'),
+    url('/fonts/Futura.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Spotted Rail Ticket font definitions */
+@font-face {
+  font-family: 'Spotted Rail Ticket';
+  src:
+    url('/fonts/spotted-rail-ticket.woff2') format('woff2'),
+    url('/fonts/spotted-rail-ticket.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     --background: #a855f7;
@@ -50,8 +72,10 @@
     --box-shadow-y: 4px;
     --reverse-box-shadow-x: -4px;
     --reverse-box-shadow-y: -4px;
-    --font-heading: var(--font-comic);
-    --font-base: var(--font-sans);
+    --font-heading: var(--font-futura);
+    --font-base: var(--font-futura);
+    --font-futura: 'Futura', var(--font-sans), system-ui, -apple-system, sans-serif;
+    --font-spotted-rail: 'Spotted Rail Ticket', monospace, 'Courier New', courier;
 
     /* Marquee animations */
     --animate-marquee: marquee 5s linear infinite;

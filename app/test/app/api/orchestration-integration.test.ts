@@ -4,7 +4,8 @@ import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vite
 process.env.NEXT_PUBLIC_URL = process.env.NEXT_PUBLIC_URL || 'http://localhost:3000';
 process.env.NEYNAR_API_KEY = process.env.NEYNAR_API_KEY || 'test-neynar-key';
 process.env.INTERNAL_SECRET = process.env.INTERNAL_SECRET || 'test-internal-secret';
-process.env.NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS = process.env.NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS || '0x0000000000000000000000000000000000000001';
+process.env.NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS =
+  process.env.NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS || '0x0000000000000000000000000000000000000001';
 
 vi.mock('@/lib/train-orchestrator', () => ({
   __esModule: true,
@@ -60,13 +61,13 @@ describe('API Route Integration', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Reset all orchestrator mocks to ensure clean state
     vi.mocked(orchestrateManualSend).mockReset();
     vi.mocked(orchestrateRandomSend).mockReset();
     vi.mocked(orchestrateYoink).mockReset();
     vi.mocked(requireAdmin).mockReset();
-    
+
     // Default mocks
     vi.mocked(global.fetch).mockImplementation(async (input: RequestInfo | URL) => {
       const url = input.toString();
@@ -105,10 +106,10 @@ describe('API Route Integration', () => {
         );
       }
       if (url.includes('/api/internal/send-cast')) {
-        return new Response(
-          JSON.stringify({ success: true }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
-        );
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
       // Default fallback for any other API calls
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -230,35 +231,39 @@ describe('API Route Integration', () => {
       expect(res.status).toBe(401);
     });
 
-    it('should call orchestrateManualSend with current holder FID', { timeout: 10000 }, async () => {
-      vi.mocked(requireAdmin).mockResolvedValue({ ok: true, adminFid: 1 } as any);
-      
-      vi.mocked(orchestrateManualSend).mockResolvedValue({
-        status: 200,
-        body: { success: true, tokenId: 2, txHash: '0xabc', tokenURI: 'ipfs://t' },
-      } as any);
+    it(
+      'should call orchestrateManualSend with current holder FID',
+      { timeout: 10000 },
+      async () => {
+        vi.mocked(requireAdmin).mockResolvedValue({ ok: true, adminFid: 1 } as any);
 
-      const req = new Request('http://localhost/api/admin/send-train', {
-        method: 'POST',
-        body: JSON.stringify({ targetFid: 456 }),
-      });
-      
-      const res = await adminSendTrainPOST(req);
-      const json = await res.json();
+        vi.mocked(orchestrateManualSend).mockResolvedValue({
+          status: 200,
+          body: { success: true, tokenId: 2, txHash: '0xabc', tokenURI: 'ipfs://t' },
+        } as any);
 
-      // Ensure all promises are resolved
-      await vi.waitFor(() => {
-        expect(orchestrateManualSend).toHaveBeenCalledWith(123, 456);
-      });
-      
-      expect(json.success).toBe(true);
-      expect(json.tokenId).toBe(2);
-    });
+        const req = new Request('http://localhost/api/admin/send-train', {
+          method: 'POST',
+          body: JSON.stringify({ targetFid: 456 }),
+        });
+
+        const res = await adminSendTrainPOST(req);
+        const json = await res.json();
+
+        // Ensure all promises are resolved
+        await vi.waitFor(() => {
+          expect(orchestrateManualSend).toHaveBeenCalledWith(123, 456);
+        });
+
+        expect(json.success).toBe(true);
+        expect(json.tokenId).toBe(2);
+      }
+    );
 
     it('should handle orchestrator 409 responses', { timeout: 10000 }, async () => {
       // Ensure admin auth passes
       vi.mocked(requireAdmin).mockResolvedValue({ ok: true, adminFid: 1 } as any);
-      
+
       // Mock orchestrateManualSend to return 409 conflict
       vi.mocked(orchestrateManualSend).mockResolvedValue({
         status: 409,
@@ -268,14 +273,14 @@ describe('API Route Integration', () => {
         method: 'POST',
         body: JSON.stringify({ targetFid: 456 }),
       });
-      
+
       const res = await adminSendTrainPOST(req);
-      
+
       // Ensure all promises are resolved
       await vi.waitFor(() => {
         expect(orchestrateManualSend).toHaveBeenCalled();
       });
-      
+
       expect(res.status).toBe(409);
     });
 

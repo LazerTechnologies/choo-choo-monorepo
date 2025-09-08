@@ -78,7 +78,7 @@ export function NFTImageModal({
         <div className="border-t-2 border-border dark:border-darkBorder p-4">
           <div className="flex items-start justify-between">
             <div className="flex-1">
-              <Typography variant="h2" className="font-comic font-bold mb-2">
+              <Typography variant="h2" className="font-sans font-bold mb-2">
                 ChooChoo #{ticketNumber}
               </Typography>
               <Typography variant="body" className="mb-1">

@@ -17,7 +17,7 @@ export const USE_WALLET = process.env.NEXT_PUBLIC_USE_WALLET === 'true';
 // Admin FIDs for administrative functions
 export const ADMIN_FIDS = process.env.ADMIN_FIDS
   ? process.env.ADMIN_FIDS.split(',').map((fid) => parseInt(fid.trim(), 10))
-  : [377557,2802,243300];
+  : [377557, 2802, 243300];
 export const CHOOCHOO_TRAIN_ADDRESS = (() => {
   const address = process.env.NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS;
   if (!address) {
@@ -52,28 +52,28 @@ export const CHOOCHOO_CAST_TEMPLATES = {
   // [@user] Cast sent by current holder to announce they have ChooChoo
   USER_NEW_PASSENGER_CAST: () =>
     `I'm riding @choochoo! 🚂\n\n` +
-    `Soon you could be too! React to this cast to be in the running for next passenger.\n\n` +
+    `Soon you could be too! Reply to this cast to be in the running for next passenger.\n\n` +
     `All aboard!`,
 
   // [@choochoo] Cast sent when someone yoinks the train
   YOINK_ANNOUNCEMENT: (username: string) =>
     `YOINK! @${username} has boarded ChooChoo! 🚂💨\n\n` +
-    `Be on the lookout for their announcement cast, you could be the next passenger! ` +
+    `Be on the lookout for their announcement cast, you could be the next passenger! Reply to their cast for a chance to ride next!` +
     `The journey continues on Base! 🔵\n\n` +
     `All aboard for the next adventure! 🎫`,
 
   // [@choochoo] Cast sent when current holder toggles random winner mode
   RANDOM_WINNER_ENABLED: (username: string) =>
     `🎲 @${username} has decided to leave ChooChoo's next stop up to chance!\n\n` +
-    `React to their cast for a chance to ride next! Anyone can ` +
-    `trigger ChooChoo to be randomly sent to an account who reacted to the current holder's cast in 30 minutes. 🚂\n\n` +
+    `Reply to their cast for a chance to ride next! Anyone can ` +
+    `trigger ChooChoo to be randomly sent to an account who replied to the current holder's cast in 30 minutes. 🚂\n\n` +
     `All aboard! 🎫`,
 
   // [@choochoo] Cast sent when public send mode is enabled (30 minute timer expires)
   PUBLIC_SEND_OPEN: (username: string) =>
     `🚂 All aboard!\n\n` +
     `Head to the mini-app and pick a random user to receive ChooChoo! ` +
-    `@${username} left it up to chance! Anyone can now trigger ChooChoo to be randomly sent to someone who reacted to their cast! 🎲\n\n` +
+    `@${username} left it up to chance! Anyone can now trigger ChooChoo to be randomly sent to someone who replied to their cast! 🎲\n\n` +
     `Don't miss your chance to join the journey! 🚂`,
 
   // [@choochoo] Cast sent when the journey begins with initial holder

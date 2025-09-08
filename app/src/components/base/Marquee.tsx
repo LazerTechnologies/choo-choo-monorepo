@@ -84,8 +84,8 @@ export default function Marquee({
   }
 
   const baseClasses =
-    'relative flex w-full overflow-x-hidden bg-gradient-to-r from-purple-500 via-purple-600 to-purple-500 text-white font-mono text-sm font-bold uppercase tracking-wide border-2 border-white';
-  const itemClasses = 'mx-4 whitespace-nowrap';
+    'relative flex w-full overflow-x-hidden bg-gradient-to-r from-purple-500 via-purple-600 to-purple-500 text-white font-spotted-rail text-sm font-medium uppercase tracking-wider border-2 border-white';
+  const itemClasses = 'mx-6 whitespace-nowrap';
 
   return (
     <div

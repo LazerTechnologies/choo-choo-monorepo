@@ -28,7 +28,8 @@ async function sendMaintenanceCast(isPaused: boolean): Promise<void> {
       },
       body: JSON.stringify({
         text: castText,
-        embeds: castText === CHOOCHOO_CAST_TEMPLATES.MAINTENANCE_ENDED() ? [{ url: APP_URL }] : undefined,
+        embeds:
+          castText === CHOOCHOO_CAST_TEMPLATES.MAINTENANCE_ENDED() ? [{ url: APP_URL }] : undefined,
       }),
     });
 

@@ -42,7 +42,7 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
     <div className="overflow-y-auto h-[calc(100vh-200px)] px-6">
       {!shouldShowCastingWidget && (
         <div className="flex flex-col items-center justify-center py-8">
-          {/* <Typography variant="h1" className="text-center mb-4 text-white font-comic text-4xl">
+          {/* <Typography variant="h1" className="text-center mb-4 text-white text-4xl">
           {APP_NAME}
         </Typography> */}
           <Image
@@ -82,7 +82,7 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
             <>
               <Typography
                 variant="body"
-                className="text-center mb-4 text-gray-100 dark:text-gray-100 font-comic"
+                className="text-center mb-4 text-gray-100 dark:text-gray-100"
               >
                 You&apos;re the current passenger! Send out a cast to let everyone know. After,
                 you&apos;ll be able to choose where ChooChoo goes next.
@@ -130,10 +130,7 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
 
       {/* Current Stop Section */}
       <div className="w-full max-w-md mx-auto mb-8">
-        <Typography
-          variant="h3"
-          className="text-center mb-4 text-gray-100 dark:text-gray-100 font-comic"
-        >
+        <Typography variant="h3" className="text-center mb-4 text-gray-100 dark:text-gray-100">
           ChooChoo&apos;s Journey
         </Typography>
         <CurrentHolderItem refreshOnMintTrigger={timelineRefreshTrigger} />

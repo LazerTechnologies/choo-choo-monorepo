@@ -68,7 +68,7 @@ export function JourneyTimelineItem({
                 >
                   <Typography
                     variant="label"
-                    className="font-semibold !text-white truncate font-comic hover:underline transition-all"
+                    className="font-semibold !text-white truncate font-sans hover:underline transition-all"
                   >
                     @{username}
                   </Typography>
@@ -89,7 +89,7 @@ export function JourneyTimelineItem({
               </div>
 
               <div className="flex items-center justify-between text-xs !text-white opacity-60">
-                <span className="font-comic text-xs">{formatDate(date)}</span>
+                <span className="font-sans text-xs">{formatDate(date)}</span>
                 <span className="font-mono text-xs">Held {duration}</span>
               </div>
             </div>
@@ -99,7 +99,7 @@ export function JourneyTimelineItem({
               <div className="bg-white border border-white rounded px-1.5 py-0.5">
                 <Typography
                   variant="small"
-                  className="font-comic font-semibold !text-purple-600 text-xs"
+                  className="font-sans font-semibold !text-purple-600 text-xs"
                 >
                   #{ticketNumber}
                 </Typography>

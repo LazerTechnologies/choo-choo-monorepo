@@ -47,7 +47,7 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={cn(fontMono.variable, fontSans.variable, fontComicFallback.variable, 'font-comic')}
+      className={cn(fontMono.variable, fontSans.variable, fontComicFallback.variable, 'font-sans')}
       style={
         {
           '--font-comic': `"Comic Sans MS", var(--font-comic-fallback), Comic Sans, cursive`,

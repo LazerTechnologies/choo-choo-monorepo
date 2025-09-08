@@ -9,7 +9,7 @@ export function MaintenanceCard() {
   return (
     <div className="space-y-6 px-6 w-full max-w-md mx-auto">
       <div className="flex flex-col items-center justify-center">
-        <Typography variant="h1" className="text-center mb-4 text-white font-comic text-4xl">
+        <Typography variant="h1" className="text-center mb-4 text-white text-4xl">
           {APP_NAME}
         </Typography>
         <Image
@@ -25,14 +25,14 @@ export function MaintenanceCard() {
 
       <Card className="!bg-purple-600 !border-white">
         <Card.Header>
-          <Card.Title className="text-center !text-white font-comic">Maintenance Time</Card.Title>
+          <Card.Title className="text-center !text-white">Maintenance Time</Card.Title>
         </Card.Header>
         <Card.Content>
           <div className="text-center space-y-3">
-            <Typography variant="body" className="!text-white font-comic">
+            <Typography variant="body" className="!text-white">
               ChooChoo is currently undergoing maintenance.
             </Typography>
-            <Typography variant="body" className="!text-white text-sm font-comic">
+            <Typography variant="body" className="!text-white text-sm">
               We&apos;ll be back on track shortly. Thank you for your patience! 🚂
             </Typography>
           </div>

@@ -76,7 +76,7 @@ export function ConnectWalletDialog({ open, onOpenChange }: ConnectWalletDialogP
         className="!bg-purple-700 !text-white !border-white"
       >
         <div className="p-4 space-y-3">
-          <Typography variant="h5" className="font-comic !text-white">
+          <Typography variant="h5" className="!text-white">
             Connect your wallet
           </Typography>
 

@@ -98,7 +98,7 @@ export function PublicChanceWidget() {
       >
         <div className="space-y-4">
           <div className="text-center">
-            <Typography variant="h5" className="!text-white font-comic">
+            <Typography variant="h5" className="!text-white">
               Chance Mode
             </Typography>
             <Typography variant="body" className="text-sm !text-white mt-1">

@@ -102,8 +102,8 @@ export function YoinkPage() {
     <div className="space-y-3 px-6 w-full max-w-md mx-auto">
       <Card className="!bg-purple-600 !border-white">
         <Card.Header>
-          <Card.Title className="!text-white font-comic">Yoink ChooChoo</Card.Title>
-          <Card.Description className="!text-white font-comic">
+          <Card.Title className="!text-white font-sans">Yoink ChooChoo</Card.Title>
+          <Card.Description className="!text-white font-sans">
             If ChooChoo hasn&apos;t moved in 12 hours, anyone who hasn&apos;t ridden before can pay
             1 USDC to become the next passenger.
           </Card.Description>
@@ -112,36 +112,36 @@ export function YoinkPage() {
           {/* Status Display */}
           <div className="bg-purple-700 border border-white rounded-lg p-4 text-center mb-4">
             {isLoading ? (
-              <Typography variant="body" className="!text-white font-comic">
+              <Typography variant="body" className="!text-white font-sans">
                 {loadingText}
               </Typography>
             ) : countdownState.isLoading ? (
-              <Typography variant="body" className="!text-white font-comic">
+              <Typography variant="body" className="!text-white font-sans">
                 Loading countdown...
               </Typography>
             ) : countdownState.error ? (
-              <Typography variant="body" className="!text-red-300 font-comic">
+              <Typography variant="body" className="!text-red-300 font-sans">
                 Error: {countdownState.error}
               </Typography>
             ) : addressLoading ? (
-              <Typography variant="body" className="!text-white font-comic">
+              <Typography variant="body" className="!text-white font-sans">
                 Loading your address...
               </Typography>
             ) : addressError ? (
-              <Typography variant="body" className="!text-red-300 font-comic">
+              <Typography variant="body" className="!text-red-300 font-sans">
                 Address error: {addressError}
               </Typography>
             ) : !address ? (
               <div>
-                <Typography variant="body" className="!text-yellow-300 font-comic">
+                <Typography variant="body" className="!text-yellow-300 font-sans">
                   ⚠️ No verified Ethereum address found
                 </Typography>
-                <Typography variant="small" className="!text-white font-comic mt-1">
+                <Typography variant="small" className="!text-white font-sans mt-1">
                   FID: {currentUserFid || 'Not found'}
                 </Typography>
               </div>
             ) : (
-              <Typography variant="body" className="!text-white font-comic">
+              <Typography variant="body" className="!text-white font-sans">
                 {countdownState.isAvailable
                   ? '🚂 ChooChoo can be yoinked now!'
                   : `⏱️ Yoink in: ${countdownState.clockFormat}`}
@@ -151,18 +151,18 @@ export function YoinkPage() {
 
           {/* How Yoink Works */}
           <div className="space-y-3">
-            <Typography variant="h5" className="!text-white font-comic">
+            <Typography variant="h5" className="!text-white font-sans">
               What is Yoinking?
             </Typography>
             <div className="space-y-2">
-              <Typography variant="small" className="!text-white font-comic block">
+              <Typography variant="small" className="!text-white font-sans block">
                 • The &quot;Yoink&quot; feature prevents ChooChoo from getting stuck with an
                 inactive holder
               </Typography>
-              <Typography variant="small" className="!text-white font-comic block">
+              <Typography variant="small" className="!text-white font-sans block">
                 • Yoink is available 12 hours after the last transfer
               </Typography>
-              <Typography variant="small" className="!text-blue-300 font-comic-bold block">
+              <Typography variant="small" className="!text-blue-300 font-sans-bold block">
                 • After yoinking, send a cast from the home page to let everyone know you&apos;re on
                 board!
               </Typography>
@@ -171,7 +171,7 @@ export function YoinkPage() {
 
           {!address && !addressLoading && (
             <div className="bg-purple-700 border border-white rounded-lg p-3 mb-4 mt-4">
-              <Typography variant="small" className="!text-white font-comic">
+              <Typography variant="small" className="!text-white font-sans">
                 💡 You must verify an Ethereum address to participate. Go to{' '}
                 <span className="font-bold">Settings → Verified Addresses</span> in Farcaster to add
                 one.
@@ -214,7 +214,7 @@ export function YoinkPage() {
             className="w-full mt-4 bg-purple-600 text-white border-white hover:bg-purple-700 disabled:opacity-50"
             variant="default"
           >
-            <Typography variant="body" className="!text-white font-comic">
+            <Typography variant="body" className="!text-white font-sans">
               {isLoading
                 ? 'Yoinking...'
                 : !walletConnected

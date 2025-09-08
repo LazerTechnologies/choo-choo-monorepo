@@ -149,7 +149,7 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
               {isCurrentUser ? (
                 <Typography
                   variant="label"
-                  className="font-semibold text-blue-800 dark:text-blue-200 truncate font-comic"
+                  className="font-semibold text-blue-800 dark:text-blue-200 truncate"
                 >
                   {displayName}
                 </Typography>
@@ -158,7 +158,7 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
                   href={`https://farcaster.xyz/${currentHolder.username}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="font-semibold text-blue-800 dark:text-blue-200 hover:text-blue-600 dark:hover:text-blue-300 truncate font-comic hover:underline transition-colors"
+                  className="font-semibold text-blue-800 dark:text-blue-200 hover:text-blue-600 dark:hover:text-blue-300 truncate hover:underline transition-colors"
                 >
                   {displayName}
                 </a>
@@ -177,7 +177,7 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
 
             {/* Date and Duration */}
             <div className="flex items-center justify-between text-xs text-blue-700 dark:text-blue-300">
-              <span className="font-comic">Current passenger</span>
+              <span className="">Current passenger</span>
               <span className="font-mono">Holding for {duration}</span>
             </div>
           </div>
@@ -187,7 +187,7 @@ export function CurrentHolderItem({ refreshOnMintTrigger }: CurrentHolderItemPro
             <div className="bg-blue-200 dark:bg-blue-800 border border-blue-400 dark:border-blue-600 rounded-md px-2 py-1">
               <Typography
                 variant="small"
-                className="font-comic font-semibold text-blue-800 dark:text-blue-200"
+                className="font-semibold text-blue-800 dark:text-blue-200"
               >
                 #0
               </Typography>

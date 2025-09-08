@@ -61,7 +61,7 @@ export function JourneyTimeline({ refreshOnMintTrigger }: JourneyTimelineProps) 
           Previous Stops
         </Typography> */}
         <div className="text-center py-8">
-          <Typography variant="body" className="text-gray-400 dark:text-gray-400 font-comic">
+          <Typography variant="body" className="text-gray-400 dark:text-gray-400">
             Loading journey...
           </Typography>
         </div>
@@ -76,7 +76,7 @@ export function JourneyTimeline({ refreshOnMintTrigger }: JourneyTimelineProps) 
           Previous Stops
         </Typography> */}
         <div className="text-center py-8">
-          <Typography variant="body" className="text-red-500 dark:text-red-400 font-comic">
+          <Typography variant="body" className="text-red-500 dark:text-red-400">
             {error}
           </Typography>
         </div>
@@ -88,7 +88,7 @@ export function JourneyTimeline({ refreshOnMintTrigger }: JourneyTimelineProps) 
     <div className="w-full max-w-md mx-auto">
       {/* <Typography
         variant="h3"
-        className="text-center mb-4 text-gray-100 dark:text-gray-100 font-comic"
+        className="text-center mb-4 text-gray-100 dark:text-gray-100"
       >
         Previous Stops
       </Typography> */}
@@ -110,7 +110,7 @@ export function JourneyTimeline({ refreshOnMintTrigger }: JourneyTimelineProps) 
 
       {items.length === 0 && !loading && (
         <div className="text-center py-8">
-          <Typography variant="body" className="text-gray-400 dark:text-gray-400 font-comic">
+          <Typography variant="body" className="text-gray-400 dark:text-gray-400">
             ChooChoo hasn&apos;t left the station yet!
           </Typography>
         </div>

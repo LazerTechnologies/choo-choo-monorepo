@@ -2,7 +2,7 @@ import type { ElementType, ComponentPropsWithoutRef } from 'react';
 import { type VariantProps, cva } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
-const typographyVariants = cva('font-comic', {
+const typographyVariants = cva('font-sans', {
   variants: {
     as: {
       p: 'text-base',
