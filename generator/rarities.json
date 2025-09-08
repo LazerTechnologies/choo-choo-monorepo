@@ -111,8 +111,9 @@
     "rainbow.png": 10
   },
   "object": {
-    "saratoga.png": 33.33,
-    "checks.png": 33.33,
-    "rekt.png": 33.34
+    "none.png": 97,
+    "saratoga.png": 1,
+    "checks.png": 1,
+    "rekt.png": 1
   }
 }

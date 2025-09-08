@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { redis } from '@/lib/kv';
-import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
+import { CHOOCHOO_CAST_TEMPLATES, APP_URL } from '@/lib/constants';
 import { requireAdmin } from '@/lib/auth/require-admin';
 
 const APP_PAUSE_KEY = 'app-paused';
@@ -28,6 +28,7 @@ async function sendMaintenanceCast(isPaused: boolean): Promise<void> {
       },
       body: JSON.stringify({
         text: castText,
+        embeds: castText === CHOOCHOO_CAST_TEMPLATES.MAINTENANCE_ENDED() ? [{ url: APP_URL }] : undefined,
       }),
     });
 

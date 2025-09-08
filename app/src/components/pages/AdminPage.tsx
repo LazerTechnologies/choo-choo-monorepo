@@ -16,7 +16,7 @@ import {
 } from '@/components/base/Select';
 import { UsernameInput } from '@/components/ui/UsernameInput';
 import { Textarea } from '@/components/base/Textarea';
-import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
+import { CHOOCHOO_CAST_TEMPLATES, APP_URL } from '@/lib/constants';
 
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 import { useFrameContext } from '@/hooks/useFrameContext';
@@ -1088,7 +1088,11 @@ function JourneyAnnouncement({ adminFid }: { adminFid?: number }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ text, idem: `journey-continues-${today}` }),
+        body: JSON.stringify({
+          text,
+          embeds: [{ url: APP_URL }],
+          idem: `journey-continues-${today}`,
+        }),
       });
       const data = await res.json();
       if (res.ok && data.success) {

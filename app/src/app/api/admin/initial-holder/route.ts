@@ -263,7 +263,10 @@ export async function POST(request: Request) {
           'Content-Type': 'application/json',
           'x-internal-secret': INTERNAL_SECRET || '',
         },
-        body: JSON.stringify({ text: journeyBeginsCastText }),
+        body: JSON.stringify({ 
+          text: journeyBeginsCastText,
+          embeds: [{ url: APP_URL }],
+        }),
       });
     } catch (err) {
       console.warn(
