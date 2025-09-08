@@ -21,6 +21,7 @@ import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
 import { useAdminAccess } from '@/hooks/useAdminAccess';
 import { useFrameContext } from '@/hooks/useFrameContext';
 import { WorkflowState } from '@/lib/workflow-types';
+import { useWorkflowState } from '@/hooks/useWorkflowState';
 import type { PinataUploadResult } from '@/types/nft';
 import axios from 'axios';
 
@@ -713,6 +714,7 @@ function TestAdminNextStop({
   onTokenMinted?: () => void;
   adminFid?: number;
 }) {
+  const { refetch: refreshWorkflowState } = useWorkflowState();
   const [selectedUser, setSelectedUser] = useState<{
     fid: number;
     username: string;
@@ -764,6 +766,7 @@ function TestAdminNextStop({
 
       if (res.ok && data.success) {
         setResult(data);
+        void refreshWorkflowState();
         onTokenMinted?.();
       } else {
         setError(data.error || 'Failed to execute admin nextStop');
@@ -774,7 +777,7 @@ function TestAdminNextStop({
     } finally {
       setLoading(false);
     }
-  }, [selectedUser, adminFid, onTokenMinted]);
+  }, [selectedUser, adminFid, onTokenMinted, refreshWorkflowState]);
 
   return (
     <Card className="my-8 w-full !bg-purple-600 !border-white">

@@ -86,6 +86,7 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
         toast({
           description: `🚂 ChooChoo sent to @${selectedUser.username}!`,
         });
+        void refreshWorkflowState();
         onTokenMinted?.();
       } else {
         throw new Error(response.data.error || 'Unknown error');
@@ -131,6 +132,8 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
           description: '🎲 Random mode enabled: Public sending will be available in 30 minutes',
           priority: MessagePriority.USER_CONTEXT,
         });
+
+        void refreshWorkflowState();
 
         try {
           window.dispatchEvent(
