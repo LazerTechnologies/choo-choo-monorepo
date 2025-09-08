@@ -29,12 +29,35 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
     const castText = CHOOCHOO_CAST_TEMPLATES.USER_NEW_PASSENGER_CAST();
 
     try {
-      await sdk.actions.composeCast({
+      const result = await sdk.actions.composeCast({
         text: castText,
         embeds: [APP_URL],
       });
 
-      // Start waiting and polling (webhook should detect most cases)
+      if (result?.cast) {
+        console.log('✅ Cast sent directly via composeCast:', result.cast.hash);
+
+        try {
+          window.dispatchEvent(
+            new CustomEvent('workflow-state-changed', {
+              detail: {
+                state: WorkflowState.CASTED,
+                winnerSelectionStart: null,
+                currentCastHash: result.cast.hash,
+              },
+            })
+          );
+        } catch {}
+
+        toast({
+          description: '🗨️ Cast sent! You can now choose where ChooChoo goes next!',
+        });
+
+        onCastSent?.();
+        return;
+      }
+
+      // fallback: polling for casts containing "@choochoo"
       setIsWaitingForCast(true);
       startPolling();
 
@@ -51,30 +74,31 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
   };
 
   const startPolling = () => {
-    // webhook only
+    let pollCount = 0;
+    const maxPolls = 100; // 5 minutes at 3-second intervals
+
     const interval = setInterval(async () => {
+      pollCount++;
+
       try {
+        // Check cast status (webhook + recent cast fallback)
         const statusResponse = await fetch(`/api/cast-status?fid=${currentUserFid}`);
         const statusData = await statusResponse.json();
 
-        if (statusData.hasCurrentUserCasted) {
+        if (statusData.hasCurrentUserCasted && statusData.currentCastHash) {
           clearInterval(interval);
+          setPollInterval(null);
           setIsWaitingForCast(false);
 
-          // Don't overwrite workflow state if webhook already set it
-          // The webhook sets CASTED with the actual currentCastHash
-          console.log(
-            '✅ Cast detected via polling - webhook should have already set CASTED state'
-          );
+          console.log(`✅ Cast detected: ${statusData.currentCastHash}`);
 
-          // Just broadcast UI update with the existing cast hash from the API response
           try {
             window.dispatchEvent(
               new CustomEvent('workflow-state-changed', {
                 detail: {
                   state: WorkflowState.CASTED,
                   winnerSelectionStart: null,
-                  currentCastHash: statusData.currentCastHash, // Preserve webhook's cast hash
+                  currentCastHash: statusData.currentCastHash, // @dev preserve webhook cast hash
                 },
               })
             );
@@ -85,36 +109,41 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
           });
 
           onCastSent?.();
+          return;
+        }
+
+        if (pollCount >= maxPolls) {
+          clearInterval(interval);
+          setPollInterval(null);
+          setIsWaitingForCast(false);
+          toast({
+            description: '⛔ Timeout: If you casted with @choochoo, please refresh the page',
+            variant: 'destructive',
+          });
         }
       } catch (error) {
         console.error('Status polling error:', error);
       }
-    }, 3000); // Poll webhook status every 3 seconds
+    }, 3000); // Poll every 3 seconds
 
     setPollInterval(interval);
-
-    // Stop polling after 5 minutes
-    setTimeout(
-      () => {
-        clearInterval(interval);
-        setIsWaitingForCast(false);
-        toast({
-          description: '⛔ Timeout: If you casted, please refresh the page',
-          variant: 'destructive',
-        });
-      },
-      5 * 60 * 1000
-    );
   };
 
-  // Cleanup
   useEffect(() => {
     return () => {
       if (pollInterval) {
         clearInterval(pollInterval);
+        setPollInterval(null);
       }
     };
   }, [pollInterval]);
+
+  useEffect(() => {
+    if (!isWaitingForCast && pollInterval) {
+      clearInterval(pollInterval);
+      setPollInterval(null);
+    }
+  }, [isWaitingForCast, pollInterval]);
 
   // Only show cast widget for the current holder
   if (!currentUserFid || loading || !isCurrentHolder) {

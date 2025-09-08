@@ -44,9 +44,9 @@ export async function POST(request: Request) {
       const castText = cast.text;
       const authorFid = cast.author.fid;
 
-      const expectedTextPart = "I'm riding @choochoo!";
+      const containsChoochoo = castText.toLowerCase().includes('@choochoo');
 
-      if (castText.includes(expectedTextPart)) {
+      if (containsChoochoo) {
         const holderDataString = await redis.get('current-holder');
         if (!holderDataString) {
           console.log('❌ No current holder found in Redis');
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
 
           await redis.set('workflowState', JSON.stringify(workflowData));
 
-          console.log(`✅ Cast detected from current holder via webhook: ${cast.hash}`);
+          console.log(`✅ @choochoo cast detected from current holder via webhook: ${cast.hash}`);
           return NextResponse.json({ success: true, message: 'Cast processed' });
         } else {
           console.log(
