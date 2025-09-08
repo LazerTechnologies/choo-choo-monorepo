@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { redis } from '@/lib/kv';
-import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
+import { CHOOCHOO_CAST_TEMPLATES, APP_URL } from '@/lib/constants';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
@@ -84,6 +84,7 @@ export async function POST(request: NextRequest) {
           },
           body: JSON.stringify({
             text: castText,
+            embeds: [{ url: APP_URL }],
           }),
         }
       );

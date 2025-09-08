@@ -7,7 +7,7 @@ import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
 import { Button } from '@/components/base/Button';
 import { Card } from '@/components/base/Card';
 import { Typography } from '@/components/base/Typography';
-import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
+import { CHOOCHOO_CAST_TEMPLATES, APP_URL } from '@/lib/constants';
 import { WorkflowState } from '@/lib/workflow-types';
 import Image from 'next/image';
 import { sdk } from '@farcaster/miniapp-sdk';
@@ -31,7 +31,7 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
     try {
       await sdk.actions.composeCast({
         text: castText,
-        embeds: [],
+        embeds: [APP_URL],
       });
 
       // Start waiting and polling (webhook should detect most cases)

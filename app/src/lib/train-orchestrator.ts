@@ -649,6 +649,7 @@ export async function orchestrateRandomSend(castHash: string) {
         headers: { 'Content-Type': 'application/json', 'x-internal-secret': INTERNAL_SECRET },
         body: JSON.stringify({
           text: `🚂 ChooChoo is heading to @${winnerData.winner.username}!`,
+          embeds: [{ url: APP_URL }],
           idem: `welcome-${actualTokenId}`,
         }),
       });
@@ -920,6 +921,7 @@ export async function orchestrateYoink(userFid: number, targetAddress: string) {
         headers: { 'Content-Type': 'application/json', 'x-internal-secret': INTERNAL_SECRET },
         body: JSON.stringify({
           text: `🚂 ChooChoo was yoinked by @${yoinkerData.username}!`,
+          embeds: [{ url: APP_URL }],
           idem: `welcome-${actualTokenId}`,
         }),
       });

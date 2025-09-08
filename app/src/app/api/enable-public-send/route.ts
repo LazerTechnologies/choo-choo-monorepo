@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { redis } from '@/lib/kv';
-import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
+import { CHOOCHOO_CAST_TEMPLATES, APP_URL } from '@/lib/constants';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
 
 export async function POST() {
@@ -53,6 +53,7 @@ export async function POST() {
       },
       body: JSON.stringify({
         text: CHOOCHOO_CAST_TEMPLATES.PUBLIC_SEND_OPEN(username),
+        embeds: [{ url: APP_URL }],
       }),
     });
 
