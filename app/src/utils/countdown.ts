@@ -69,10 +69,12 @@ export function formatTimeRemaining(
 
   if (format === 'short') {
     const parts: string[] = [];
-    if (days > 0) parts.push(`${days}d`);
-    if (hours > 0) parts.push(`${hours}h`);
+    // @note updated to 12 hours, got rid of days
+    // if (days > 0) parts.push(`${days}d`);
+    const totalHours = days * 24 + hours;
+    if (totalHours > 0) parts.push(`${totalHours}h`);
     if (minutes > 0) parts.push(`${minutes}m`);
-    if (seconds > 0 && days === 0) parts.push(`${seconds}s`);
+    if (seconds > 0) parts.push(`${seconds}s`);
 
     return parts.length > 0 ? parts.join(' ') : '0s';
   }

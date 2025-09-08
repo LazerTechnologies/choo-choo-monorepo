@@ -133,7 +133,7 @@ export function YoinkPage() {
               </Typography>
             ) : !address ? (
               <div>
-                <Typography variant="body" className="!text-yellow-300 font-sans">
+                <Typography variant="body" className="!text-red-400 font-sans">
                   ⚠️ No verified Ethereum address found
                 </Typography>
                 <Typography variant="small" className="!text-white font-sans mt-1">
@@ -144,7 +144,7 @@ export function YoinkPage() {
               <Typography variant="body" className="!text-white font-sans">
                 {countdownState.isAvailable
                   ? '🚂 ChooChoo can be yoinked now!'
-                  : `⏱️ Yoink in: ${countdownState.clockFormat}`}
+                  : `⏱️ Yoink in: ${countdownState.shortFormat}`}
               </Typography>
             )}
           </div>
@@ -231,7 +231,7 @@ export function YoinkPage() {
                         ? 'Ineligible'
                         : canYoink
                           ? 'Yoink ChooChoo!'
-                          : `${countdownState.clockFormat}`}
+                          : `${countdownState.shortFormat}`}
             </Typography>
           </Button>
 
