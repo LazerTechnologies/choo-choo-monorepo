@@ -31,37 +31,48 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
     refreshWorkflow();
   };
 
+  const shouldShowCastingWidget =
+    !!context?.user &&
+    !isHolderLoading &&
+    !isWorkflowLoading &&
+    workflowData.state === WorkflowState.NOT_CASTED &&
+    isCurrentHolder;
+
   return (
     <div className="overflow-y-auto h-[calc(100vh-200px)] px-6">
-      <div className="flex flex-col items-center justify-center py-8">
-        {/* <Typography variant="h1" className="text-center mb-4 text-white font-comic text-4xl">
+      {!shouldShowCastingWidget && (
+        <div className="flex flex-col items-center justify-center py-8">
+          {/* <Typography variant="h1" className="text-center mb-4 text-white font-comic text-4xl">
           {APP_NAME}
         </Typography> */}
-        <Image
-          src="/ChooChoo.webp"
-          alt="ChooChoo App Logo"
-          width={320}
-          height={320}
-          priority
-          className="rounded-lg shadow-lg border-4"
-          style={{ borderColor: 'var(--border)' }}
-        />
-      </div>
+          <Image
+            src="/ChooChoo.webp"
+            alt="ChooChoo App Logo"
+            width={320}
+            height={320}
+            priority
+            className="rounded-lg shadow-lg border-4"
+            style={{ borderColor: 'var(--border)' }}
+          />
+        </div>
+      )}
 
       {/* App Description */}
-      <div className="pb-6 text-center px-4">
-        <p className="text-gray-300 dark:text-gray-300 leading-relaxed">
-          ChooChoo is trying to visit every wallet on Base! When ChooChoo is in your wallet, you get
-          to decide where he goes next.
-        </p>
-        <Button
-          variant="link"
-          onClick={() => playChooChoo({ volume: 0.7 })}
-          className="mt-2 text-gray-300 dark:text-gray-300 hover:text-purple-500 dark:hover:text-purple-500 transition-colors"
-        >
-          🚂 All aboard!
-        </Button>
-      </div>
+      {!shouldShowCastingWidget && (
+        <div className="pb-6 text-center px-4">
+          <p className="text-gray-300 dark:text-gray-300 leading-relaxed">
+            ChooChoo is trying to visit every wallet on Base! When ChooChoo is in your wallet, you
+            get to decide where he goes next.
+          </p>
+          <Button
+            variant="link"
+            onClick={() => playChooChoo({ volume: 0.7 })}
+            className="mt-2 text-gray-300 dark:text-gray-300 hover:text-purple-500 dark:hover:text-purple-500 transition-colors"
+          >
+            🚂 All aboard!
+          </Button>
+        </div>
+      )}
 
       {/* Workflow-based UI rendering */}
       {context?.user && !isHolderLoading && !isWorkflowLoading && (
@@ -94,9 +105,6 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
             workflowData.state === WorkflowState.CHANCE_EXPIRED) && (
             <div className="w-full space-y-4">
               <PublicChanceWidget />
-              {workflowData.currentCastHash && (
-                <CastDisplayWidget castHash={workflowData.currentCastHash} />
-              )}
             </div>
           )}
 
@@ -108,6 +116,15 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
               </Typography>
             </div>
           )}
+
+          {/* Cast announcement: visible to non-holders whenever state is not NOT_CASTED */}
+          {!isCurrentHolder &&
+            workflowData.state !== WorkflowState.NOT_CASTED &&
+            workflowData.currentCastHash && (
+              <div className="w-full mt-4">
+                <CastDisplayWidget castHash={workflowData.currentCastHash} />
+              </div>
+            )}
         </div>
       )}
 
