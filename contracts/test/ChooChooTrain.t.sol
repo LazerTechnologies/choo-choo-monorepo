@@ -6,6 +6,7 @@ import {ChooChooTrain} from "../src/ChooChooTrain.sol";
 import {MockERC20} from "./mocks/MockERC20.sol";
 import {MockUSDC} from "./mocks/MockUSDC.sol";
 import "openzeppelin-contracts/token/ERC20/IERC20.sol";
+import "openzeppelin-contracts/utils/Strings.sol";
 
 contract ChooChooTrainTest is Test {
     ChooChooTrain train;
@@ -13,6 +14,7 @@ contract ChooChooTrainTest is Test {
     address owner = address(0x420);
     address admin1 = address(0x111);
     address admin2 = address(0x222);
+    address admin3 = address(0x333);
     address passenger1 = address(0x001);
     address passenger2 = address(0x002);
     address passenger3 = address(0x003);
@@ -32,7 +34,7 @@ contract ChooChooTrainTest is Test {
 
     function setUp() public {
         vm.prank(owner);
-        train = new ChooChooTrain(address(0), owner);
+        train = new ChooChooTrain(owner);
         usdc = new MockUSDC();
 
         vm.prank(owner);
@@ -47,22 +49,19 @@ contract ChooChooTrainTest is Test {
     }
 
     function testOnlyAdminCanMoveTrainnextStop() public {
-        // Non-admin cannot move train
         vm.prank(passenger1);
         vm.expectRevert(bytes("Not an admin"));
         train.nextStop(passenger2, tokenURI);
 
-        // Admin can move train
-        vm.prank(owner); // owner is admin by default
+        vm.prank(owner);
         train.nextStop(passenger1, tokenURI);
         assertEq(train.ownerOf(0), passenger1);
     }
 
     function testnextStop() public {
-        vm.prank(owner); // owner is admin
+        vm.prank(owner);
         train.nextStop(passenger1, tokenURI);
 
-        // Check train moved
         assertEq(train.ownerOf(0), passenger1);
         assertEq(train.trainJourney(0), owner);
         assertEq(train.getTotalTickets(), 1);
@@ -92,18 +91,18 @@ contract ChooChooTrainTest is Test {
     function testCannotRideTrainTwice() public {
         vm.prank(owner);
         train.nextStop(passenger1, tokenURI);
-        vm.prank(owner); // only admin can move train
+        vm.prank(owner);
         train.nextStop(passenger2, tokenURI);
-        vm.prank(owner); // only admin can move train
+        vm.prank(owner);
         train.nextStop(passenger3, tokenURI);
         // passenger1 tries to get train again
-        vm.prank(owner); // only admin can move train
+        vm.prank(owner);
         vm.expectRevert(abi.encodeWithSignature("AlreadyRodeTrain(address)", passenger1));
         train.nextStop(passenger1, tokenURI);
     }
 
     function testRegularTransfersBlockedForTrainToken() public {
-        // Regular transfer/transferFrom should be blocked for token ID 0
+        // regular transfer/transferFrom should be blocked for token ID 0
         vm.prank(owner);
         vm.expectRevert(bytes("Train can only be moved by admins"));
         train.transferFrom(owner, passenger1, 0);
@@ -114,14 +113,11 @@ contract ChooChooTrainTest is Test {
     }
 
     function testTicketTransfersStillWork() public {
-        // Move train to create a ticket
         vm.prank(owner);
         train.nextStop(passenger1, tokenURI);
 
-        // Owner should have ticket ID 1
         assertEq(train.ownerOf(1), owner);
 
-        // Owner can transfer their ticket normally
         vm.prank(owner);
         train.transferFrom(owner, passenger2, 1);
         assertEq(train.ownerOf(1), passenger2);
@@ -140,9 +136,9 @@ contract ChooChooTrainTest is Test {
             train.getTrainStatus();
 
         assertEq(holder, owner);
-        assertEq(totalStops, 0); // no completed journeys yet
+        assertEq(totalStops, 0);
         assertTrue(lastMoveTime > 0);
-        assertFalse(canBeYoinked); // no time passed yet
+        assertFalse(canBeYoinked);
         assertEq(nextTicketId_, 1);
 
         vm.warp(block.timestamp + 3 days);
@@ -161,28 +157,27 @@ contract ChooChooTrainTest is Test {
     }
 
     function testGetTotalTickets() public {
-        assertEq(train.getTotalTickets(), 0); // no tickets minted yet
+        assertEq(train.getTotalTickets(), 0);
 
         vm.prank(owner);
         train.nextStop(passenger1, tokenURI);
-        assertEq(train.getTotalTickets(), 1); // one ticket minted
+        assertEq(train.getTotalTickets(), 1);
 
         vm.prank(owner);
         train.nextStop(passenger2, tokenURI);
-        assertEq(train.getTotalTickets(), 2); // two tickets minted
+        assertEq(train.getTotalTickets(), 2);
     }
 
     function testAddedAdminCanMoveTrainAndSetData() public {
-        // Add new admin
+        address[] memory newAdmin = new address[](1);
+        newAdmin[0] = admin1;
         vm.prank(owner);
-        train.addAdmin(admin1);
+        train.addAdmin(newAdmin);
 
-        // New admin can move train
         vm.prank(admin1);
         train.nextStop(passenger1, tokenURI);
         assertEq(train.ownerOf(0), passenger1);
 
-        // New admin can use nextStop
         vm.prank(admin1);
         train.nextStop(passenger2, tokenURI);
 
@@ -229,41 +224,36 @@ contract ChooChooTrainTest is Test {
         vm.warp(block.timestamp + 6 hours);
         (bool canYoink, string memory reason) = train.isYoinkable();
         assertFalse(canYoink);
-        assertEq(reason, "Yoink cooldown not met");
+        assertEq(reason, "Yoink is still on cooldown");
 
         vm.warp(block.timestamp + 12 hours);
         (canYoink, reason) = train.isYoinkable();
         assertTrue(canYoink);
-        assertEq(reason, "Train can be yoinked by admin");
+        assertEq(reason, "ChooChoo can be yoinked!");
 
-        // Only admin can yoink
         vm.prank(passenger1);
         vm.expectRevert(bytes("Not an admin"));
         train.yoink(passenger3);
 
-        // Admin yoinks to passenger3
         vm.prank(owner);
         train.yoink(passenger3);
         assertEq(train.ownerOf(0), passenger3);
         assertTrue(train.hasBeenPassenger(passenger2));
         assertFalse(train.hasBeenPassenger(passenger3));
 
-        // Check that previous holder got a ticket
-        assertEq(train.ownerOf(3), passenger2); // passenger2 gets ticket ID 3
+        assertEq(train.ownerOf(3), passenger2);
     }
 
     function testYoinkRevertsIfNotEligible() public {
         vm.prank(owner);
         train.nextStop(passenger1, tokenURI);
-        vm.prank(owner); // only admin can move train
+        vm.prank(owner);
         train.nextStop(passenger2, tokenURI);
 
-        // Not enough time passed - admin should still get reverted
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSignature("NotEligibleToYoink(string)", "Yoink cooldown not met"));
+        vm.expectRevert(abi.encodeWithSignature("NotEligibleToYoink(string)", "Yoink is still on cooldown"));
         train.yoink(passenger3);
 
-        // Non-admin should be reverted even after time passes
         vm.warp(block.timestamp + 12 hours);
         vm.prank(passenger1);
         vm.expectRevert(bytes("Not an admin"));
@@ -273,10 +263,10 @@ contract ChooChooTrainTest is Test {
     function testYoinkCannotSendToSelf() public {
         vm.prank(owner);
         train.nextStop(passenger1, tokenURI);
-        vm.prank(owner); // only admin can move train
+        vm.prank(owner);
         train.nextStop(passenger2, tokenURI);
         vm.warp(block.timestamp + 12 hours);
-        vm.prank(owner); // admin trying to yoink
+        vm.prank(owner);
         vm.expectRevert(abi.encodeWithSignature("CannotSendToCurrentPassenger(address)", passenger2));
         train.yoink(passenger2);
     }
@@ -284,24 +274,24 @@ contract ChooChooTrainTest is Test {
     function testYoinkCannotSendToPreviousPassenger() public {
         vm.prank(owner);
         train.nextStop(passenger1, tokenURI);
-        vm.prank(owner); // only admin can move train
+        vm.prank(owner);
         train.nextStop(passenger2, tokenURI);
         vm.warp(block.timestamp + 12 hours);
 
-        // Admin cannot yoink to passenger1 who already rode the train
         vm.prank(owner);
         vm.expectRevert(abi.encodeWithSignature("AlreadyRodeTrain(address)", passenger1));
         train.yoink(passenger1);
 
-        // Admin cannot yoink to owner who already rode the train
         vm.prank(owner);
         vm.expectRevert(abi.encodeWithSignature("AlreadyRodeTrain(address)", owner));
         train.yoink(owner);
     }
 
     function testAddedAdminCanYoink() public {
+        address[] memory newAdmin = new address[](1);
+        newAdmin[0] = admin1;
         vm.prank(owner);
-        train.addAdmin(admin1);
+        train.addAdmin(newAdmin);
 
         vm.prank(owner);
         train.nextStop(passenger1, tokenURI);
@@ -353,21 +343,53 @@ contract ChooChooTrainTest is Test {
     }
 
     function testAddAdmin() public {
+        address[] memory singleAdmin = new address[](1);
+        singleAdmin[0] = admin1;
+
         vm.prank(owner);
         vm.expectEmit(true, false, false, false);
         emit AdminAdded(admin1);
-        train.addAdmin(admin1);
+        train.addAdmin(singleAdmin);
 
         assertTrue(train.hasRole(train.ADMIN_ROLE(), admin1));
         address[] memory adminList = train.getAdmins();
         assertEq(adminList.length, 2);
         assertEq(adminList[1], admin1);
+
+        address[] memory bulkAdmins = new address[](2);
+        bulkAdmins[0] = admin2;
+        bulkAdmins[1] = admin3;
+
+        vm.prank(owner);
+        vm.expectEmit(true, false, false, false);
+        emit AdminAdded(admin2);
+        vm.expectEmit(true, false, false, false);
+        emit AdminAdded(admin3);
+        train.addAdmin(bulkAdmins);
+
+        assertTrue(train.hasRole(train.ADMIN_ROLE(), admin2));
+        assertTrue(train.hasRole(train.ADMIN_ROLE(), admin3));
+        adminList = train.getAdmins();
+        assertEq(adminList.length, 4);
+        assertEq(adminList[2], admin2);
+        assertEq(adminList[3], admin3);
+
+        address[] memory duplicateAdmin = new address[](1);
+        duplicateAdmin[0] = admin1;
+
+        vm.prank(owner);
+        string memory expectedError =
+            string.concat(Strings.toHexString(uint256(uint160(admin1)), 20), " is already an admin");
+        vm.expectRevert(bytes(expectedError));
+        train.addAdmin(duplicateAdmin);
     }
 
     function testRemoveAdmin() public {
         // Add admin first
+        address[] memory newAdmin = new address[](1);
+        newAdmin[0] = admin1;
         vm.prank(owner);
-        train.addAdmin(admin1);
+        train.addAdmin(newAdmin);
 
         // Remove admin
         vm.prank(owner);
@@ -382,12 +404,15 @@ contract ChooChooTrainTest is Test {
     }
 
     function testOnlyOwnerCanAddRemoveAdmins() public {
+        address[] memory newAdmin = new address[](1);
+        newAdmin[0] = admin1;
+
         vm.prank(passenger1);
         vm.expectRevert();
-        train.addAdmin(admin1);
+        train.addAdmin(newAdmin);
 
         vm.prank(owner);
-        train.addAdmin(admin1);
+        train.addAdmin(newAdmin);
 
         vm.prank(passenger1);
         vm.expectRevert();
@@ -395,12 +420,17 @@ contract ChooChooTrainTest is Test {
     }
 
     function testCannotAddExistingAdmin() public {
-        vm.prank(owner);
-        train.addAdmin(admin1);
+        address[] memory newAdmin = new address[](1);
+        newAdmin[0] = admin1;
 
         vm.prank(owner);
-        vm.expectRevert(bytes("Already an admin"));
-        train.addAdmin(admin1);
+        train.addAdmin(newAdmin);
+
+        vm.prank(owner);
+        string memory expectedError =
+            string.concat(Strings.toHexString(uint256(uint160(admin1)), 20), " is already an admin");
+        vm.expectRevert(bytes(expectedError));
+        train.addAdmin(newAdmin);
     }
 
     function testCannotRemoveNonAdmin() public {
@@ -425,8 +455,10 @@ contract ChooChooTrainTest is Test {
     }
 
     function testSetTicketDataByAddedAdmin() public {
+        address[] memory newAdmin = new address[](1);
+        newAdmin[0] = admin1;
         vm.prank(owner);
-        train.addAdmin(admin1);
+        train.addAdmin(newAdmin);
 
         vm.prank(owner);
         train.nextStop(passenger1, tokenURI);
@@ -465,12 +497,12 @@ contract ChooChooTrainTest is Test {
 
     function testConstructorValidatesInitialHolder() public {
         vm.expectRevert(abi.encodeWithSignature("TransferToInvalidAddress(address)", address(0)));
-        new ChooChooTrain(address(0), address(0));
+        new ChooChooTrain(address(0));
 
         vm.expectRevert(abi.encodeWithSignature("TransferToInvalidAddress(address)", dead));
-        new ChooChooTrain(address(0), dead);
+        new ChooChooTrain(dead);
 
-        ChooChooTrain validTrain = new ChooChooTrain(address(0), passenger1);
+        ChooChooTrain validTrain = new ChooChooTrain(passenger1);
         assertEq(validTrain.ownerOf(0), passenger1);
         assertFalse(validTrain.hasBeenPassenger(passenger1));
         assertEq(validTrain.getTotalTickets(), 0);

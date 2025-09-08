@@ -3,11 +3,6 @@
     "type": "constructor",
     "inputs": [
       {
-        "name": "trustedForwarder",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
         "name": "initialHolder",
         "type": "address",
         "internalType": "address"
@@ -59,9 +54,9 @@
     "name": "addAdmin",
     "inputs": [
       {
-        "name": "admin",
-        "type": "address",
-        "internalType": "address"
+        "name": "newAdmins",
+        "type": "address[]",
+        "internalType": "address[]"
       }
     ],
     "outputs": [],
@@ -381,25 +376,6 @@
       },
       {
         "name": "operator",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "isTrustedForwarder",
-    "inputs": [
-      {
-        "name": "forwarder",
         "type": "address",
         "internalType": "address"
       }
@@ -1035,19 +1011,6 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "trustedForwarder",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -1717,6 +1680,22 @@
         "name": "account",
         "type": "address",
         "internalType": "address"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "StringsInsufficientHexLength",
+    "inputs": [
+      {
+        "name": "value",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "length",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ]
   },
