@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "openzeppelin-contracts/token/ERC721/ERC721.sol";
-import "openzeppelin-contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "openzeppelin-contracts/access/Ownable.sol";
-import "openzeppelin-contracts/utils/Strings.sol";
-import "openzeppelin-contracts/token/ERC20/IERC20.sol";
-import "openzeppelin-contracts/metatx/ERC2771Context.sol";
-import "openzeppelin-contracts/access/AccessControl.sol";
+import {ERC721} from "openzeppelin-contracts/token/ERC721/ERC721.sol";
+import {IERC721} from "openzeppelin-contracts/token/ERC721/IERC721.sol";
+import {ERC721Enumerable} from "openzeppelin-contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import {Ownable} from "openzeppelin-contracts/access/Ownable.sol";
+import {Strings} from "openzeppelin-contracts/utils/Strings.sol";
+import {IERC20} from "openzeppelin-contracts/token/ERC20/IERC20.sol";
+import {AccessControl} from "openzeppelin-contracts/access/AccessControl.sol";
 
-//@todo: set up for admin key on the backend that can call `nextStop` so the function is either manual or automated, and make sure it follows a game-flow as described in our convo on warpcast
 /*
-Choo-Choo on Base is an homage to The Worm. How many wallets can Choo Choo visit?
+ChooChoo is a social experiment on Farcaster, and an homage to The Worm.
 
-ChooChoo can visit new wallets using the `nextStop` function. When ChooChoo moves on to its next stop, the previous holder receives a "ticket" NFT as a souvenir.
+ChooChoo (tokenId: 0) can visit new wallets using the `nextStop` function. When ChooChoo moves to another wallet, the previous holder receives a "ticket" NFT as a souvenir. Designed to be used exclusively through the Farcaster mini-app, functions to move the train are only callable by a mini-app controlled account.
 
 If ChooChoo hasn't moved for the configured yoink timer period (default 12 hours), a user can "yoink" ChooChoo to their address through the Farcaster mini-app.
 
@@ -21,7 +20,7 @@ If ChooChoo hasn't moved for the configured yoink timer period (default 12 hours
 @warpcast https://warpcast.com/jonbray.eth
 @email me@jonbray.dev
 */
-contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessControl {
+contract ChooChooTrain is ERC721Enumerable, Ownable, AccessControl {
     using Strings for uint256;
 
     // ========== TRACKING ========== //
@@ -52,6 +51,7 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
 
     uint256 public lastTransferTimestamp;
     address public previousPassenger;
+    /// @dev ChooChoo can only visit a wallet once.
     mapping(address => bool) public hasBeenPassenger;
 
     uint256 public yoinkTimerHours = 12;
@@ -61,14 +61,11 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
     address[] public admins;
 
     // ========== USDC DEPOSIT SYSTEM ========== //
-    /// @dev USDC token contract address
     address public usdc;
+    uint256 public constant USDC_DECIMALS = 6;
+    uint256 public depositCost = 1 * 10 ** USDC_DECIMALS;
     /// @dev Cumulative USDC deposited by each FID
     mapping(uint256 => uint256) public fidToUsdcDeposited;
-
-    uint256 public constant USDC_DECIMALS = 6;
-    /// @dev Required deposit amount
-    uint256 public depositCost = 1 * 10 ** USDC_DECIMALS;
 
     // ========== EVENTS ========== //
     /// @dev Emitted when a previous holder receives a ticket NFT.
@@ -77,37 +74,30 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
     /// @dev Emitted when the main train NFT (tokenId 0) is transferred to a new passenger.
     event TrainDeparted(address indexed from, address indexed to, uint256 timestamp);
 
-    /// @dev Emitted when a previous passenger yoinks the train to a new address.
+    /// @dev Emitted when a new passenger yoinks ChooChoo.
     event Yoink(address indexed by, address indexed to, uint256 timestamp);
+    event YoinkTimerUpdated(uint256 previousHours, uint256 newHours);
 
     event AdminAdded(address indexed admin);
     event AdminRemoved(address indexed admin);
-    event YoinkTimerUpdated(uint256 previousHours, uint256 newHours);
 
-    /// @dev USDC deposit events
     event UsdcDeposited(address indexed from, uint256 indexed fid, uint256 amount);
     event UsdcWithdrawn(address indexed to, address indexed token, uint256 amount);
     event UsdcAddressUpdated(address indexed previous, address indexed current);
     event DepositCostUpdated(uint256 previous, uint256 current);
 
     // ========== ERRORS ========== //
-    /// @dev Caller is not the owner nor approved for the token.
     error NotOwnerNorApproved(address caller, uint256 tokenId);
-    /// @dev Only admins can yoink.
     error NotEligibleToYoink(string reason);
-    /// @dev Cannot mint or transfer to the zero address or dead address.
     error TransferToInvalidAddress(address to);
-    /// @dev Cannot send the train to yourself.
     error CannotSendToCurrentPassenger(address to);
-    /// @dev Cannot ride the train more than once.
     error AlreadyRodeTrain(address passenger);
-    /// @dev Invalid FID provided).
     error InvalidFid(uint256 fid);
-    /// @dev Insufficient deposit amount.
     error InsufficientDeposit(uint256 provided, uint256 required);
+    error ERC20TransferFailed();
 
     // ========== CONSTANTS ========== //
-    /// @dev Commonly used burn address on Base.
+    /// @dev Base burn address.
     address constant DEAD_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
     // ========== MODIFIERS ========== //
@@ -126,15 +116,10 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
 
     // ========== CONSTRUCTOR ========== //
     /**
-     * @notice Deploys the ChooChooTrain contract and mints the original train to the initial holder.
-     * @param trustedForwarder The address of the trusted forwarder for meta-transactions.
-     * @param initialHolder The address that will receive the initial train NFT (tokenId 0).
+     * @notice Deploy ChooChooTrain and mint to the initial holder.
+     * @param initialHolder The address to receive ChooChoo (tokenId 0) first.
      */
-    constructor(address trustedForwarder, address initialHolder)
-        ERC721("ChooChoo on Base", "CHOOCHOO")
-        Ownable(msg.sender)
-        ERC2771Context(trustedForwarder)
-    {
+    constructor(address initialHolder) ERC721("ChooChoo on Base", "CHOOCHOO") Ownable(msg.sender) {
         if (initialHolder == address(0) || initialHolder == DEAD_ADDRESS) {
             revert TransferToInvalidAddress(initialHolder);
         }
@@ -145,9 +130,7 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
         _grantRole(ADMIN_ROLE, msg.sender);
         admins.push(msg.sender);
 
-        // Initialize USDC address to Base Sepolia USDC
-        // @todo update to mainnet USDC
-        usdc = 0x036CbD53842c5426634e7929541eC2318f3dCF7e;
+        usdc = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
     }
 
     // ========== TRANSFER LOGIC ========== //
@@ -307,7 +290,7 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
     }
 
     /**
-     * @notice Returns the current holder of the train (token ID 0).
+     * @notice Returns the current holder of tokenId: 0.
      * @return The address currently holding the train.
      */
     function getCurrentTrainHolder() external view returns (address) {
@@ -315,7 +298,7 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
     }
 
     /**
-     * @notice Returns comprehensive train status information.
+     * @notice Returns comprehensive ChooChoo status.
      * @return holder Current train holder.
      * @return totalStops Total number of stops made.
      * @return lastMoveTime Timestamp of last movement.
@@ -335,8 +318,8 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
     }
 
     /**
-     * @notice Returns the total number of tickets minted (excluding the train).
-     * @return The total supply minus 1 (for the train).
+     * @notice Returns the total number of tickets minted (excluding ChooChoo).
+     * @return The total supply minus 1.
      */
     function getTotalTickets() external view returns (uint256) {
         return totalSupply() > 0 ? totalSupply() - 1 : 0;
@@ -350,20 +333,22 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
         IERC20 erc20 = IERC20(token);
         uint256 balance = erc20.balanceOf(address(this));
         require(balance > 0, "No ERC20 tokens to withdraw");
-        require(erc20.transfer(owner(), balance), "ERC20 withdrawal failed");
+        if (!erc20.transfer(owner(), balance)) {
+            revert ERC20TransferFailed();
+        }
     }
 
     // ========== YOINK MECHANIC ========== //
     /**
-     * @notice Checks if the train can be yoinked by an admin.
+     * @notice Checks if ChooChoo can be yoinked.
      * @return canYoink True if eligible, false otherwise.
      * @return reason The reason for eligibility or ineligibility.
      */
     function isYoinkable() public view returns (bool canYoink, string memory reason) {
         if (block.timestamp < lastTransferTimestamp + (yoinkTimerHours * 1 hours)) {
-            return (false, "Yoink cooldown not met");
+            return (false, "Yoink is still on cooldown");
         }
-        return (true, "Train can be yoinked by admin");
+        return (true, "ChooChoo can be yoinked!");
     }
 
     /**
@@ -396,14 +381,24 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
 
     // ========== ADMIN CONTROLS ========== //
     /**
-     * @notice Adds a new admin address.
-     * @param admin The address to grant admin role.
+     * @notice Adds new admin addresses.
+     * @param newAdmins Array of addresses to grant admin role.
      */
-    function addAdmin(address admin) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(!hasRole(ADMIN_ROLE, admin), "Already an admin");
-        _grantRole(ADMIN_ROLE, admin);
-        admins.push(admin);
-        emit AdminAdded(admin);
+    function addAdmin(address[] calldata newAdmins) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(newAdmins.length > 0, "Must add at least one admin");
+
+        for (uint256 i = 0; i < newAdmins.length; i++) {
+            address admin = newAdmins[i];
+            require(admin != address(0), "Invalid admin address");
+            require(
+                !hasRole(ADMIN_ROLE, admin),
+                string.concat(Strings.toHexString(uint256(uint160(admin)), 20), " is already an admin")
+            );
+
+            _grantRole(ADMIN_ROLE, admin);
+            admins.push(admin);
+            emit AdminAdded(admin);
+        }
     }
 
     /**
@@ -414,7 +409,6 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
         require(hasRole(ADMIN_ROLE, admin), "Not an admin");
         _revokeRole(ADMIN_ROLE, admin);
 
-        // Remove from admins array
         for (uint256 i = 0; i < admins.length; i++) {
             if (admins[i] == admin) {
                 admins[i] = admins[admins.length - 1];
@@ -427,6 +421,7 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
 
     /**
      * @notice Returns all current admin addresses.
+     * @dev Convenience function for the frontend.
      * @return Array of admin addresses.
      */
     function getAdmins() external view returns (address[] memory) {
@@ -458,7 +453,7 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
 
     // ========== USDC DEPOSIT SYSTEM ========== //
     /**
-     * @notice Allows users to deposit USDC to enable manual train sending and yoinking.
+     * @notice Allows users to deposit USDC into the contract.
      * @param fid The Farcaster FID to associate with this deposit.
      * @param amount The amount of USDC to deposit (must be >= depositCost).
      */
@@ -470,10 +465,10 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
             revert InsufficientDeposit(amount, depositCost);
         }
 
-        // Transfer USDC from user to contract
-        IERC20(usdc).transferFrom(_msgSender(), address(this), amount);
+        if (!IERC20(usdc).transferFrom(_msgSender(), address(this), amount)) {
+            revert ERC20TransferFailed();
+        }
 
-        // Update deposit tracking
         fidToUsdcDeposited[fid] += amount;
 
         emit UsdcDeposited(_msgSender(), fid, amount);
@@ -484,7 +479,7 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
      * @param newUsdc The new USDC token contract address.
      */
     function setUsdc(address newUsdc) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(newUsdc != address(0), "Invalid USDC address");
+        require(newUsdc != address(0), "I'm not letting you set the USDC address to the zero address");
         address previous = usdc;
         usdc = newUsdc;
         emit UsdcAddressUpdated(previous, newUsdc);
@@ -506,11 +501,13 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
      * @param to The address to send tokens to.
      */
     function withdrawERC20(address token, address to) external onlyAdmin {
-        require(to != address(0), "Invalid recipient address");
+        require(to != address(0), "Why would you do that?");
         IERC20 erc20 = IERC20(token);
         uint256 balance = erc20.balanceOf(address(this));
-        require(balance > 0, "No tokens to withdraw");
-        require(erc20.transfer(to, balance), "Token transfer failed");
+        require(balance > 0, "There's nothing to withdraw");
+        if (!erc20.transfer(to, balance)) {
+            revert ERC20TransferFailed();
+        }
         emit UsdcWithdrawn(to, token, balance);
     }
 
@@ -524,7 +521,7 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
 
     // ========== METADATA ========== //
     /**
-     * @notice Returns the tokenURI for a given tokenId (train or ticket).
+     * @notice Returns the tokenURI for a given tokenId.
      * @param tokenId The tokenId to query.
      * @return The IPFS URL to the tokenURI.
      */
@@ -534,18 +531,6 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
         } else {
             return ticketData[tokenId].tokenURI;
         }
-    }
-
-    function _msgSender() internal view override(Context, ERC2771Context) returns (address sender) {
-        return ERC2771Context._msgSender();
-    }
-
-    function _msgData() internal view override(Context, ERC2771Context) returns (bytes calldata) {
-        return ERC2771Context._msgData();
-    }
-
-    function _contextSuffixLength() internal view override(Context, ERC2771Context) returns (uint256) {
-        return ERC2771Context._contextSuffixLength();
     }
 
     function supportsInterface(bytes4 interfaceId)

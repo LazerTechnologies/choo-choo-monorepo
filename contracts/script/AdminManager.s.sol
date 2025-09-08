@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "forge-std/Script.sol";
+import {Script, console2} from "forge-std/Script.sol";
 
 // Interface approach to avoid compilation issues
 interface IChooChooTrain {
@@ -13,10 +13,10 @@ interface IChooChooTrain {
 contract AdminManager is Script {
     address jon = 0xef00A763368C98C361a9a30cE44D24c8Fed43844;
     address garrett = 0x45db9d3457c2Cb05C4BFc7334a33ceE6e19d508F;
-    address yon = 0x0000000000000000000000000000000000000002;
+    address yon = 0xa27F2B7517Bf1b7AC741E116Fe1db373D590205F;
 
-    address[] adminsToAdd = [jon];
-    address[] adminsToRemove = [jon];
+    address[] adminsToAdd = [jon, garrett, yon];
+    address[] adminsToRemove = [jon, garrett, yon];
 
     // forge script script/AdminManager.s.sol:addAdmin --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --private-key $DEPLOYER_PRIVATE_KEY -vvvv
     function addAdmin() public {
