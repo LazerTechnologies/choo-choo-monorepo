@@ -40,10 +40,12 @@ export function FAQPage() {
             </Accordion.Header>
             <Accordion.Content className="!bg-purple-600 !text-white">
               <Typography variant="body" className="!text-white">
-                When you have ChooChoo in your wallet, you can create a cast announcing that
-                it&apos;s ready to move. Other Farcaster users reply to your cast to get in line for
-                the next ride. A winner is randomly selected from the replies, they receive ChooChoo
-                (tokenId: 0), and you get a unique journey ticket NFT as a souvenir of your trip!
+                When you have ChooChoo in your wallet, you can create a cast from the mini-app
+                announcing that it&apos;s ready to move. Once you have casted, you can either pay 1
+                USDC to select the next passenger, or leave it up to chance! If you leave it up to
+                chance, after 30 minutes, anyone can select a random winner from the replies to your
+                cast to ride next. A winner is randomly selected from the replies, they receive
+                ChooChoo, and you get a unique ticket NFT as a souvenir of your trip!
               </Typography>
             </Accordion.Content>
           </Accordion.Item>
@@ -64,10 +66,26 @@ export function FAQPage() {
                 {CHOOCHOO_TRAIN_ADDRESS}
               </code>
               <Typography variant="small" className="!text-white mt-2">
-                You can view it on Basescan or OpenSea to see all the journey tickets that have been
-                minted!
+                You can view it on{' '}
+                <a
+                  href={`https://basescan.org/address/${CHOOCHOO_TRAIN_ADDRESS}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-purple-300 hover:text-purple-200 underline"
+                >
+                  Basescan
+                </a>{' '}
+                or{' '}
+                <a
+                  href={`https://opensea.io/assets/base/${CHOOCHOO_TRAIN_ADDRESS}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-purple-300 hover:text-purple-200 underline"
+                >
+                  OpenSea
+                </a>{' '}
+                to see all the journey tickets that have been minted!
               </Typography>
-              {/* @todo: add links and icons for basescan and opensea */}
             </Accordion.Content>
           </Accordion.Item>
         </Accordion>
@@ -82,10 +100,10 @@ export function FAQPage() {
             <Accordion.Content className="!bg-purple-600 !text-white">
               <Typography variant="body" className="!text-white">
                 ChooChoo moves through community participation! The current holder creates a cast,
-                people reply to show interest, and then anyone can trigger the &quot;next stop&quot;
-                selection. Our backend randomly picks a winner from the replies, automatically mints
-                a journey ticket to the previous holder, and transfers ChooChoo to the new
-                passenger. It&apos;s fully automated and transparent!
+                people reply to show interest, and the current holder can either manually send
+                ChooChoo or leave it up to chance! The app backend handles the contract calls,
+                automatically minting a ticket to the previous holder, and transferring ChooChoo to
+                the new passenger.
               </Typography>
             </Accordion.Content>
           </Accordion.Item>
