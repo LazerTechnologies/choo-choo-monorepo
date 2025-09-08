@@ -18,6 +18,8 @@ import { useDepositUsdc } from '@/hooks/useDepositUsdc';
 import { useAccount } from 'wagmi';
 import { useEnsureCorrectNetwork } from '@/hooks/useEnsureCorrectNetwork';
 import { ConnectWalletDialog } from '@/components/ui/ConnectWalletDialog';
+import { useWorkflowState } from '@/hooks/useWorkflowState';
+import { Address } from 'viem';
 
 interface WinnerSelectionWidgetProps {
   onTokenMinted?: () => void;
@@ -43,24 +45,26 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
   const currentUserFid = user?.fid || context?.user?.fid || null;
   const deposit = useDepositStatus(currentUserFid);
   const { refresh: refreshDeposit } = deposit;
+  const { refetch: refreshWorkflowState } = useWorkflowState();
   const { isConnected } = useAccount();
   const { ensureCorrectNetwork, isSwitching } = useEnsureCorrectNetwork();
   const [connectOpen, setConnectOpen] = useState(false);
 
   const depositHook = useDepositUsdc({
     fid: currentUserFid ?? null,
-    contractAddress: process.env.NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS as `0x${string}`,
+    contractAddress: process.env.NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS as Address,
     usdcAddress: (deposit.config?.usdcAddress ||
-      '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913') as `0x${string}`,
+      '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913') as Address,
     required: deposit.required,
   });
 
-  // Auto-refresh deposit status when deposit completes
+  // Auto-refresh deposit status and workflow state when deposit completes
   useEffect(() => {
     if (depositHook.isDone) {
       void refreshDeposit();
+      void refreshWorkflowState();
     }
-  }, [depositHook.isDone, refreshDeposit]);
+  }, [depositHook.isDone, refreshDeposit, refreshWorkflowState]);
 
   const handleManualSend = async () => {
     if (!selectedUser) {

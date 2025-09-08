@@ -11,7 +11,7 @@ import { WorkflowState } from '@/lib/workflow-types';
 
 export function PublicChanceWidget() {
   const { toast } = useMarqueeToast();
-  const { workflowData } = useWorkflowState();
+  const { workflowData, refetch: refreshWorkflowState } = useWorkflowState();
   const [loading, setLoading] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<string>('');
 
@@ -45,7 +45,9 @@ export function PublicChanceWidget() {
         toast({
           description: `@${response.data.winner.username} was selected as the next passenger!`,
         });
-        setTimeout(() => window.location.reload(), 1500);
+        setTimeout(() => {
+          void refreshWorkflowState();
+        }, 1500);
       }
     } catch (error) {
       console.error('Error sending to random winner:', error);
@@ -58,7 +60,9 @@ export function PublicChanceWidget() {
           description: 'Someone else just selected the winner!',
           variant: 'default',
         });
-        setTimeout(() => window.location.reload(), 1000);
+        setTimeout(() => {
+          void refreshWorkflowState();
+        }, 1000);
       } else if (
         maybeAxiosError?.response?.status === 400 &&
         maybeAxiosError?.response?.data?.error?.includes('Timer has not expired')
@@ -78,7 +82,7 @@ export function PublicChanceWidget() {
     }
   };
 
-  // Only render in chance states - HomePage handles routing but this provides safety
+  // Only render in chance states - HomePage handles routing, but just in case
   if (
     workflowData.state !== WorkflowState.CHANCE_ACTIVE &&
     workflowData.state !== WorkflowState.CHANCE_EXPIRED
@@ -125,7 +129,7 @@ export function PublicChanceWidget() {
         </div>
       </Card>
 
-      {/* Cast display is now handled by HomePage */}
+      {/* Cast display handled by HomePage */}
     </div>
   );
 }

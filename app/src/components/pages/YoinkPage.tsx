@@ -15,6 +15,9 @@ import { useDepositUsdc } from '@/hooks/useDepositUsdc';
 import { useWalletClient } from 'wagmi';
 import { useEnsureCorrectNetwork } from '@/hooks/useEnsureCorrectNetwork';
 import { ConnectWalletDialog } from '@/components/ui/ConnectWalletDialog';
+import { useWorkflowState } from '@/hooks/useWorkflowState';
+import { Address } from 'viem';
+import { useRouter } from 'next/navigation';
 
 export function YoinkPage() {
   const { user: neynarUser } = useNeynarContext();
@@ -23,6 +26,8 @@ export function YoinkPage() {
   const { address, isLoading: addressLoading, error: addressError } = useCurrentUserAddress();
   const { yoinkTrain, isLoading, isSuccess, isError, error, reset, loadingText } = useYoinkFlow();
   const { toast: marqueeToast } = useMarqueeToast();
+  const { refetch: refreshWorkflowState } = useWorkflowState();
+  const router = useRouter();
 
   const currentUserFid = neynarUser?.fid || context?.user?.fid;
   const deposit = useDepositStatus(currentUserFid);
@@ -32,9 +37,9 @@ export function YoinkPage() {
   const [connectOpen, setConnectOpen] = useState(false);
   const depositHook = useDepositUsdc({
     fid: currentUserFid ?? null,
-    contractAddress: process.env.NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS as `0x${string}`,
+    contractAddress: process.env.NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS as Address,
     usdcAddress: (deposit.config?.usdcAddress ||
-      '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913') as `0x${string}`,
+      '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913') as Address,
     required: deposit.required,
   });
 
@@ -45,9 +50,15 @@ export function YoinkPage() {
       try {
         marqueeToast({ description: 'Yoink successful! You are now riding ChooChoo.' });
       } catch {}
+      void refreshWorkflowState();
       reset();
+
+      // Redirect to homepage after a short delay
+      setTimeout(() => {
+        router.push('/');
+      }, 1500);
     }
-  }, [isSuccess, marqueeToast, reset]);
+  }, [isSuccess, marqueeToast, reset, refreshWorkflowState, router]);
 
   useEffect(() => {
     if (isError && error) {
