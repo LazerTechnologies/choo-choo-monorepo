@@ -402,27 +402,38 @@ export async function orchestrateManualSend(currentHolderFid: number, targetFid:
     } catch {}
 
     // 8) Announcement casts with idempotency key
+    const timestamp = Date.now();
     try {
       // Welcome cast for new holder
-      await fetch(`${APP_URL}/api/internal/send-cast`, {
+      const welcomeResponse = await fetch(`${APP_URL}/api/internal/send-cast`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-internal-secret': INTERNAL_SECRET },
         body: JSON.stringify({
           text: `🚂 ChooChoo is heading to @${user.username}!`,
-          idem: `welcome-${actualTokenId}`,
+          idem: `welcome-${actualTokenId}-${timestamp}`,
         }),
       });
+      if (!welcomeResponse.ok) {
+        const errorData = await welcomeResponse.json();
+        console.warn(`[train-orchestrator] Welcome cast failed: ${welcomeResponse.status} - ${errorData.error}`);
+      }
 
       // Ticket issued cast for departing passenger
-      await fetch(`${APP_URL}/api/internal/send-cast`, {
+      const ticketResponse = await fetch(`${APP_URL}/api/internal/send-cast`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-internal-secret': INTERNAL_SECRET },
         body: JSON.stringify({
           text: `🎫 Ticket #${actualTokenId} minted to @${departingPassengerData.currentHolder.username}!`,
-          idem: `ticket-${actualTokenId}`,
+          idem: `ticket-${actualTokenId}-${timestamp}`,
         }),
       });
-    } catch {}
+      if (!ticketResponse.ok) {
+        const errorData = await ticketResponse.json();
+        console.warn(`[train-orchestrator] Ticket cast failed: ${ticketResponse.status} - ${errorData.error}`);
+      }
+    } catch (err) {
+      console.warn(`[train-orchestrator] Cast request failed:`, err);
+    }
 
     // 9) Workflow state: set NOT_CASTED for new holder
     try {
@@ -642,30 +653,41 @@ export async function orchestrateRandomSend(castHash: string) {
     } catch {}
 
     // 10) Announcement casts with idempotency key
+    const timestamp = Date.now();
     try {
       // Welcome cast for new holder
-      await fetch(`${APP_URL}/api/internal/send-cast`, {
+      const welcomeResponse = await fetch(`${APP_URL}/api/internal/send-cast`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-internal-secret': INTERNAL_SECRET },
         body: JSON.stringify({
           text: `🚂 ChooChoo is heading to @${winnerData.winner.username}!`,
           embeds: [{ url: APP_URL }],
-          idem: `welcome-${actualTokenId}`,
+          idem: `welcome-${actualTokenId}-${timestamp}`,
         }),
       });
+      if (!welcomeResponse.ok) {
+        const errorData = await welcomeResponse.json();
+        console.warn(`[train-orchestrator] Welcome cast failed: ${welcomeResponse.status} - ${errorData.error}`);
+      }
 
       // Ticket issued cast for departing passenger with image
       const imageUrl = `https://${process.env.NEXT_PUBLIC_PINATA_GATEWAY}/ipfs/${pending.imageHash}`;
-      await fetch(`${APP_URL}/api/internal/send-cast`, {
+      const ticketResponse = await fetch(`${APP_URL}/api/internal/send-cast`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-internal-secret': INTERNAL_SECRET },
         body: JSON.stringify({
           text: `🎫 Ticket #${actualTokenId} minted to @${departingPassengerData.currentHolder.username}!`,
           embeds: [{ url: imageUrl }],
-          idem: `ticket-${actualTokenId}`,
+          idem: `ticket-${actualTokenId}-${timestamp}`,
         }),
       });
-    } catch {}
+      if (!ticketResponse.ok) {
+        const errorData = await ticketResponse.json();
+        console.warn(`[train-orchestrator] Ticket cast failed: ${ticketResponse.status} - ${errorData.error}`);
+      }
+    } catch (err) {
+      console.warn(`[train-orchestrator] Cast request failed:`, err);
+    }
 
     // 11) Workflow state: set NOT_CASTED for new holder
     try {
@@ -914,30 +936,41 @@ export async function orchestrateYoink(userFid: number, targetAddress: string) {
     } catch {}
 
     // 10) Send two idempotent casts
+    const timestamp = Date.now();
     try {
       // Welcome cast for yoinker
-      await fetch(`${APP_URL}/api/internal/send-cast`, {
+      const welcomeResponse = await fetch(`${APP_URL}/api/internal/send-cast`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-internal-secret': INTERNAL_SECRET },
         body: JSON.stringify({
           text: `🚂 ChooChoo was yoinked by @${yoinkerData.username}!`,
           embeds: [{ url: APP_URL }],
-          idem: `welcome-${actualTokenId}`,
+          idem: `welcome-${actualTokenId}-${timestamp}`,
         }),
       });
+      if (!welcomeResponse.ok) {
+        const errorData = await welcomeResponse.json();
+        console.warn(`[train-orchestrator] Welcome cast failed: ${welcomeResponse.status} - ${errorData.error}`);
+      }
 
       // Ticket issued cast for departing passenger with image
       const imageUrl = `https://${process.env.NEXT_PUBLIC_PINATA_GATEWAY}/ipfs/${pending.imageHash}`;
-      await fetch(`${APP_URL}/api/internal/send-cast`, {
+      const ticketResponse = await fetch(`${APP_URL}/api/internal/send-cast`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-internal-secret': INTERNAL_SECRET },
         body: JSON.stringify({
           text: `🎫 Ticket #${actualTokenId} minted to @${departingPassengerData.currentHolder.username}!`,
           embeds: [{ url: imageUrl }],
-          idem: `ticket-${actualTokenId}`,
+          idem: `ticket-${actualTokenId}-${timestamp}`,
         }),
       });
-    } catch {}
+      if (!ticketResponse.ok) {
+        const errorData = await ticketResponse.json();
+        console.warn(`[train-orchestrator] Ticket cast failed: ${ticketResponse.status} - ${errorData.error}`);
+      }
+    } catch (err) {
+      console.warn(`[train-orchestrator] Cast request failed:`, err);
+    }
 
     // 11) Set workflow to NOT_CASTED
     try {
