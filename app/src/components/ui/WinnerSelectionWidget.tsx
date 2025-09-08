@@ -268,11 +268,23 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
                 <Button
                   onClick={handleSendButtonClick}
                   disabled={isButtonDisabled}
-                  className="w-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white"
+                  className={`w-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white ${
+                    deposit.satisfied && !loading ? 'animate-pulse' : ''
+                  }`}
                   style={{ backgroundColor: '#a855f7' }}
                 >
                   {getButtonText()}
                 </Button>
+
+                {/* Confirmation caption that appears after deposit */}
+                {deposit.satisfied && !loading && (
+                  <Typography
+                    variant="body"
+                    className="text-xs !text-white text-center animate-fade-in"
+                  >
+                    ✅ Deposit confirmed!
+                  </Typography>
+                )}
               </div>
             </TabsContent>
 
