@@ -170,14 +170,10 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
     if (!deposit.satisfied) {
       try {
         if (depositHook.needsApproval) {
+          // @note changed to not go straight to deposit after approval, require explicit click. look at adding Daimo and making this process smoother
           await depositHook.approve();
-          // if approval was successful, auto-proceed to deposit
-          // hook's allowance will be updated after the approval transaction confirms
-          if (!depositHook.error) {
-            await depositHook.deposit();
-            await refreshDeposit();
-          }
         } else {
+          // approval done, go to deposit
           await depositHook.deposit();
           await refreshDeposit();
         }
@@ -198,6 +194,18 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
     await handleManualSend();
   };
 
+  const getCurrentStep = () => {
+    if (loading) return { step: 3, label: 'Sending ChooChoo...' };
+    if (!deposit.satisfied) {
+      if (depositHook.isApproving) return { step: 1, label: 'Approving...' };
+      if (depositHook.isDepositing || depositHook.isConfirming)
+        return { step: 2, label: 'Depositing...' };
+      if (depositHook.needsApproval) return { step: 1, label: 'Ready to approve' };
+      return { step: 2, label: 'Ready to deposit' };
+    }
+    return { step: 3, label: 'Ready to send' };
+  };
+
   const getButtonText = () => {
     if (loading) return 'Sending ChooChoo...';
     if (!isConnected) return 'Connect wallet';
@@ -205,21 +213,40 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
     if (!deposit.satisfied) {
       if (depositHook.isApproving) return 'Approving USDC...';
       if (depositHook.isDepositing || depositHook.isConfirming) return 'Depositing...';
+      if (depositHook.needsApproval) return 'Approve USDC';
       return 'Deposit 1 USDC';
     }
     return selectedUser ? `Send ChooChoo to @${selectedUser.username}` : 'Send ChooChoo';
   };
 
+  const shouldPulse = () => {
+    // Pulse when approval is confirmed and ready to deposit
+    if (
+      !deposit.satisfied &&
+      !depositHook.needsApproval &&
+      !depositHook.isDepositing &&
+      !depositHook.isConfirming
+    ) {
+      return true;
+    }
+    // Pulse when deposit is confirmed and ready to send
+    if (deposit.satisfied && selectedUser && !loading) {
+      return true;
+    }
+    return false;
+  };
+
   const isButtonDisabled =
     loading ||
-    !selectedUser ||
     deposit.isLoading ||
     depositHook.isApproving ||
     depositHook.isDepositing ||
     depositHook.isConfirming ||
-    isSwitching;
+    isSwitching ||
+    // @note changed to only require selectedUser for the final send step
+    (deposit.satisfied && !selectedUser);
 
-  // This component only renders in CASTED state - HomePage handles the routing
+  // @dev component only renders in CASTED state - HomePage handles the routing
   // No conditional rendering needed here since HomePage controls when this shows
 
   return (
@@ -265,11 +292,41 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
                   Choose who gets ChooChoo next. Manually sending costs 1 USDC.
                 </Typography>
 
+                {/* Step indicator */}
+                {isConnected && !deposit.isLoading && (
+                  <div className="flex items-center justify-center space-x-2 text-xs !text-white">
+                    <div className="flex items-center space-x-1">
+                      <div
+                        className={`w-2 h-2 rounded-full ${getCurrentStep().step >= 1 ? 'bg-white' : 'bg-white/30'}`}
+                      />
+                      <span className={getCurrentStep().step === 1 ? 'font-medium' : 'opacity-60'}>
+                        1/3 Approve
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <div
+                        className={`w-2 h-2 rounded-full ${getCurrentStep().step >= 2 ? 'bg-white' : 'bg-white/30'}`}
+                      />
+                      <span className={getCurrentStep().step === 2 ? 'font-medium' : 'opacity-60'}>
+                        2/3 Deposit
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <div
+                        className={`w-2 h-2 rounded-full ${getCurrentStep().step >= 3 ? 'bg-white' : 'bg-white/30'}`}
+                      />
+                      <span className={getCurrentStep().step === 3 ? 'font-medium' : 'opacity-60'}>
+                        3/3 Send
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 <Button
                   onClick={handleSendButtonClick}
                   disabled={isButtonDisabled}
                   className={`w-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white ${
-                    deposit.satisfied && !loading ? 'animate-pulse' : ''
+                    shouldPulse() ? 'animate-pulse' : ''
                   }`}
                   style={{ backgroundColor: '#a855f7' }}
                 >
