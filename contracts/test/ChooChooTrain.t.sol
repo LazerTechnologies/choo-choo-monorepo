@@ -181,21 +181,19 @@ contract ChooChooTrainTest is Test {
         assertFalse(canBeYoinked); // no time passed yet
         assertEq(nextTicketId_, 1);
 
-        // Move train and check again
         vm.warp(block.timestamp + 3 days);
         vm.prank(owner);
-        train.nextStop(passenger1); // owner completes journey
+        train.nextStop(passenger1);
 
         (holder, totalStops, lastMoveTime, canBeYoinked, nextTicketId_) = train.getTrainStatus();
         assertEq(holder, passenger1);
-        assertEq(totalStops, 1); // owner completed their journey
-        assertFalse(canBeYoinked); // just moved, so no yoink available yet
-        assertEq(nextTicketId_, 2); // next ticket will be ID 2
+        assertEq(totalStops, 1);
+        assertFalse(canBeYoinked);
+        assertEq(nextTicketId_, 2);
 
-        // Test that after 48 hours, yoink becomes available
-        vm.warp(block.timestamp + 48 hours);
+        vm.warp(block.timestamp + 12 hours);
         (,,, canBeYoinked,) = train.getTrainStatus();
-        assertTrue(canBeYoinked); // now yoink is available
+        assertTrue(canBeYoinked);
     }
 
     function testHasRiddenTrain() public {
@@ -253,20 +251,16 @@ contract ChooChooTrainTest is Test {
         assertEq(tTraits, traits);
     }
 
-    function testSetMainImageAndTokenURIAndWhistle() public {
+    function testSetMainImageAndTokenURI() public {
         string memory img = "img";
         string memory uri = "uri";
-        string memory whistle = "whistle";
         vm.prank(owner);
         train.setMainImage(img);
         vm.prank(owner);
         train.setMainTokenURI(uri);
         vm.prank(owner);
-        train.setTrainWhistle(whistle);
         assertEq(train.mainImage(), img);
         assertEq(train.mainTokenURI(), uri);
-        assertEq(train.trainWhistle(), whistle);
-        assertEq(train.getTrainWhistle(), whistle);
     }
 
     function testOnlyOwnerCanSetMainImage() public {
@@ -278,17 +272,15 @@ contract ChooChooTrainTest is Test {
     function testYoinkEligibilityAndAction() public {
         vm.prank(owner);
         train.nextStop(passenger1);
-        vm.prank(owner); // only admin can move train
+        vm.prank(owner);
         train.nextStop(passenger2);
 
-        // Fast forward < 48 hours: no yoink available
-        vm.warp(block.timestamp + 24 hours);
+        vm.warp(block.timestamp + 6 hours);
         (bool canYoink, string memory reason) = train.isYoinkable();
         assertFalse(canYoink);
-        assertEq(reason, "48 hour cooldown not met");
+        assertEq(reason, "Yoink cooldown not met");
 
-        // Fast forward to 48 hours: yoink available
-        vm.warp(block.timestamp + 24 hours);
+        vm.warp(block.timestamp + 12 hours);
         (canYoink, reason) = train.isYoinkable();
         assertTrue(canYoink);
         assertEq(reason, "Train can be yoinked by admin");
@@ -317,11 +309,11 @@ contract ChooChooTrainTest is Test {
 
         // Not enough time passed - admin should still get reverted
         vm.prank(owner);
-        vm.expectRevert(abi.encodeWithSignature("NotEligibleToYoink(string)", "48 hour cooldown not met"));
+        vm.expectRevert(abi.encodeWithSignature("NotEligibleToYoink(string)", "Yoink cooldown not met"));
         train.yoink(passenger3);
 
         // Non-admin should be reverted even after time passes
-        vm.warp(block.timestamp + 48 hours);
+        vm.warp(block.timestamp + 12 hours);
         vm.prank(passenger1);
         vm.expectRevert(bytes("Not an admin"));
         train.yoink(passenger3);
@@ -332,7 +324,7 @@ contract ChooChooTrainTest is Test {
         train.nextStop(passenger1);
         vm.prank(owner); // only admin can move train
         train.nextStop(passenger2);
-        vm.warp(block.timestamp + 48 hours);
+        vm.warp(block.timestamp + 12 hours);
         vm.prank(owner); // admin trying to yoink
         vm.expectRevert(abi.encodeWithSignature("CannotSendToCurrentPassenger(address)", passenger2));
         train.yoink(passenger2);
@@ -343,7 +335,7 @@ contract ChooChooTrainTest is Test {
         train.nextStop(passenger1);
         vm.prank(owner); // only admin can move train
         train.nextStop(passenger2);
-        vm.warp(block.timestamp + 48 hours);
+        vm.warp(block.timestamp + 12 hours);
 
         // Admin cannot yoink to passenger1 who already rode the train
         vm.prank(owner);
@@ -357,25 +349,21 @@ contract ChooChooTrainTest is Test {
     }
 
     function testAddedAdminCanYoink() public {
-        // Add new admin
         vm.prank(owner);
         train.addAdmin(admin1);
 
-        // Move train to passenger1
         vm.prank(owner);
         train.nextStop(passenger1);
 
-        // Wait 48 hours
-        vm.warp(block.timestamp + 48 hours);
+        vm.warp(block.timestamp + 12 hours);
 
-        // Added admin can yoink
         vm.prank(admin1);
         train.yoink(passenger2);
 
         assertEq(train.ownerOf(0), passenger2);
         assertTrue(train.hasBeenPassenger(passenger1));
         assertFalse(train.hasBeenPassenger(passenger2));
-        assertEq(train.ownerOf(2), passenger1); // passenger1 gets ticket ID 2
+        assertEq(train.ownerOf(2), passenger1);
     }
 
     function testEventsEmitted() public {
@@ -383,7 +371,7 @@ contract ChooChooTrainTest is Test {
         vm.expectEmit(true, true, false, true);
         emit TrainDeparted(owner, passenger1, block.timestamp);
         train.nextStop(passenger1);
-        vm.prank(owner); // only admin can move train
+        vm.prank(owner);
         vm.expectEmit(true, true, false, true);
         emit TrainDeparted(passenger1, passenger2, block.timestamp);
         train.nextStop(passenger2);
@@ -471,16 +459,14 @@ contract ChooChooTrainTest is Test {
     }
 
     function testSetTicketDataByAdmin() public {
-        // First create a ticket by moving the train
         vm.prank(owner);
         train.nextStop(passenger1);
 
-        // Admin sets ticket metadata
         string memory uri = "ipfs://QmMetaHash";
         string memory img = "ipfs://QmImageHash";
         string memory traits = "ipfs://QmTraitsHash";
 
-        vm.prank(owner); // owner is admin
+        vm.prank(owner);
         train.setTicketData(1, uri, img, traits);
 
         (string memory tUri, string memory tImg, string memory tTraits) = train.ticketData(1);
@@ -490,15 +476,12 @@ contract ChooChooTrainTest is Test {
     }
 
     function testSetTicketDataByAddedAdmin() public {
-        // Add a new admin
         vm.prank(owner);
         train.addAdmin(admin1);
 
-        // Create a ticket
         vm.prank(owner);
         train.nextStop(passenger1);
 
-        // New admin sets ticket metadata
         string memory uri = "ipfs://QmMetaHash";
         string memory img = "ipfs://QmImageHash";
         string memory traits = "ipfs://QmTraitsHash";
@@ -534,18 +517,14 @@ contract ChooChooTrainTest is Test {
     }
 
     function testConstructorValidatesInitialHolder() public {
-        // Test zero address rejection
         vm.expectRevert(abi.encodeWithSignature("TransferToInvalidAddress(address)", address(0)));
         new ChooChooTrain(address(0), address(0));
 
-        // Test dead address rejection
         vm.expectRevert(abi.encodeWithSignature("TransferToInvalidAddress(address)", dead));
         new ChooChooTrain(address(0), dead);
 
-        // Test valid address works
         ChooChooTrain validTrain = new ChooChooTrain(address(0), passenger1);
         assertEq(validTrain.ownerOf(0), passenger1);
-        // Initial holder is not yet considered a passenger until they complete their journey
         assertFalse(validTrain.hasBeenPassenger(passenger1));
         assertEq(validTrain.getTrainJourneyLength(), 0);
     }
@@ -556,17 +535,14 @@ contract ChooChooTrainTest is Test {
         uint256 fid = 12345;
         uint256 depositCost = train.getRequiredDeposit();
 
-        // Mint USDC to passenger1
         usdc.mint(passenger1, depositCost * 2);
 
-        // Test insufficient deposit reverts
         vm.prank(passenger1);
         usdc.approve(address(train), depositCost - 1);
         vm.prank(passenger1);
         vm.expectRevert(abi.encodeWithSignature("InsufficientDeposit(uint256,uint256)", depositCost - 1, depositCost));
         train.depositUSDC(fid, depositCost - 1);
 
-        // Test sufficient deposit succeeds
         vm.prank(passenger1);
         usdc.approve(address(train), depositCost);
         vm.prank(passenger1);
@@ -577,51 +553,42 @@ contract ChooChooTrainTest is Test {
 
     function testDepositRecordsByFidAndEmitsEvent() public {
         uint256 fid = 12345;
-        uint256 depositAmount = 2 * 10 ** 6; // 2 USDC
+        uint256 depositAmount = 2 * 10 ** 6;
 
-        // Mint USDC to passenger1
         usdc.mint(passenger1, depositAmount);
 
-        // Approve and deposit
         vm.prank(passenger1);
         usdc.approve(address(train), depositAmount);
 
-        // Expect event emission
         vm.expectEmit(true, true, false, true);
         emit UsdcDeposited(passenger1, fid, depositAmount);
 
         vm.prank(passenger1);
         train.depositUSDC(fid, depositAmount);
 
-        // Check mapping updated
         assertEq(train.fidToUsdcDeposited(fid), depositAmount);
 
-        // Check contract received USDC
         assertEq(usdc.balanceOf(address(train)), depositAmount);
     }
 
     function testAnyUserCanDeposit() public {
         uint256 fid1 = 111;
         uint256 fid2 = 222;
-        uint256 depositAmount = 1 * 10 ** 6; // 1 USDC
+        uint256 depositAmount = 1 * 10 ** 6;
 
-        // Mint USDC to multiple users
         usdc.mint(passenger1, depositAmount);
         usdc.mint(passenger2, depositAmount);
 
-        // First user deposits
         vm.prank(passenger1);
         usdc.approve(address(train), depositAmount);
         vm.prank(passenger1);
         train.depositUSDC(fid1, depositAmount);
 
-        // Second user deposits
         vm.prank(passenger2);
         usdc.approve(address(train), depositAmount);
         vm.prank(passenger2);
         train.depositUSDC(fid2, depositAmount);
 
-        // Check both deposits recorded
         assertEq(train.fidToUsdcDeposited(fid1), depositAmount);
         assertEq(train.fidToUsdcDeposited(fid2), depositAmount);
         assertEq(usdc.balanceOf(address(train)), depositAmount * 2);
@@ -629,27 +596,24 @@ contract ChooChooTrainTest is Test {
 
     function testWithdrawByAdmin() public {
         uint256 fid = 12345;
-        uint256 depositAmount = 5 * 10 ** 6; // 5 USDC
+        uint256 depositAmount = 5 * 10 ** 6;
 
-        // Setup: deposit some USDC
         usdc.mint(passenger1, depositAmount);
         vm.prank(passenger1);
         usdc.approve(address(train), depositAmount);
         vm.prank(passenger1);
         train.depositUSDC(fid, depositAmount);
 
-        // Non-admin cannot withdraw
         vm.prank(passenger1);
         vm.expectRevert(bytes("Not an admin"));
         train.withdrawERC20(address(usdc), passenger1);
 
-        // Admin can withdraw
         uint256 balanceBefore = usdc.balanceOf(owner);
 
         vm.expectEmit(true, true, false, true);
         emit UsdcWithdrawn(owner, address(usdc), depositAmount);
 
-        vm.prank(owner); // owner is admin by default
+        vm.prank(owner);
         train.withdrawERC20(address(usdc), owner);
 
         assertEq(usdc.balanceOf(address(train)), 0);
@@ -658,14 +622,12 @@ contract ChooChooTrainTest is Test {
 
     function testSetUsdcAndSetDepositCostByAdmin() public {
         address newUsdcAddress = address(0x999);
-        uint256 newDepositCost = 2 * 10 ** 6; // 2 USDC
+        uint256 newDepositCost = 2 * 10 ** 6;
 
-        // Non-admin cannot set USDC address
         vm.prank(passenger1);
         vm.expectRevert();
         train.setUsdc(newUsdcAddress);
 
-        // Admin can set USDC address
         vm.expectEmit(true, true, false, false);
         emit UsdcAddressUpdated(address(usdc), newUsdcAddress);
 
@@ -673,12 +635,10 @@ contract ChooChooTrainTest is Test {
         train.setUsdc(newUsdcAddress);
         assertEq(train.usdc(), newUsdcAddress);
 
-        // Non-admin cannot set deposit cost
         vm.prank(passenger1);
         vm.expectRevert();
         train.setDepositCost(newDepositCost);
 
-        // Admin can set deposit cost
         uint256 oldCost = train.depositCost();
         vm.expectEmit(false, false, false, true);
         emit DepositCostUpdated(oldCost, newDepositCost);
@@ -703,35 +663,29 @@ contract ChooChooTrainTest is Test {
 
     function testMultipleDepositsForSameFid() public {
         uint256 fid = 12345;
-        uint256 firstDeposit = 1 * 10 ** 6; // 1 USDC
-        uint256 secondDeposit = 2 * 10 ** 6; // 2 USDC
+        uint256 firstDeposit = 1 * 10 ** 6;
+        uint256 secondDeposit = 2 * 10 ** 6;
 
         usdc.mint(passenger1, firstDeposit + secondDeposit);
 
-        // First deposit
         vm.prank(passenger1);
         usdc.approve(address(train), firstDeposit);
         vm.prank(passenger1);
         train.depositUSDC(fid, firstDeposit);
 
-        // Second deposit (cumulative)
         vm.prank(passenger1);
         usdc.approve(address(train), secondDeposit);
         vm.prank(passenger1);
         train.depositUSDC(fid, secondDeposit);
 
-        // Should be cumulative
         assertEq(train.fidToUsdcDeposited(fid), firstDeposit + secondDeposit);
     }
 
     function testViewHelpers() public {
-        // Test getRequiredDeposit
         assertEq(train.getRequiredDeposit(), 1 * 10 ** 6);
 
-        // Test getUsdcBalance
         assertEq(train.getUsdcBalance(), 0);
 
-        // Deposit some USDC
         uint256 fid = 12345;
         uint256 depositAmount = 3 * 10 ** 6;
         usdc.mint(passenger1, depositAmount);
@@ -740,7 +694,6 @@ contract ChooChooTrainTest is Test {
         vm.prank(passenger1);
         train.depositUSDC(fid, depositAmount);
 
-        // Check balance updated
         assertEq(train.getUsdcBalance(), depositAmount);
     }
 }

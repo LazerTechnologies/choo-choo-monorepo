@@ -15,7 +15,7 @@ Choo-Choo on Base is an homage to The Worm. How many wallets can Choo Choo visit
 
 ChooChoo can visit new wallets using the `nextStop` function. When ChooChoo moves on to its next stop, the previous holder receives a "ticket" NFT as a souvenir.
 
-If ChooChoo hasn't moved for 48 hours, a user can "yoink" ChooChoo to their address through the Farcaster mini-app.
+If ChooChoo hasn't moved for the configured yoink timer period (default 12 hours), a user can "yoink" ChooChoo to their address through the Farcaster mini-app.
 
 @author Jon Bray
 @warpcast https://warpcast.com/jonbray.eth
@@ -51,12 +51,12 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
     // ========== STATE ========== //
     string public mainImage;
     string public mainTokenURI;
-    string public trainWhistle;
 
-    // Yoink mechanic state
     uint256 public lastTransferTimestamp;
     address public previousPassenger;
     mapping(address => bool) public hasBeenPassenger;
+
+    uint256 public yoinkTimerHours = 12;
 
     // ========== ADMIN MANAGEMENT ========== //
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
@@ -84,6 +84,7 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
 
     event AdminAdded(address indexed admin);
     event AdminRemoved(address indexed admin);
+    event YoinkTimerUpdated(uint256 previousHours, uint256 newHours);
 
     /// @dev USDC deposit events
     event UsdcDeposited(address indexed from, uint256 indexed fid, uint256 amount);
@@ -308,14 +309,6 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
     function setMainTokenURI(string memory _mainTokenURI) external onlyOwner {
         mainTokenURI = _mainTokenURI;
     }
-    /**
-     * @notice Sets the train whistle sound.
-     * @param _whistle The new URL to the audio file.
-     */
-
-    function setTrainWhistle(string memory _whistle) external onlyOwner {
-        trainWhistle = _whistle;
-    }
 
     /**
      * @notice Allows the owner to update the tokenURI for a ticket NFT (tokenId > 0).
@@ -345,14 +338,6 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
     function setTicketTraits(uint256 tokenId, string memory newTraits) external onlyOwner {
         require(tokenId != 0, "Cannot update train NFT");
         ticketData[tokenId].traits = newTraits;
-    }
-
-    /**
-     * @notice Returns the train whistle sound.
-     * @return The URL to the audio file.
-     */
-    function getTrainWhistle() external view returns (string memory) {
-        return trainWhistle;
     }
 
     /**
@@ -413,7 +398,7 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
         holder = ownerOf(0);
         totalStops = trainJourney.length;
         lastMoveTime = lastTransferTimestamp;
-        canBeYoinked = block.timestamp >= lastTransferTimestamp + 48 hours;
+        canBeYoinked = block.timestamp >= lastTransferTimestamp + (yoinkTimerHours * 1 hours);
         nextTicketId_ = nextTicketId;
     }
 
@@ -478,8 +463,8 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
      * @return reason The reason for eligibility or ineligibility.
      */
     function isYoinkable() public view returns (bool canYoink, string memory reason) {
-        if (block.timestamp < lastTransferTimestamp + 48 hours) {
-            return (false, "48 hour cooldown not met");
+        if (block.timestamp < lastTransferTimestamp + (yoinkTimerHours * 1 hours)) {
+            return (false, "Yoink cooldown not met");
         }
         return (true, "Train can be yoinked by admin");
     }
@@ -565,6 +550,17 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
         require(tokenId != 0, "Cannot update train NFT");
         require(_ownerOf(tokenId) != address(0), "Token does not exist");
         ticketData[tokenId] = TicketData({tokenURI: fullTokenURI, image: image, traits: traits});
+    }
+
+    /**
+     * @notice Sets the yoink timer in hours. Only callable by admins.
+     * @param newHours The new yoink timer in hours (must be > 0).
+     */
+    function setYoinkTimerHours(uint256 newHours) external onlyAdmin {
+        require(newHours > 0, "Yoink timer must be greater than 0");
+        uint256 previousHours = yoinkTimerHours;
+        yoinkTimerHours = newHours;
+        emit YoinkTimerUpdated(previousHours, newHours);
     }
 
     // ========== USDC DEPOSIT SYSTEM ========== //

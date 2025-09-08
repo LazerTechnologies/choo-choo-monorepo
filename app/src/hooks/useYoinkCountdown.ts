@@ -13,7 +13,7 @@ interface YoinkCountdownState {
 
 /**
  * Hook to get real-time yoink countdown based on last moved timestamp from Redis
- * Fetches the last moved timestamp and calculates when yoink becomes available (2 days later)
+ * Fetches the last moved timestamp and yoink timer from contract, then calculates when yoink becomes available
  */
 export function useYoinkCountdown(): YoinkCountdownState {
   const [state, setState] = useState<YoinkCountdownState>({
@@ -27,16 +27,22 @@ export function useYoinkCountdown(): YoinkCountdownState {
   });
 
   const [lastMovedTimestamp, setLastMovedTimestamp] = useState<number | null>(null);
+  const [yoinkTimerHours, setYoinkTimerHours] = useState<number>(12); // 12 hour default
 
-  // Fetch last moved timestamp from API
+  // Fetch last moved timestamp and yoink timer from API
   useEffect(() => {
-    async function fetchLastMovedTimestamp() {
+    async function fetchYoinkCountdownData() {
       try {
         const response = await fetch('/api/yoink-countdown');
         if (!response.ok) {
-          throw new Error('Failed to fetch last moved timestamp');
+          throw new Error('Failed to fetch yoink countdown data');
         }
         const data = await response.json();
+
+        // Set yoink timer hours from contract
+        if (data.yoinkTimerHours) {
+          setYoinkTimerHours(data.yoinkTimerHours);
+        }
 
         if (data.lastMovedTimestamp) {
           setLastMovedTimestamp(new Date(data.lastMovedTimestamp).getTime());
@@ -45,7 +51,7 @@ export function useYoinkCountdown(): YoinkCountdownState {
           setLastMovedTimestamp(null);
         }
       } catch (error) {
-        console.error('Error fetching last moved timestamp:', error);
+        console.error('Error fetching yoink countdown data:', error);
         setState((prev) => ({
           ...prev,
           error: 'Failed to load countdown',
@@ -54,7 +60,7 @@ export function useYoinkCountdown(): YoinkCountdownState {
       }
     }
 
-    fetchLastMovedTimestamp();
+    fetchYoinkCountdownData();
   }, []);
 
   // Update countdown every second
@@ -73,8 +79,7 @@ export function useYoinkCountdown(): YoinkCountdownState {
     function updateCountdown() {
       if (lastMovedTimestamp === null) return;
 
-      // Yoink becomes available 2 days after last movement
-      const yoinkAvailableTimestamp = lastMovedTimestamp + 2 * 24 * 60 * 60 * 1000;
+      const yoinkAvailableTimestamp = lastMovedTimestamp + yoinkTimerHours * 60 * 60 * 1000;
       const timeRemaining = calculateTimeRemaining(yoinkAvailableTimestamp);
       const isAvailable = timeRemaining.totalSeconds <= 0;
 
@@ -97,7 +102,7 @@ export function useYoinkCountdown(): YoinkCountdownState {
     const interval = setInterval(updateCountdown, 1000);
 
     return () => clearInterval(interval);
-  }, [lastMovedTimestamp]);
+  }, [lastMovedTimestamp, yoinkTimerHours]);
 
   return state;
 }

@@ -58,7 +58,7 @@ export const CHOOCHOO_CAST_TEMPLATES = {
   // [@choochoo] Cast sent when someone yoinks the train
   YOINK_ANNOUNCEMENT: (username: string) =>
     `YOINK! @${username} has boarded ChooChoo! 🚂💨\n\n` +
-    `After 48 hours of being stuck, ChooChoo is back on the rails! ` +
+    `Be on the lookout for their announcement cast, you could be the next passenger! ` +
     `The journey continues on Base! 🔵\n\n` +
     `All aboard for the next adventure! 🎫`,
 

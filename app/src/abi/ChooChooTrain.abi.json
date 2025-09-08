@@ -386,19 +386,6 @@
   },
   {
     "type": "function",
-    "name": "getTrainWhistle",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "string",
-        "internalType": "string"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "getUsdcBalance",
     "inputs": [],
     "outputs": [
@@ -955,12 +942,12 @@
   },
   {
     "type": "function",
-    "name": "setTrainWhistle",
+    "name": "setUsdc",
     "inputs": [
       {
-        "name": "_whistle",
-        "type": "string",
-        "internalType": "string"
+        "name": "newUsdc",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [],
@@ -968,12 +955,12 @@
   },
   {
     "type": "function",
-    "name": "setUsdc",
+    "name": "setYoinkTimerHours",
     "inputs": [
       {
-        "name": "newUsdc",
-        "type": "address",
-        "internalType": "address"
+        "name": "newHours",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "outputs": [],
@@ -1155,19 +1142,6 @@
   },
   {
     "type": "function",
-    "name": "trainWhistle",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "string",
-        "internalType": "string"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "transferFrom",
     "inputs": [
       {
@@ -1271,6 +1245,19 @@
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "yoinkTimerHours",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "event",
@@ -1623,6 +1610,25 @@
       },
       {
         "name": "timestamp",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "YoinkTimerUpdated",
+    "inputs": [
+      {
+        "name": "previousHours",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "newHours",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"

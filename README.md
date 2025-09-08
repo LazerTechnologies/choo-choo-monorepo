@@ -83,7 +83,7 @@ ChooChoo is a unique NFT that travels between Farcaster users, creating a perman
 
 If ChooChoo gets stuck with an inactive holder, the community can recover it:
 
-- **48-hour cooldown**: After 48 hours of no movement, anyone can "yoink" the train
+- **12-hour cooldown**: After 12 hours of no movement, anyone can "yoink" the train
 - **Previous passenger protection**: Train cannot be yoinked to someone who has already been a passenger
 - **Automatic processing**: Yoink follows the same flow as normal transfers (mints ticket, sends notifications)
 
@@ -182,7 +182,7 @@ The `ChooChooTrain` contract manages the unique journey system:
 
 - `nextStop(address to)`: Admin function to move train and mint ticket to previous holder
 - `nextStopWithTicketData(address to, string memory tokenURI, string memory image, string memory traits)`: Combined transfer with metadata setting
-- `yoink(address to)`: Emergency recovery after 48-hour cooldown (admin-only)
+- `yoink(address to)`: Emergency recovery after 12-hour cooldown (admin-only)
 - `isYoinkable()`: Returns eligibility status and reason for yoink attempts
 - `setTicketData(uint256 tokenId, ...)`: Update metadata for ticket NFTs
 - `setMainTokenURI(string memory _mainTokenURI)`: Update train NFT metadata (owner-only)

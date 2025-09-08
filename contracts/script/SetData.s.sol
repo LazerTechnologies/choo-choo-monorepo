@@ -19,13 +19,6 @@ contract SetData is Script {
         vm.stopBroadcast();
     }
 
-    function setTrainWhistle() public {
-        string memory whistle = vm.readFile("base64/trainWhistle.txt");
-        vm.startBroadcast();
-        ChooChooTrain(vm.envAddress("SEPOLIA_TRAIN_ADDRESS")).setTrainWhistle(whistle);
-        vm.stopBroadcast();
-    }
-
     function setImageAndTokenURI() public {
         string memory mainImage = vm.readFile("base64/mainImage.txt");
         string memory mainTokenURI = vm.readFile("base64/mainTokenURI.txt");
@@ -39,12 +32,10 @@ contract SetData is Script {
     function setAll() public {
         string memory mainImage = vm.readFile("base64/mainImage.txt");
         string memory mainTokenURI = vm.readFile("base64/mainTokenURI.txt");
-        string memory whistle = vm.readFile("base64/trainWhistle.txt");
         vm.startBroadcast();
         ChooChooTrain train = ChooChooTrain(vm.envAddress("SEPOLIA_TRAIN_ADDRESS"));
         train.setMainImage(mainImage);
         train.setMainTokenURI(mainTokenURI);
-        train.setTrainWhistle(whistle);
         vm.stopBroadcast();
     }
 }

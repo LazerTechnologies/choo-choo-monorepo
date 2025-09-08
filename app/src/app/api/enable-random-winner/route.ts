@@ -96,10 +96,27 @@ export async function POST(request: NextRequest) {
 
         castHash = castData.cast?.hash || null;
 
+        // Preserve existing currentCastHash if already set (from user's announcement cast)
+        let existing: {
+          state: string;
+          winnerSelectionStart: string | null;
+          currentCastHash: string | null;
+        } = {
+          state: 'NOT_CASTED',
+          winnerSelectionStart: null,
+          currentCastHash: null,
+        };
+        try {
+          const existingJson = await redis.get('workflowState');
+          if (existingJson) existing = JSON.parse(existingJson);
+        } catch (e) {
+          console.warn('[enable-random-winner] Failed to read existing workflowState:', e);
+        }
+
         const workflowData = {
           state: 'CHANCE_ACTIVE',
           winnerSelectionStart: startTime,
-          currentCastHash: castHash,
+          currentCastHash: existing.currentCastHash ?? null,
         };
 
         await redis.set('workflowState', JSON.stringify(workflowData));
@@ -110,10 +127,30 @@ export async function POST(request: NextRequest) {
           castErrorData.error
         );
 
+        // Do not touch currentCastHash here; preserve any existing cast hash
+        let existing: {
+          state: string;
+          winnerSelectionStart: string | null;
+          currentCastHash: string | null;
+        } = {
+          state: 'NOT_CASTED',
+          winnerSelectionStart: null,
+          currentCastHash: null,
+        };
+        try {
+          const existingJson = await redis.get('workflowState');
+          if (existingJson) existing = JSON.parse(existingJson);
+        } catch (e) {
+          console.warn(
+            '[enable-random-winner] Failed to read existing workflowState (error path):',
+            e
+          );
+        }
+
         const workflowData = {
           state: 'CHANCE_ACTIVE',
           winnerSelectionStart: startTime,
-          currentCastHash: null,
+          currentCastHash: existing.currentCastHash ?? null,
         };
 
         await redis.set('workflowState', JSON.stringify(workflowData));

@@ -93,7 +93,7 @@ export function YoinkPage() {
         <Card.Header>
           <Card.Title className="!text-white font-comic">Yoink ChooChoo</Card.Title>
           <Card.Description className="!text-white font-comic">
-            If ChooChoo hasn&apos;t moved in 48 hours, anyone who hasn&apos;t ridden before can pay
+            If ChooChoo hasn&apos;t moved in 12 hours, anyone who hasn&apos;t ridden before can pay
             1 USDC to become the next passenger.
           </Card.Description>
         </Card.Header>
@@ -149,7 +149,7 @@ export function YoinkPage() {
                 inactive holder
               </Typography>
               <Typography variant="small" className="!text-white font-comic block">
-                • Yoink is available 48 hours after the last transfer
+                • Yoink is available 12 hours after the last transfer
               </Typography>
               <Typography variant="small" className="!text-blue-300 font-comic-bold block">
                 • After yoinking, send a cast from the home page to let everyone know you&apos;re on
@@ -230,7 +230,7 @@ export function YoinkPage() {
             </Typography>
           </div>
 
-          {/* @todo possibly switch to rainbowkit */}
+          {/* @todo switch to rainbowkit if things get funky */}
           <ConnectWalletDialog open={connectOpen} onOpenChange={setConnectOpen} />
         </Card.Content>
       </Card>

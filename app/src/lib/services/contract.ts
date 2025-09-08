@@ -177,13 +177,22 @@ export class ContractService {
   }
 
   /**
-   * Check if the train can be yoinked (48-hour cooldown check)
+   * Check if the train can be yoinked (12-hour cooldown check)
    */
   async isYoinkable(): Promise<{ canYoink: boolean; reason: string }> {
     const contract = this.createTypedContract();
     const result = await contract.read.isYoinkable();
     const [canYoink, reason] = result as [boolean, string];
     return { canYoink, reason };
+  }
+
+  /**
+   * Get the yoink timer duration in hours from the contract
+   */
+  async getYoinkTimerHours(): Promise<number> {
+    const contract = this.createTypedContract();
+    const timerHours = await contract.read.yoinkTimerHours();
+    return Number(timerHours);
   }
 
   /**
@@ -233,7 +242,7 @@ export class ContractService {
           throw new Error(`Cannot yoink train to current holder ${recipient}`);
         }
         if (error.message.includes('NotEligibleToYoink')) {
-          throw new Error('48 hour cooldown not met - yoink not available yet');
+          throw new Error('12 hour cooldown not met - yoink not available yet');
         }
       }
       throw error;
@@ -478,26 +487,44 @@ export class ContractService {
             for (const log of receipt.logs) {
               try {
                 if (log.address.toLowerCase() !== this.config.address.toLowerCase()) continue;
-                const parsedLog = decodeEventLog({ abi: ChooChooTrainAbi, data: log.data, topics: log.topics });
+                const parsedLog = decodeEventLog({
+                  abi: ChooChooTrainAbi,
+                  data: log.data,
+                  topics: log.topics,
+                });
 
                 // Prefer custom TicketStamped event for direct tokenId
                 if (parsedLog.eventName === 'TicketStamped') {
-                  const args = parsedLog.args as unknown as { to: Address; tokenId: bigint; traits: string };
-                  console.log(`[ContractService] Found TicketStamped token ID ${Number(args.tokenId)} in tx: ${txHash}`);
+                  const args = parsedLog.args as unknown as {
+                    to: Address;
+                    tokenId: bigint;
+                    traits: string;
+                  };
+                  console.log(
+                    `[ContractService] Found TicketStamped token ID ${Number(args.tokenId)} in tx: ${txHash}`
+                  );
                   return Number(args.tokenId);
                 }
 
                 // Fallback: standard ERC721 mint Transfer(from=0x0)
                 if (parsedLog.eventName === 'Transfer') {
-                  const args = parsedLog.args as unknown as { from: Address; to: Address; tokenId: bigint };
+                  const args = parsedLog.args as unknown as {
+                    from: Address;
+                    to: Address;
+                    tokenId: bigint;
+                  };
                   if (args.from === '0x0000000000000000000000000000000000000000') {
-                    console.log(`[ContractService] Found minted token ID ${Number(args.tokenId)} in tx: ${txHash}`);
+                    console.log(
+                      `[ContractService] Found minted token ID ${Number(args.tokenId)} in tx: ${txHash}`
+                    );
                     return Number(args.tokenId);
                   }
                 }
               } catch {}
             }
-            console.warn(`[ContractService] No Transfer-from-zero event found in tx logs: ${txHash}`);
+            console.warn(
+              `[ContractService] No Transfer-from-zero event found in tx logs: ${txHash}`
+            );
             return null;
           }
         } catch {}

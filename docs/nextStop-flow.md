@@ -76,12 +76,12 @@ This document describes how ChooChoo moves between Farcaster users using a micro
 
 #### `/api/yoink` (POST)
 
-**Purpose**: Emergency recovery of stuck trains after 48-hour cooldown
+**Purpose**: Emergency recovery of stuck trains after 12-hour cooldown
 **Authentication**: Requires Farcaster authentication (admin FID validation)
 **Process**:
 
 1. Validates admin FID against whitelist
-2. Checks yoink eligibility (48-hour cooldown, not previous passenger)
+2. Checks yoink eligibility (12-hour cooldown, not previous passenger)
 3. Fetches user data and validates Ethereum address
 4. Executes `yoink` contract function to transfer train
 5. Generates NFT metadata for previous holder's ticket
@@ -244,7 +244,7 @@ flowchart TD
 
 1. **Microservice Architecture**: Each step is isolated for better error handling and testing
 2. **Proper NFT Distribution**: Previous holders get NFTs, current holder gets ChooChoo itself
-3. **Emergency Recovery**: 48-hour yoink mechanism prevents permanent train sticking
+3. **Emergency Recovery**: 12-hour yoink mechanism prevents permanent train sticking
 4. **Admin Controls**: Direct sends, emergency recovery, and metadata management
 5. **Real-time Updates**: Timeline and current holder components update automatically
 6. **Social Integration**: Automatic cast notifications keep the community engaged
