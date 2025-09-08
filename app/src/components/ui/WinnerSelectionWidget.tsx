@@ -168,11 +168,21 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
     if (!ok) return;
 
     if (!deposit.satisfied) {
-      if (depositHook.needsApproval) {
-        await depositHook.approve();
-      } else {
-        await depositHook.deposit();
-        await refreshDeposit();
+      try {
+        if (depositHook.needsApproval) {
+          await depositHook.approve();
+          // if approval was successful, auto-proceed to deposit
+          // hook's allowance will be updated after the approval transaction confirms
+          if (!depositHook.error) {
+            await depositHook.deposit();
+            await refreshDeposit();
+          }
+        } else {
+          await depositHook.deposit();
+          await refreshDeposit();
+        }
+      } catch (error) {
+        console.error('Deposit flow error:', error);
       }
       return;
     }
