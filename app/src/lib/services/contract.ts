@@ -125,9 +125,9 @@ export class ContractService {
   /**
    * Check if an address has ridden the train before
    */
-  async hasRiddenTrain(address: Address): Promise<boolean> {
+  async hasBeenPassenger(address: Address): Promise<boolean> {
     const contract = this.createTypedContract();
-    const hasRidden = await contract.read.hasRiddenTrain([address]);
+    const hasRidden = await contract.read.hasBeenPassenger([address]);
     return hasRidden as boolean;
   }
 
@@ -163,7 +163,7 @@ export class ContractService {
    */
   async getTrainJourneyLength(): Promise<number> {
     const contract = this.createTypedContract();
-    const journeyLength = await contract.read.getTrainJourneyLength();
+    const journeyLength = await contract.read.getTotalTickets();
     return Number(journeyLength);
   }
 
@@ -303,8 +303,8 @@ export class ContractService {
   }
 
   /**
-   * Execute the nextStopWithTicketData function on the contract
-   * This is the new function that moves the train and sets ticket metadata in one transaction
+   * Execute the nextStop function on the contract
+   * This function moves the train and sets ticket metadata in one transaction
    * @todo: use coinbase paymaster to cover gas costs
    */
   async executeNextStop(recipient: Address, tokenURI: string): Promise<`0x${string}`> {
@@ -328,7 +328,7 @@ export class ContractService {
         client: walletClient,
       });
 
-      const hash = await contract.write.nextStopWithTicketData([recipient, tokenURI]);
+      const hash = await contract.write.nextStop([recipient, tokenURI]);
       return hash;
     } catch (error) {
       // Enhanced error handling for admin-only restrictions
@@ -352,7 +352,7 @@ export class ContractService {
   }
 
   /**
-   * Estimate gas for the nextStopWithTicketData transaction
+   * Estimate gas for the nextStop transaction
    */
   async estimateNextStopGas(recipient: Address, tokenURI: string): Promise<bigint> {
     if (!this.config.adminPrivateKey) {
@@ -365,7 +365,7 @@ export class ContractService {
     const gasEstimate = await publicClient.estimateContractGas({
       address: this.config.address,
       abi: ChooChooTrainAbi,
-      functionName: 'nextStopWithTicketData',
+      functionName: 'nextStop',
       args: [recipient, tokenURI],
       account,
     });
@@ -419,7 +419,7 @@ export class ContractService {
    */
   async getDepositCost(): Promise<bigint> {
     const contract = this.createTypedContract();
-    const cost = await contract.read.getRequiredDeposit();
+    const cost = await contract.read.depositCost();
     return cost as bigint;
   }
 
@@ -548,11 +548,10 @@ export class ContractService {
       const contract = this.createTypedContract();
 
       // Use typed contract calls - now with full intellisense and compile-time safety!
-      const [totalSupply, currentHolder, totalTickets, journeyLength, admins] = await Promise.all([
+      const [totalSupply, currentHolder, totalTickets, admins] = await Promise.all([
         contract.read.totalSupply(),
         contract.read.getCurrentTrainHolder(),
         contract.read.getTotalTickets(),
-        contract.read.getTrainJourneyLength(),
         contract.read.getAdmins(),
       ]);
 
@@ -560,7 +559,7 @@ export class ContractService {
         address: this.config.address,
         totalSupply: Number(totalSupply),
         totalTickets: Number(totalTickets),
-        journeyLength: Number(journeyLength),
+        journeyLength: Number(totalTickets),
         nextTokenId: await this.getNextOnChainTicketId(),
         currentHolder,
         adminCount: (admins as Address[]).length,

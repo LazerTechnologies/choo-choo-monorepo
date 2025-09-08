@@ -722,13 +722,13 @@ export async function orchestrateYoink(userFid: number, targetAddress: string) {
   }
 
   try {
-    // 2) Check eligibility: isYoinkable(), hasRiddenTrain(), deposit
+    // 2) Check eligibility: isYoinkable(), hasBeenPassenger(), deposit
     const yoinkStatus = await contractService.isYoinkable();
     if (!yoinkStatus.canYoink) {
       throw new Error(`Yoink not available: ${yoinkStatus.reason}`);
     }
 
-    const hasRidden = await contractService.hasRiddenTrain(targetAddress as `0x${string}`);
+    const hasRidden = await contractService.hasBeenPassenger(targetAddress as `0x${string}`);
     if (hasRidden) {
       throw new Error('Target address has already ridden the train');
     }
@@ -839,6 +839,24 @@ export async function orchestrateYoink(userFid: number, targetAddress: string) {
 
     // Verify the contract state was updated correctly (optional validation, now tolerant)
     await verifyNextIdAdvanced(contractService, actualTokenId, 'orchestrateYoink');
+
+    // 6.5) Set ticket metadata on-chain
+    try {
+      console.log(`[orchestrateYoink] Setting ticket metadata for token ${actualTokenId}`);
+      await contractService.setTicketData(
+        actualTokenId,
+        pending.tokenURI,
+        `ipfs://${pending.imageHash}`,
+        '' // traits - empty for now, could include traits JSON URL if needed
+      );
+      console.log(`[orchestrateYoink] Ticket metadata set for token ${actualTokenId}`);
+    } catch (err) {
+      console.error(
+        `[orchestrateYoink] Failed to set ticket metadata for token ${actualTokenId}:`,
+        err
+      );
+      // Don't throw - the yoink succeeded, metadata setting is secondary
+    }
 
     // 7) Store last moved timestamp
     try {

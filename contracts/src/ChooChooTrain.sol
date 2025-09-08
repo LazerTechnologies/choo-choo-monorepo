@@ -154,40 +154,12 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
 
     // ========== TRANSFER LOGIC ========== //
     /**
-     * @notice Moves the train (tokenId 0) to the next passenger and stamps a ticket for the current passenger. Current passenger is added to the historic train journey.
-     * @dev Replacement for transfer/propagate. Only admins can move the train.
-     * @param to The address of the next passenger.
-     */
-    function nextStop(address to) external onlyAdmin notInvalidAddress(to) {
-        address from = ownerOf(0);
-        if (to == from) {
-            revert CannotSendToCurrentPassenger(to);
-        }
-        if (hasBeenPassenger[to]) {
-            revert AlreadyRodeTrain(to);
-        }
-
-        hasBeenPassenger[from] = true;
-        trainJourney.push(from);
-
-        previousPassenger = from;
-        lastTransferTimestamp = block.timestamp;
-        _safeTransfer(from, to, 0, "");
-        emit TrainDeparted(from, to, block.timestamp);
-        _stampTicket(from);
-    }
-
-    /**
      * @notice Admin function to move train and set ticket metadata in one call.
      * @dev Used by the backend to move train and immediately set the generated ticket data.
      * @param to The address of the next passenger.
      * @param ticketTokenURI The IPFS URL for the ticket metadata.
      */
-    function nextStopWithTicketData(address to, string memory ticketTokenURI)
-        external
-        onlyAdmin
-        notInvalidAddress(to)
-    {
+    function nextStop(address to, string memory ticketTokenURI) external onlyAdmin notInvalidAddress(to) {
         address from = ownerOf(0);
         if (to == from) {
             revert CannotSendToCurrentPassenger(to);
@@ -224,7 +196,6 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
         notInvalidAddress(to)
     {
         if (tokenId == 0) {
-            // Train can only be moved by admins via nextStop functions
             revert("Train can only be moved by admins");
         } else {
             // Regular ticket transfers
@@ -349,32 +320,6 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
     }
 
     /**
-     * @notice Returns the length of the train journey.
-     * @return The number of stops the train has made.
-     */
-    function getTrainJourneyLength() external view returns (uint256) {
-        return trainJourney.length;
-    }
-
-    /**
-     * @notice Returns a slice of the train journey for pagination.
-     * @param start The starting index (inclusive).
-     * @param end The ending index (exclusive).
-     * @return journey A slice of the journey array.
-     */
-    function getTrainJourneySlice(uint256 start, uint256 end) external view returns (address[] memory journey) {
-        require(start < trainJourney.length, "Start index out of bounds");
-        require(end <= trainJourney.length, "End index out of bounds");
-        require(start < end, "Invalid range");
-
-        uint256 length = end - start;
-        journey = new address[](length);
-        for (uint256 i = 0; i < length; i++) {
-            journey[i] = trainJourney[start + i];
-        }
-    }
-
-    /**
      * @notice Returns the current holder of the train (token ID 0).
      * @return The address currently holding the train.
      */
@@ -403,15 +348,6 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
     }
 
     /**
-     * @notice Checks if an address has ever held the train.
-     * @param passenger The address to check.
-     * @return hasRidden True if the address has been a passenger.
-     */
-    function hasRiddenTrain(address passenger) external view returns (bool hasRidden) {
-        return hasBeenPassenger[passenger];
-    }
-
-    /**
      * @notice Returns the total number of tickets minted (excluding the train).
      * @return The total supply minus 1 (for the train).
      */
@@ -420,36 +356,10 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
     }
 
     /**
-     * @notice Returns ticket minting timestamps for a batch of token IDs.
-     * @param tokenIds Array of token IDs to query.
-     * @return timestamps Array of timestamps when each ticket was minted.
-     */
-    function getTicketMintedAtBatch(uint256[] calldata tokenIds) external view returns (uint256[] memory timestamps) {
-        require(tokenIds.length <= 200, "Batch size too large");
-        timestamps = new uint256[](tokenIds.length);
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            timestamps[i] = ticketMintedAt[tokenIds[i]];
-        }
-    }
-
-    /**
-     * @notice Returns token URIs for a batch of token IDs.
-     * @param tokenIds Array of token IDs to query.
-     * @return uris Array of token URIs.
-     */
-    function getTokenURIBatch(uint256[] calldata tokenIds) external view returns (string[] memory uris) {
-        require(tokenIds.length <= 200, "Batch size too large");
-        uris = new string[](tokenIds.length);
-        for (uint256 i = 0; i < tokenIds.length; i++) {
-            uris[i] = tokenURI(tokenIds[i]);
-        }
-    }
-
-    /**
      * @notice Allows the owner to withdraw any ERC20 tokens sent to this contract.
      * @param token The address of the ERC20 token contract.
      */
-    function withdrawERC20(address token) external onlyOwner {
+    function ownerWithdrawERC20(address token) external onlyOwner {
         IERC20 erc20 = IERC20(token);
         uint256 balance = erc20.balanceOf(address(this));
         require(balance > 0, "No ERC20 tokens to withdraw");
@@ -619,14 +529,6 @@ contract ChooChooTrain is ERC721Enumerable, Ownable, ERC2771Context, AccessContr
         require(balance > 0, "No tokens to withdraw");
         require(erc20.transfer(to, balance), "Token transfer failed");
         emit UsdcWithdrawn(to, token, balance);
-    }
-
-    /**
-     * @notice Returns the required deposit amount.
-     * @return The deposit cost in USDC smallest units.
-     */
-    function getRequiredDeposit() external view returns (uint256) {
-        return depositCost;
     }
 
     /**

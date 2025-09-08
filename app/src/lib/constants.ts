@@ -115,6 +115,7 @@ export const TRAIN_STATION_MESSAGES = [
   '🚂 Choo choo mfer!',
   '🎫 Get your tickets ready for inspection',
   '⬆ Next Stop: Higher ⬆',
+  '👋 Welcome to Costco, I love you',
   '🎲 Leave the next stop up to chance... ChooChoo loves chaos',
 ] as const;
 

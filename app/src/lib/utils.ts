@@ -80,7 +80,7 @@ export async function getFarcasterMetadata(): Promise<MiniAppManifest> {
   if (process.env.MINI_APP_METADATA) {
     try {
       const metadata = JSON.parse(process.env.MINI_APP_METADATA);
-      console.log('Using pre-signed mini app metadata from environment');
+      console.log('📝 Fetched pre-signed metadata.');
       return metadata;
     } catch (error) {
       console.warn('Failed to parse MINI_APP_METADATA from environment:', error);

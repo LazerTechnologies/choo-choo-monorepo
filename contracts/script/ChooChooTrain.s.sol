@@ -20,7 +20,7 @@ contract ChooChooTrainDeploy is Script {
         console2.log("ChooChooTrain deployed at:", address(train));
         console2.log("Initial holder set to:", initialHolder);
         console2.log("USDC address initialized to:", train.usdc());
-        console2.log("Required deposit cost:", train.getRequiredDeposit());
+        console2.log("Required deposit cost:", train.depositCost());
 
         vm.stopBroadcast();
     }

@@ -75,7 +75,7 @@ export function useChooChoo() {
   const useTrainJourneyLength = () =>
     useReadContract({
       ...contractConfig,
-      functionName: 'getTrainJourneyLength',
+      functionName: 'getTotalTickets',
     });
   const useTicketMintedAt = (tokenId: bigint) =>
     useReadContract({

@@ -11,8 +11,7 @@ export async function GET() {
       const staticManifest = await readFile(manifestPath, 'utf-8');
       console.log('Using static manifest file');
       return NextResponse.json(JSON.parse(staticManifest));
-    } catch (fileError) {
-    }
+    } catch (fileError) {}
 
     // Dynamic generation fallback
     const config = await getFarcasterMetadata();

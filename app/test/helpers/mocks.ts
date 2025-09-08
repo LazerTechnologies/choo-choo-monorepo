@@ -74,7 +74,7 @@ export function createMockContract() {
     executeNextStop: vi.fn().mockResolvedValue('0x123'),
     executeYoink: vi.fn().mockResolvedValue('0x456'),
     isYoinkable: vi.fn().mockResolvedValue({ canYoink: true, reason: null }),
-    hasRiddenTrain: vi.fn().mockResolvedValue(false),
+    hasBeenPassenger: vi.fn().mockResolvedValue(false),
     hasDepositedEnough: vi.fn().mockResolvedValue(true),
     getFidDeposited: vi.fn().mockResolvedValue(BigInt(1000000)), // 1 USDC
     getDepositCost: vi.fn().mockResolvedValue(BigInt(1000000)), // 1 USDC

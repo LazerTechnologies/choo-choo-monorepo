@@ -18,6 +18,7 @@ contract ChooChooTrainTest is Test {
     address passenger3 = address(0x003);
     address passenger4 = address(0x004);
     address dead = 0x000000000000000000000000000000000000dEaD;
+    string tokenURI = "ipfs://QmTestMetadata";
 
     event TrainDeparted(address indexed from, address indexed to, uint256 timestamp);
     event TicketStamped(address indexed to, uint256 indexed tokenId, string traits);
@@ -42,47 +43,29 @@ contract ChooChooTrainTest is Test {
         assertEq(train.ownerOf(0), owner);
         assertEq(train.balanceOf(owner), 1);
         assertFalse(train.hasBeenPassenger(owner));
-        assertEq(train.getTrainJourneyLength(), 0);
+        assertEq(train.getTotalTickets(), 0);
     }
 
-    function testNextStopTransfersTrainAndStampsTicket() public {
-        vm.prank(owner); // owner is admin by default
-        train.nextStop(passenger1);
-        assertEq(train.ownerOf(0), passenger1);
-        assertEq(train.balanceOf(owner), 1); // owner should have ticket
-        assertEq(train.trainJourney(0), owner);
-        assertEq(train.getTrainJourneyLength(), 1);
-        assertTrue(train.hasBeenPassenger(owner));
-        assertFalse(train.hasBeenPassenger(passenger1));
-        assertEq(train.ownerOf(1), owner);
-        (string memory tUri, string memory tImg, string memory tTraits) = train.ticketData(1);
-        assertEq(tUri, "");
-        assertEq(tImg, "");
-        assertEq(tTraits, "");
-    }
-
-    function testOnlyAdminCanMoveTrainNextStop() public {
+    function testOnlyAdminCanMoveTrainnextStop() public {
         // Non-admin cannot move train
         vm.prank(passenger1);
         vm.expectRevert(bytes("Not an admin"));
-        train.nextStop(passenger2);
+        train.nextStop(passenger2, tokenURI);
 
         // Admin can move train
         vm.prank(owner); // owner is admin by default
-        train.nextStop(passenger1);
+        train.nextStop(passenger1, tokenURI);
         assertEq(train.ownerOf(0), passenger1);
     }
 
-    function testNextStopWithTicketData() public {
-        string memory tokenURI = "ipfs://QmTestMetadata";
-
+    function testnextStop() public {
         vm.prank(owner); // owner is admin
-        train.nextStopWithTicketData(passenger1, tokenURI);
+        train.nextStop(passenger1, tokenURI);
 
         // Check train moved
         assertEq(train.ownerOf(0), passenger1);
         assertEq(train.trainJourney(0), owner);
-        assertEq(train.getTrainJourneyLength(), 1);
+        assertEq(train.getTotalTickets(), 1);
         assertTrue(train.hasBeenPassenger(owner));
         assertFalse(train.hasBeenPassenger(passenger1));
 
@@ -94,29 +77,29 @@ contract ChooChooTrainTest is Test {
     function testCannotSendToSelf() public {
         vm.prank(owner);
         vm.expectRevert(abi.encodeWithSignature("CannotSendToCurrentPassenger(address)", owner));
-        train.nextStop(owner);
+        train.nextStop(owner, tokenURI);
     }
 
     function testCannotSendToZeroOrDead() public {
         vm.prank(owner);
         vm.expectRevert(abi.encodeWithSignature("TransferToInvalidAddress(address)", address(0)));
-        train.nextStop(address(0));
+        train.nextStop(address(0), tokenURI);
         vm.prank(owner);
         vm.expectRevert(abi.encodeWithSignature("TransferToInvalidAddress(address)", dead));
-        train.nextStop(dead);
+        train.nextStop(dead, tokenURI);
     }
 
     function testCannotRideTrainTwice() public {
         vm.prank(owner);
-        train.nextStop(passenger1);
+        train.nextStop(passenger1, tokenURI);
         vm.prank(owner); // only admin can move train
-        train.nextStop(passenger2);
+        train.nextStop(passenger2, tokenURI);
         vm.prank(owner); // only admin can move train
-        train.nextStop(passenger3);
+        train.nextStop(passenger3, tokenURI);
         // passenger1 tries to get train again
         vm.prank(owner); // only admin can move train
         vm.expectRevert(abi.encodeWithSignature("AlreadyRodeTrain(address)", passenger1));
-        train.nextStop(passenger1);
+        train.nextStop(passenger1, tokenURI);
     }
 
     function testRegularTransfersBlockedForTrainToken() public {
@@ -133,7 +116,7 @@ contract ChooChooTrainTest is Test {
     function testTicketTransfersStillWork() public {
         // Move train to create a ticket
         vm.prank(owner);
-        train.nextStop(passenger1);
+        train.nextStop(passenger1, tokenURI);
 
         // Owner should have ticket ID 1
         assertEq(train.ownerOf(1), owner);
@@ -144,30 +127,11 @@ contract ChooChooTrainTest is Test {
         assertEq(train.ownerOf(1), passenger2);
     }
 
-    function testGetTrainJourneySlice() public {
-        // Create some journey history
-        vm.prank(owner);
-        train.nextStop(passenger1); // owner completes journey
-        vm.prank(owner);
-        train.nextStop(passenger2); // passenger1 completes journey
-        vm.prank(owner);
-        train.nextStop(passenger3); // passenger2 completes journey
-
-        // Journey should be: [owner, passenger1, passenger2]
-        assertEq(train.getTrainJourneyLength(), 3);
-
-        // Test slice function
-        address[] memory slice = train.getTrainJourneySlice(1, 3);
-        assertEq(slice.length, 2);
-        assertEq(slice[0], passenger1);
-        assertEq(slice[1], passenger2);
-    }
-
     function testGetCurrentTrainHolder() public {
         assertEq(train.getCurrentTrainHolder(), owner);
 
         vm.prank(owner);
-        train.nextStop(passenger1);
+        train.nextStop(passenger1, tokenURI);
         assertEq(train.getCurrentTrainHolder(), passenger1);
     }
 
@@ -183,7 +147,7 @@ contract ChooChooTrainTest is Test {
 
         vm.warp(block.timestamp + 3 days);
         vm.prank(owner);
-        train.nextStop(passenger1);
+        train.nextStop(passenger1, tokenURI);
 
         (holder, totalStops, lastMoveTime, canBeYoinked, nextTicketId_) = train.getTrainStatus();
         assertEq(holder, passenger1);
@@ -196,25 +160,15 @@ contract ChooChooTrainTest is Test {
         assertTrue(canBeYoinked);
     }
 
-    function testHasRiddenTrain() public {
-        assertFalse(train.hasRiddenTrain(owner)); // owner hasn't completed journey yet
-        assertFalse(train.hasRiddenTrain(passenger1));
-
-        vm.prank(owner);
-        train.nextStop(passenger1); // owner completes journey
-        assertTrue(train.hasRiddenTrain(owner)); // now owner has completed journey
-        assertFalse(train.hasRiddenTrain(passenger1)); // passenger1 hasn't completed journey yet
-    }
-
     function testGetTotalTickets() public {
         assertEq(train.getTotalTickets(), 0); // no tickets minted yet
 
         vm.prank(owner);
-        train.nextStop(passenger1);
+        train.nextStop(passenger1, tokenURI);
         assertEq(train.getTotalTickets(), 1); // one ticket minted
 
         vm.prank(owner);
-        train.nextStop(passenger2);
+        train.nextStop(passenger2, tokenURI);
         assertEq(train.getTotalTickets(), 2); // two tickets minted
     }
 
@@ -225,13 +179,12 @@ contract ChooChooTrainTest is Test {
 
         // New admin can move train
         vm.prank(admin1);
-        train.nextStop(passenger1);
+        train.nextStop(passenger1, tokenURI);
         assertEq(train.ownerOf(0), passenger1);
 
-        // New admin can use nextStopWithTicketData
-        string memory tokenURI = "ipfs://QmTestMetadata";
+        // New admin can use nextStop
         vm.prank(admin1);
-        train.nextStopWithTicketData(passenger2, tokenURI);
+        train.nextStop(passenger2, tokenURI);
 
         assertEq(train.ownerOf(0), passenger2);
         (string memory tUri,,) = train.ticketData(2);
@@ -271,9 +224,9 @@ contract ChooChooTrainTest is Test {
 
     function testYoinkEligibilityAndAction() public {
         vm.prank(owner);
-        train.nextStop(passenger1);
+        train.nextStop(passenger1, tokenURI);
         vm.prank(owner);
-        train.nextStop(passenger2);
+        train.nextStop(passenger2, tokenURI);
 
         vm.warp(block.timestamp + 6 hours);
         (bool canYoink, string memory reason) = train.isYoinkable();
@@ -303,9 +256,9 @@ contract ChooChooTrainTest is Test {
 
     function testYoinkRevertsIfNotEligible() public {
         vm.prank(owner);
-        train.nextStop(passenger1);
+        train.nextStop(passenger1, tokenURI);
         vm.prank(owner); // only admin can move train
-        train.nextStop(passenger2);
+        train.nextStop(passenger2, tokenURI);
 
         // Not enough time passed - admin should still get reverted
         vm.prank(owner);
@@ -321,9 +274,9 @@ contract ChooChooTrainTest is Test {
 
     function testYoinkCannotSendToSelf() public {
         vm.prank(owner);
-        train.nextStop(passenger1);
+        train.nextStop(passenger1, tokenURI);
         vm.prank(owner); // only admin can move train
-        train.nextStop(passenger2);
+        train.nextStop(passenger2, tokenURI);
         vm.warp(block.timestamp + 12 hours);
         vm.prank(owner); // admin trying to yoink
         vm.expectRevert(abi.encodeWithSignature("CannotSendToCurrentPassenger(address)", passenger2));
@@ -332,9 +285,9 @@ contract ChooChooTrainTest is Test {
 
     function testYoinkCannotSendToPreviousPassenger() public {
         vm.prank(owner);
-        train.nextStop(passenger1);
+        train.nextStop(passenger1, tokenURI);
         vm.prank(owner); // only admin can move train
-        train.nextStop(passenger2);
+        train.nextStop(passenger2, tokenURI);
         vm.warp(block.timestamp + 12 hours);
 
         // Admin cannot yoink to passenger1 who already rode the train
@@ -353,7 +306,7 @@ contract ChooChooTrainTest is Test {
         train.addAdmin(admin1);
 
         vm.prank(owner);
-        train.nextStop(passenger1);
+        train.nextStop(passenger1, tokenURI);
 
         vm.warp(block.timestamp + 12 hours);
 
@@ -370,28 +323,28 @@ contract ChooChooTrainTest is Test {
         vm.prank(owner);
         vm.expectEmit(true, true, false, true);
         emit TrainDeparted(owner, passenger1, block.timestamp);
-        train.nextStop(passenger1);
+        train.nextStop(passenger1, tokenURI);
         vm.prank(owner);
         vm.expectEmit(true, true, false, true);
         emit TrainDeparted(passenger1, passenger2, block.timestamp);
-        train.nextStop(passenger2);
+        train.nextStop(passenger2, tokenURI);
     }
 
-    function testWithdrawERC20() public {
+    function testOwnerWithdrawERC20() public {
         MockERC20 mock = new MockERC20();
         mock.mint(address(train), 1000 ether);
         assertEq(mock.balanceOf(address(train)), 1000 ether);
         vm.prank(passenger1);
         vm.expectRevert(abi.encodeWithSignature("OwnableUnauthorizedAccount(address)", passenger1));
-        train.withdrawERC20(address(mock));
+        train.ownerWithdrawERC20(address(mock));
         uint256 ownerBalanceBefore = mock.balanceOf(owner);
         vm.prank(owner);
-        train.withdrawERC20(address(mock));
+        train.ownerWithdrawERC20(address(mock));
         assertEq(mock.balanceOf(address(train)), 0);
         assertEq(mock.balanceOf(owner), ownerBalanceBefore + 1000 ether);
         vm.prank(owner);
         vm.expectRevert(bytes("No ERC20 tokens to withdraw"));
-        train.withdrawERC20(address(mock));
+        train.ownerWithdrawERC20(address(mock));
     }
 
     function testOwnerIsInitialAdmin() public view {
@@ -460,7 +413,7 @@ contract ChooChooTrainTest is Test {
 
     function testSetTicketDataByAdmin() public {
         vm.prank(owner);
-        train.nextStop(passenger1);
+        train.nextStop(passenger1, tokenURI);
 
         string memory uri = "ipfs://QmMetaHash";
         string memory img = "ipfs://QmImageHash";
@@ -480,7 +433,7 @@ contract ChooChooTrainTest is Test {
         train.addAdmin(admin1);
 
         vm.prank(owner);
-        train.nextStop(passenger1);
+        train.nextStop(passenger1, tokenURI);
 
         string memory uri = "ipfs://QmMetaHash";
         string memory img = "ipfs://QmImageHash";
@@ -497,7 +450,7 @@ contract ChooChooTrainTest is Test {
 
     function testOnlyAdminCanSetTicketData() public {
         vm.prank(owner);
-        train.nextStop(passenger1);
+        train.nextStop(passenger1, tokenURI);
         // sorry normie
         vm.prank(passenger1);
         vm.expectRevert(bytes("Not an admin"));
@@ -526,14 +479,14 @@ contract ChooChooTrainTest is Test {
         ChooChooTrain validTrain = new ChooChooTrain(address(0), passenger1);
         assertEq(validTrain.ownerOf(0), passenger1);
         assertFalse(validTrain.hasBeenPassenger(passenger1));
-        assertEq(validTrain.getTrainJourneyLength(), 0);
+        assertEq(validTrain.getTotalTickets(), 0);
     }
 
     // ========== USDC DEPOSIT TESTS ========== //
 
     function testDepositUsdcAtLeastOne() public {
         uint256 fid = 12345;
-        uint256 depositCost = train.getRequiredDeposit();
+        uint256 depositCost = train.depositCost();
 
         usdc.mint(passenger1, depositCost * 2);
 
@@ -682,7 +635,7 @@ contract ChooChooTrainTest is Test {
     }
 
     function testViewHelpers() public {
-        assertEq(train.getRequiredDeposit(), 1 * 10 ** 6);
+        assertEq(train.depositCost(), 1 * 10 ** 6);
 
         assertEq(train.getUsdcBalance(), 0);
 

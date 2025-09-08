@@ -9,9 +9,10 @@ contract NextStopScript is Script {
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
         address trainAddress = vm.envAddress("SEPOLIA_TRAIN_ADDRESS");
         address nextPassenger = 0xef00A763368C98C361a9a30cE44D24c8Fed43844;
+        string memory tokenURI = "ipfs://QmTestMetadata";
 
         vm.startBroadcast(deployerPrivateKey);
-        ChooChooTrain(trainAddress).nextStop(nextPassenger);
+        ChooChooTrain(trainAddress).nextStop(nextPassenger, tokenURI);
         vm.stopBroadcast();
     }
 }

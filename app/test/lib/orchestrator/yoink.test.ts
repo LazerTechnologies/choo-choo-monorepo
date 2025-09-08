@@ -31,7 +31,7 @@ vi.mock('@/lib/redis-token-utils', () => ({
 vi.mock('@/lib/services/contract', () => {
   const mockService = {
     isYoinkable: vi.fn().mockResolvedValue({ canYoink: true, reason: null }),
-    hasRiddenTrain: vi.fn().mockResolvedValue(false),
+    hasBeenPassenger: vi.fn().mockResolvedValue(false),
     hasDepositedEnough: vi.fn().mockResolvedValue(true),
     getNextOnChainTicketId: vi.fn(() => Promise.resolve(yoinkNextId++)),
     executeYoink: vi.fn().mockResolvedValue('0xtx'),
@@ -130,7 +130,7 @@ describe('orchestrateYoink', () => {
     const cs = vi.mocked(getContractService)();
     const res = await orchestrateYoink(999, '0x1234567890123456789012345678901234567890');
     expect(cs.isYoinkable).toHaveBeenCalled();
-    expect(cs.hasRiddenTrain).toHaveBeenCalled();
+    expect(cs.hasBeenPassenger).toHaveBeenCalled();
     expect(cs.hasDepositedEnough).toHaveBeenCalled();
     expect(cs.executeYoink).toHaveBeenCalledWith('0x1234567890123456789012345678901234567890');
     expect(res.status).toBe(200);
@@ -151,13 +151,13 @@ describe('orchestrateYoink', () => {
     const mockedService = {
       getNextOnChainTicketId: vi.fn().mockResolvedValueOnce(300).mockResolvedValueOnce(305),
       isYoinkable: vi.fn().mockResolvedValue({ canYoink: true, reason: null }),
-      hasRiddenTrain: vi.fn().mockResolvedValue(false),
+      hasBeenPassenger: vi.fn().mockResolvedValue(false),
       hasDepositedEnough: vi.fn().mockResolvedValue(true),
       executeYoink: vi.fn().mockResolvedValue('0xtx'),
     } as {
       getNextOnChainTicketId: () => Promise<number>;
       isYoinkable: () => Promise<{ canYoink: boolean; reason: string | null }>;
-      hasRiddenTrain: (addr: `0x${string}`) => Promise<boolean>;
+      hasBeenPassenger: (addr: `0x${string}`) => Promise<boolean>;
       hasDepositedEnough: (fid: number) => Promise<boolean>;
       executeYoink: (addr: `0x${string}`) => Promise<string>;
     };
