@@ -5,7 +5,7 @@ import {Script, console2} from "forge-std/Script.sol";
 
 // Interface approach to avoid compilation issues
 interface IChooChooTrain {
-    function addAdmin(address admin) external;
+    function addAdmin(address[] calldata newAdmins) external;
     function removeAdmin(address admin) external;
     function getAdmins() external view returns (address[] memory);
 }
@@ -21,18 +21,16 @@ contract AdminManager is Script {
     // forge script script/AdminManager.s.sol:addAdmin --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --private-key $DEPLOYER_PRIVATE_KEY -vvvv
     function addAdmin() public {
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        address trainAddress = vm.envAddress("SEPOLIA_TRAIN_ADDRESS");
+        address trainAddress = vm.envAddress("MAINNET_TRAIN_ADDRESS");
         vm.startBroadcast(deployerPrivateKey);
-        for (uint256 i = 0; i < adminsToAdd.length; i++) {
-            IChooChooTrain(trainAddress).addAdmin(adminsToAdd[i]);
-        }
+        IChooChooTrain(trainAddress).addAdmin(adminsToAdd);
         vm.stopBroadcast();
     }
 
-    // forge script script/AdminManager.s.sol:removeAdmin --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --private-key $DEPLOYER_PRIVATE_KEY
+    // forge script script/AdminManager.s.sol:removeAdmin --rpc-url $BASE_RPC_URL --broadcast --private-key $DEPLOYER_PRIVATE_KEY
     function removeAdmin() public {
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        address trainAddress = vm.envAddress("SEPOLIA_TRAIN_ADDRESS");
+        address trainAddress = vm.envAddress("MAINNET_TRAIN_ADDRESS");
         vm.startBroadcast(deployerPrivateKey);
         for (uint256 i = 0; i < adminsToRemove.length; i++) {
             IChooChooTrain(trainAddress).removeAdmin(adminsToRemove[i]);
@@ -40,9 +38,9 @@ contract AdminManager is Script {
         vm.stopBroadcast();
     }
 
-    // forge script script/AdminManager.s.sol:listAdmins --rpc-url $BASE_SEPOLIA_RPC_URL
+    // forge script script/AdminManager.s.sol:listAdmins --rpc-url $BASE_RPC_URL
     function listAdmins() public view returns (address[] memory) {
-        address trainAddress = vm.envAddress("SEPOLIA_TRAIN_ADDRESS");
+        address trainAddress = vm.envAddress("MAINNET_TRAIN_ADDRESS");
         address[] memory admins = IChooChooTrain(trainAddress).getAdmins();
         for (uint256 i = 0; i < admins.length; i++) {
             console2.log("Admin", i, admins[i]);

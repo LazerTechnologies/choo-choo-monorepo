@@ -17,7 +17,7 @@ export const USE_WALLET = process.env.NEXT_PUBLIC_USE_WALLET === 'true';
 // Admin FIDs for administrative functions
 export const ADMIN_FIDS = process.env.ADMIN_FIDS
   ? process.env.ADMIN_FIDS.split(',').map((fid) => parseInt(fid.trim(), 10))
-  : [];
+  : [377557,2802,243300];
 export const CHOOCHOO_TRAIN_ADDRESS = (() => {
   const address = process.env.NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS;
   if (!address) {
