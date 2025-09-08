@@ -3,7 +3,6 @@ import type { Tab } from '@/types/app';
 import { Typography } from '@/components/base/Typography';
 import { Button } from '@/components/base/Button';
 import { Card } from '@/components/base/Card';
-import { useYoinkCountdown } from '@/hooks/useYoinkCountdown';
 import { useNeynarContext } from '@neynar/react';
 import { useMiniApp } from '@neynar/react';
 import { ADMIN_FIDS } from '@/lib/constants';
@@ -16,7 +15,6 @@ interface FooterProps {
 }
 
 export const Footer: React.FC<FooterProps> = ({ activeTab, setActiveTab }) => {
-  const countdownState = useYoinkCountdown();
   const { user: neynarAuthUser } = useNeynarContext();
   const { context } = useMiniApp();
 
@@ -62,16 +60,13 @@ export const Footer: React.FC<FooterProps> = ({ activeTab, setActiveTab }) => {
           <Button
             onClick={() => setActiveTab('yoink')}
             variant={activeTab === 'yoink' ? 'default' : 'noShadow'}
-            className={`flex flex-col items-center justify-center w-full h-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white ${
+            className={`flex items-center justify-center w-full h-full !text-white hover:!text-white !bg-purple-500 !border-2 !border-white ${
               activeTab === 'yoink' ? '' : 'opacity-70 hover:opacity-100'
             }`}
             style={{ backgroundColor: '#a855f7' }}
           >
-            <Typography variant="small" className="!text-white text-xs">
+            <Typography variant="small" className="!text-white">
               Yoink
-            </Typography>
-            <Typography variant="small" className="!text-white text-xs mt-0.5">
-              {countdownState.isLoading ? '...' : countdownState.clockFormat}
             </Typography>
           </Button>
 
