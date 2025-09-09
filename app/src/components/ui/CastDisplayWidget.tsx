@@ -88,10 +88,54 @@ export function CastDisplayWidget({ castHash, className = '' }: CastDisplayWidge
     const fetchCastData = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(`/api/cast-data?hash=${castHash}`);
-        setCastData(response.data.cast);
+
+        // Step 1: Try original cast hash
+        try {
+          const response = await axios.get(`/api/cast-data?hash=${castHash}`);
+          setCastData(response.data.cast);
+          return; // Success, exit early
+        } catch (originalError) {
+          console.log(
+            '[CastDisplayWidget] Original cast failed, trying fallbacks...',
+            originalError
+          );
+        }
+
+        // Step 2: Try fallback search for ChooChoo-related casts
+        try {
+          const fallbackResponse = await axios.get(
+            `/api/cast-data/fallback?originalHash=${castHash}&strategy=choochoo`
+          );
+          setCastData(fallbackResponse.data.cast);
+          console.log(
+            '[CastDisplayWidget] Using ChooChoo fallback cast:',
+            fallbackResponse.data.cast.hash
+          );
+          return; // Success, exit early
+        } catch (choochooError) {
+          console.log(
+            '[CastDisplayWidget] ChooChoo fallback failed, trying most recent...',
+            choochooError
+          );
+        }
+
+        // Step 3: Try most recent cast as last resort
+        try {
+          const lastResortResponse = await axios.get(
+            `/api/cast-data/fallback?originalHash=${castHash}&strategy=recent`
+          );
+          setCastData(lastResortResponse.data.cast);
+          console.log(
+            '[CastDisplayWidget] Using most recent cast fallback:',
+            lastResortResponse.data.cast.hash
+          );
+          return; // Success, exit early
+        } catch (recentError) {
+          console.error('[CastDisplayWidget] All fallback strategies failed:', recentError);
+          setError('No casts available to display');
+        }
       } catch (err) {
-        console.error('Error fetching cast data:', err);
+        console.error('[CastDisplayWidget] Unexpected error in fetchCastData:', err);
         setError('Failed to load cast');
       } finally {
         setLoading(false);
