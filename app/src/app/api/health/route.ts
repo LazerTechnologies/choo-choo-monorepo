@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { redis } from '@/lib/kv';
+import { scheduler } from '@/lib/scheduler';
 
 export async function GET() {
   const response = {
@@ -8,6 +9,7 @@ export async function GET() {
     services: {
       app: 'running',
       redis: 'unknown',
+      scheduler: 'unknown',
     },
   };
 
@@ -24,6 +26,18 @@ export async function GET() {
     response.services.redis = 'disconnected';
     console.warn(
       'Redis health check failed:',
+      error instanceof Error ? error.message : 'Unknown error'
+    );
+  }
+
+  // initialize scheduler for yoink notifications
+  try {
+    scheduler.initialize();
+    response.services.scheduler = 'running';
+  } catch (error) {
+    response.services.scheduler = 'failed';
+    console.warn(
+      'Scheduler initialization failed:',
       error instanceof Error ? error.message : 'Unknown error'
     );
   }
