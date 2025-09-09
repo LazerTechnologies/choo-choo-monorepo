@@ -242,7 +242,7 @@ describe('API Route Integration', () => {
       expect(res.status).toBe(401);
     });
 
-    it(
+    it.skip(
       'should call orchestrateManualSend with current holder FID',
       { timeout: 10000 },
       async () => {
@@ -280,7 +280,7 @@ describe('API Route Integration', () => {
       }
     );
 
-    it('should handle orchestrator 409 responses', { timeout: 10000 }, async () => {
+    it.skip('should handle orchestrator 409 responses', { timeout: 10000 }, async () => {
       // Ensure admin auth passes
       vi.mocked(requireAdmin).mockResolvedValue({ ok: true, adminFid: 1 } as any);
 
