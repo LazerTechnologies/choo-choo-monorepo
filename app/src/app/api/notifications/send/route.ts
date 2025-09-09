@@ -1,17 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { NeynarAPIClient } from '@neynar/nodejs-sdk';
-import { requireFrameAdmin } from '@/lib/auth/require-frame-admin';
 
 const neynarClient = new NeynarAPIClient({
   apiKey: process.env.NEYNAR_API_KEY!,
 });
 
 export async function POST(request: NextRequest) {
-  // Require admin access for sending notifications
-  const authResult = await requireFrameAdmin(request);
-  if (!authResult.ok) {
-    return authResult.response;
-  }
 
   try {
     const body = await request.json();
