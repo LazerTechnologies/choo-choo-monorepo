@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useMiniApp } from '@neynar/react';
 import { Button } from '@/components/base/Button';
 import { Typography } from '@/components/base/Typography';
@@ -12,7 +11,6 @@ import { CastDisplayWidget } from '@/components/ui/CastDisplayWidget';
 import { JourneyTimeline } from '@/components/ui/timeline';
 import { useCurrentHolder } from '@/hooks/useCurrentHolder';
 import { useWorkflowState } from '@/hooks/useWorkflowState';
-import { useCurrentUserAddress } from '@/hooks/useCurrentUserAddress';
 import { useSoundPlayer } from '@/hooks/useSoundPlayer';
 import { WorkflowState } from '@/lib/workflow-types';
 import { APP_URL } from '@/lib/constants';
@@ -28,73 +26,91 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
   const { context } = useMiniApp();
   const { isCurrentHolder, loading: isHolderLoading } = useCurrentHolder();
   const { workflowData, loading: isWorkflowLoading, refetch: refreshWorkflow } = useWorkflowState();
-  const { address: userAddress, isLoading: isAddressLoading } = useCurrentUserAddress();
+  // disabled for now -- share button
+  //const { address: userAddress, isLoading: isAddressLoading } = useCurrentUserAddress();
   const { playChooChoo } = useSoundPlayer();
-  const [rideHistoryStatus, setRideHistoryStatus] = useState<
-    'loading' | 'has-ridden' | 'not-ridden' | 'error'
-  >('loading');
+  // const [rideHistoryStatus, setRideHistoryStatus] = useState<
+  //   'loading' | 'has-ridden' | 'not-ridden' | 'error'
+  // >('loading');
 
   const handleWorkflowRefresh = () => {
     refreshWorkflow();
   };
 
-  // Check if user has ridden ChooChoo before
-  useEffect(() => {
-    async function checkRideHistory() {
-      if (!userAddress) {
-        setRideHistoryStatus('error');
-        return;
-      }
-
-      setRideHistoryStatus('loading');
-      try {
-        const response = await fetch(`/api/has-ridden?address=${userAddress}`);
-        if (response.ok) {
-          const data = await response.json();
-          setRideHistoryStatus(data.hasRidden ? 'has-ridden' : 'not-ridden');
-        } else {
-          console.error('[HomePage] API error checking ride history:', response.status);
-          setRideHistoryStatus('error');
-        }
-      } catch (error) {
-        console.error('[HomePage] Failed to check ride history:', error);
-        setRideHistoryStatus('error');
-      }
-    }
-
-    checkRideHistory();
-  }, [userAddress]);
-
-  const handleShareChooChoo = async () => {
+  const handleAllAboard = async () => {
     try {
       // Play ChooChoo sound when button is clicked
       playChooChoo({ volume: 0.7 });
 
-      let castText: string;
-      switch (rideHistoryStatus) {
-        case 'has-ridden':
-          castText =
-            "I've ridden @choochoo and so can you! Check out the mini-app for a chance to ride 🚂";
-          break;
-        case 'not-ridden':
-          castText = 'I have @choochoo FOMO!';
-          break;
-        case 'loading':
-        case 'error':
-        default:
-          // Fallback text when we can't determine ride history
-          castText = 'Got @choochoo FOMO? Check out the mini-app for a chance to ride 🚂';
-          break;
-      }
-
+      // Send cast
       await sdk.actions.composeCast({
-        text: castText,
+        text: 'Got @choochoo FOMO? Check out the mini-app for a chance to ride 🚂',
         embeds: [APP_URL],
       });
     } catch (error) {
-      console.error('[HomePage] Failed to compose share cast:', error);
+      console.error('[HomePage] Failed to compose "All aboard" cast:', error);
     }
   };
+
+  /** @dev unused for now - share button */
+  // Check if user has ridden ChooChoo before
+  // useEffect(() => {
+  //   async function checkRideHistory() {
+  //     if (!userAddress) {
+  //       setRideHistoryStatus('error');
+  //       return;
+  //     }
+
+  //     setRideHistoryStatus('loading');
+  //     try {
+  //       const response = await fetch(`/api/has-ridden?address=${userAddress}`);
+  //       if (response.ok) {
+  //         const data = await response.json();
+  //         setRideHistoryStatus(data.hasRidden ? 'has-ridden' : 'not-ridden');
+  //       } else {
+  //         console.error('[HomePage] API error checking ride history:', response.status);
+  //         setRideHistoryStatus('error');
+  //       }
+  //     } catch (error) {
+  //       console.error('[HomePage] Failed to check ride history:', error);
+  //       setRideHistoryStatus('error');
+  //     }
+  //   }
+
+  //   checkRideHistory();
+  // }, [userAddress]);
+
+  /** @dev uncomment when share button gets moved */
+  // const handleShareChooChoo = async () => {
+  //   try {
+  //     // Play ChooChoo sound when button is clicked
+  //     playChooChoo({ volume: 0.7 });
+
+  //     let castText: string;
+  //     switch (rideHistoryStatus) {
+  //       case 'has-ridden':
+  //         castText =
+  //           "I've ridden @choochoo and so can you! Check out the mini-app for a chance to ride 🚂";
+  //         break;
+  //       case 'not-ridden':
+  //         castText = 'I have @choochoo FOMO!';
+  //         break;
+  //       case 'loading':
+  //       case 'error':
+  //       default:
+  //         // Fallback text when we can't determine ride history
+  //         castText = 'Got @choochoo FOMO? Check out the mini-app for a chance to ride 🚂';
+  //         break;
+  //     }
+
+  //     await sdk.actions.composeCast({
+  //       text: castText,
+  //       embeds: [APP_URL],
+  //     });
+  //   } catch (error) {
+  //     console.error('[HomePage] Failed to compose share cast:', error);
+  //   }
+  // };
 
   const shouldShowCastingWidget =
     !!context?.user &&
@@ -129,17 +145,16 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
             ChooChoo is trying to visit every wallet on Base! When ChooChoo is in your wallet, you
             get to decide where he goes next.
           </p>
-          {/** @dev swap out if share button isn't great */}
-          {/* <Button
+          <Button
             variant="link"
-            onClick={() => playChooChoo({ volume: 0.7 })}
+            onClick={handleAllAboard}
             className="mt-2 text-gray-300 dark:text-gray-300 hover:text-purple-500 
             dark:hover:text-purple-500 transition-colors"
           >
             🚂 All aboard!
-          </Button> */}
+          </Button>
           {/* Hide Share ChooChoo button if user is current holder to avoid confusion */}
-          {!isCurrentHolder && (
+          {/* {!isCurrentHolder && (
             <div className="mt-4 flex justify-center">
               <Button
                 onClick={handleShareChooChoo}
@@ -154,7 +169,7 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
                 </Typography>
               </Button>
             </div>
-          )}
+          )} */}
         </div>
       )}
 
