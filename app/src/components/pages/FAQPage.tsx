@@ -29,7 +29,7 @@ export function FAQPage() {
         <Typography variant="h3" className="text-center mb-6 text-white">
           How to Play
         </Typography>
-        <ol className="space-y-2 list-decimal list-inside">
+        <ol className="space-y-2 list-decimal list-inside text-white">
           <li>
             <Typography variant="body" className="!text-white inline">
               Get ChooChoo
