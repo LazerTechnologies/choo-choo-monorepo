@@ -1,4 +1,4 @@
-import { CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
+import { CHOOCHOO_CAST_TEMPLATES, APP_URL } from '@/lib/constants';
 
 export interface NotificationFilters {
   exclude_fids?: number[];
@@ -24,7 +24,7 @@ export interface SendNotificationParams {
  */
 export async function sendNotification(params: SendNotificationParams): Promise<boolean> {
   try {
-    const response = await fetch('/api/notifications/send', {
+    const response = await fetch(`${APP_URL}/api/notifications/send`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -86,7 +86,7 @@ export const ChooChooNotifications = {
    */
   randomWinnerEnabled: (username: string) => ({
     title: 'ChooChoo\'s next stop is up to chance!',
-    body: `Reply to ${username}\'s cast for a chance to ride next!`,
+    body: `Reply to ${username}\'s cast about ChooChoo for a chance to ride next!`,
     targetUrl: `${process.env.NEXT_PUBLIC_URL}/`,
     targetFids: [], // Send to all users
   }),
