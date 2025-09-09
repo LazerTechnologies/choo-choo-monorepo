@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { redis } from '@/lib/kv';
 import { CHOOCHOO_CAST_TEMPLATES, APP_URL } from '@/lib/constants';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
+import { sendChooChooNotification } from '@/lib/notifications';
 
 export async function POST() {
   try {
@@ -64,6 +65,13 @@ export async function POST() {
       console.log(
         `[enable-public-send] Successfully sent PUBLIC_SEND_OPEN cast: ${castData.cast?.hash}`
       );
+    }
+
+    // Send notification about public send mode opening
+    try {
+      await sendChooChooNotification('publicSendOpen', username);
+    } catch (err) {
+      console.warn('[enable-public-send] Failed to send notification:', err);
     }
 
     return NextResponse.json({ success: true });

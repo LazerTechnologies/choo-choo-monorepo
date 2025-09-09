@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { redis } from '@/lib/kv';
 import { CHOOCHOO_CAST_TEMPLATES, APP_URL } from '@/lib/constants';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
+import { sendChooChooNotification } from '@/lib/notifications';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
@@ -161,6 +162,13 @@ export async function POST(request: NextRequest) {
         '[enable-random-winner] Failed to send random winner enabled cast (non-critical):',
         err
       );
+    }
+
+    // Send notification about random winner mode being enabled
+    try {
+      await sendChooChooNotification('randomWinnerEnabled', username);
+    } catch (err) {
+      console.warn('[enable-random-winner] Failed to send notification:', err);
     }
 
     return NextResponse.json({

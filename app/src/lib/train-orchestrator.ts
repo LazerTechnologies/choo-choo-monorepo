@@ -10,6 +10,7 @@ import {
 import { redis } from '@/lib/kv';
 import type { TokenData } from '@/types/nft';
 import { APP_URL } from '@/lib/constants';
+import { sendChooChooNotification } from '@/lib/notifications';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
@@ -442,7 +443,18 @@ export async function orchestrateManualSend(currentHolderFid: number, targetFid:
       console.warn(`[train-orchestrator] Cast request failed:`, err);
     }
 
-    // 9) Workflow state: set NOT_CASTED for new holder
+    // 9) Send notifications
+    try {
+      // Notify new holder that ChooChoo has arrived
+      await sendChooChooNotification('chooChooArrived', user.username, user.fid);
+      
+      // Notify departing passenger about their ticket NFT
+      await sendChooChooNotification('ticketMinted', departingPassengerData.currentHolder.username, actualTokenId, departingPassengerData.currentHolder.fid);
+    } catch (err) {
+      console.warn('[orchestrateManualSend] Failed to send notifications:', err);
+    }
+
+    // 10) Workflow state: set NOT_CASTED for new holder
     try {
       await fetch(`${APP_URL}/api/workflow-state`, {
         method: 'POST',
@@ -700,7 +712,18 @@ export async function orchestrateRandomSend(castHash: string) {
       console.warn(`[train-orchestrator] Cast request failed:`, err);
     }
 
-    // 11) Workflow state: set NOT_CASTED for new holder
+    // 11) Send notifications
+    try {
+      // Notify new holder that ChooChoo has arrived
+      await sendChooChooNotification('chooChooArrived', winnerData.winner.username, winnerData.winner.fid);
+      
+      // Notify departing passenger about their ticket NFT
+      await sendChooChooNotification('ticketMinted', departingPassengerData.currentHolder.username, actualTokenId, departingPassengerData.currentHolder.fid);
+    } catch (err) {
+      console.warn('[orchestrateRandomSend] Failed to send notifications:', err);
+    }
+
+    // 12) Workflow state: set NOT_CASTED for new holder
     try {
       await fetch(`${APP_URL}/api/workflow-state`, {
         method: 'POST',
@@ -987,7 +1010,21 @@ export async function orchestrateYoink(userFid: number, targetAddress: string) {
       console.warn(`[train-orchestrator] Cast request failed:`, err);
     }
 
-    // 11) Set workflow to NOT_CASTED
+    // 11) Send notifications
+    try {
+      // Notify everyone about the yoink
+      await sendChooChooNotification('yoinkAnnouncement', yoinkerData.username);
+      
+      // Notify departing passenger about their ticket NFT
+      await sendChooChooNotification('ticketMinted', departingPassengerData.currentHolder.username, actualTokenId, departingPassengerData.currentHolder.fid);
+      
+      // Notify yoinker that ChooChoo has arrived
+      await sendChooChooNotification('chooChooArrived', yoinkerData.username, yoinkerData.fid);
+    } catch (err) {
+      console.warn('[orchestrateYoink] Failed to send notifications:', err);
+    }
+
+    // 12) Set workflow to NOT_CASTED
     try {
       await fetch(`${APP_URL}/api/workflow-state`, {
         method: 'POST',

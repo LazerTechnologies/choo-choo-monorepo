@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { redis } from '@/lib/kv';
 import { CHOOCHOO_CAST_TEMPLATES, APP_URL } from '@/lib/constants';
 import { requireAdmin } from '@/lib/auth/require-admin';
+import { sendChooChooNotification } from '@/lib/notifications';
 
 const APP_PAUSE_KEY = 'app-paused';
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
@@ -91,6 +92,17 @@ export async function POST(request: Request) {
     } catch (error) {
       console.error('[admin-app-pause] Failed to send maintenance cast (non-blocking):', error);
       // Don't fail the API call if cast fails
+    }
+
+    // Send notification about maintenance mode change
+    try {
+      if (isPaused) {
+        await sendChooChooNotification('maintenanceStarted');
+      } else {
+        await sendChooChooNotification('maintenanceEnded');
+      }
+    } catch (error) {
+      console.warn('[admin-app-pause] Failed to send maintenance notification:', error);
     }
 
     return NextResponse.json({
