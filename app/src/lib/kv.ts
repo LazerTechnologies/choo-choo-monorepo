@@ -1,14 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Redis from 'ioredis';
 
-// Initialize Redis client with Railway public URL for better compatibility
-// Railway recommends using REDIS_PUBLIC_URL when private network has issues
-// @see: https://docs.railway.com/reference/errors/enotfound-redis-railway-internal#connecting-to-a-redis-database-locally
+// Initialize Redis client using private networking to avoid egress charges
+// Use REDIS_PRIVATE_URL for Railway private network, fallback to public for local dev
+// @see: https://docs.railway.com/guides/private-networking#communicating-over-the-private-network
 const redis = new Redis(
-  process.env.REDIS_PUBLIC_URL || process.env.REDIS_URL || 'redis://localhost:6379',
+  process.env.REDIS_PRIVATE_URL || process.env.REDIS_URL || 'redis://localhost:6379',
   {
     maxRetriesPerRequest: 3,
     lazyConnect: false,
+    // IPv6 support for Railway private networking
+    family: 0, // Support both IPv4 and IPv6
     // Enhanced reconnection settings
     reconnectOnError: (err) => {
       // Reconnect on connection reset errors and readonly errors
