@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import { Card } from '@/components/base/Card';
 import { Typography } from '@/components/base/Typography';
+import { Button } from '@/components/base/Button';
 import { CastCard } from '@neynar/react';
+import { sdk } from '@farcaster/miniapp-sdk';
 import axios from 'axios';
 
 interface CastDisplayWidgetProps {
@@ -131,6 +133,18 @@ export function CastDisplayWidget({ castHash, className = '' }: CastDisplayWidge
     url: embed.url || '',
   }));
 
+  const handleRecastAndShare = async () => {
+    try {
+      const castUrl = `https://farcaster.xyz/${castData.author.username}/${castHash.slice(0, 10)}`;
+      await sdk.actions.composeCast({
+        text: `Got @choochoo FOMO? Reply to @${castData.author.username}'s cast and let the world know 🚂`,
+        embeds: [castUrl],
+      });
+    } catch (error) {
+      console.error('[CastDisplayWidget] Failed to compose "recast and share" cast:', error);
+    }
+  };
+
   return (
     <Card
       className={`p-4 !bg-purple-500 !border-white ${className}`}
@@ -179,6 +193,19 @@ export function CastDisplayWidget({ castHash, className = '' }: CastDisplayWidge
           username={castData.author.username}
           viewerFid={0}
         />
+      </div>
+
+      {/* Recast and Share Button */}
+      <div className="mt-4 flex justify-center">
+        <Button
+          onClick={handleRecastAndShare}
+          className="!text-white hover:!text-white !bg-purple-500 !border-2 !border-white px-6 py-2"
+          style={{ backgroundColor: '#a855f7' }}
+        >
+          <Typography variant="small" className="!text-white">
+            Recast and Share
+          </Typography>
+        </Button>
       </div>
     </Card>
   );
