@@ -5,8 +5,11 @@ import { Accordion } from '@/components/base/Accordion';
 import { CHOOCHOO_TRAIN_ADDRESS, APP_URL } from '@/lib/constants';
 import { sdk } from '@farcaster/miniapp-sdk';
 import { Button } from '../base/Button';
+import { useYoinkTimer } from '@/hooks/useYoinkTimer';
 
 export function FAQPage() {
+  const { timerHours } = useYoinkTimer();
+
   const handleLetEveryoneKnow = async () => {
     try {
       await sdk.actions.composeCast({
@@ -49,8 +52,9 @@ export function FAQPage() {
           </li>
           <li>
             <Typography variant="body" className="!text-white inline">
-              If ChooChoo hasn&apos;t moved in 12 hours, anyone who hasn&apos;t ridden before can
-              &quot;yoink&quot; it (first come first serve!)
+              If ChooChoo hasn&apos;t moved in {timerHours} {timerHours === 1 ? 'hour' : 'hours'},
+              anyone who hasn&apos;t ridden before can &quot;yoink&quot; it (first come first
+              serve!)
             </Typography>
           </li>
         </ol>

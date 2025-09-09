@@ -69,7 +69,7 @@ export function formatTimeRemaining(
 
   if (format === 'short') {
     const parts: string[] = [];
-    // @note updated to 12 hours, got rid of days
+    // @note uses dynamic timer from contract, got rid of days
     // if (days > 0) parts.push(`${days}d`);
     const totalHours = days * 24 + hours;
     if (totalHours > 0) parts.push(`${totalHours}h`);

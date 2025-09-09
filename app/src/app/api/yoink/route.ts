@@ -4,7 +4,7 @@ import { orchestrateYoink } from '@/lib/train-orchestrator';
 /**
  * POST /api/yoink
  *
- * Yoink endpoint using centralized orchestrator. Allows users to yoink the train if they have not ridden the train before and 12 hours have passed.
+ * Yoink endpoint using centralized orchestrator. Allows users to yoink the train if they have not ridden the train before and the cooldown has passed.
  * Uses orchestrateYoink for centralized state management and single-writer semantics.
  *
  * @param request - The HTTP request object with body containing { targetAddress, userFid }

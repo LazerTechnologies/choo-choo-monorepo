@@ -177,7 +177,7 @@ export class ContractService {
   }
 
   /**
-   * Check if the train can be yoinked (12-hour cooldown check)
+   * Check if the train can be yoinked (cooldown check based on contract timer)
    */
   async isYoinkable(): Promise<{ canYoink: boolean; reason: string }> {
     const contract = this.createTypedContract();
@@ -242,7 +242,7 @@ export class ContractService {
           throw new Error(`Cannot yoink train to current holder ${recipient}`);
         }
         if (error.message.includes('NotEligibleToYoink')) {
-          throw new Error('12 hour cooldown not met - yoink not available yet');
+          throw new Error('Cooldown not met - yoink not available yet');
         }
       }
       throw error;

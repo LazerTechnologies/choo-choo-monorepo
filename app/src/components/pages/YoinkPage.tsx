@@ -5,6 +5,7 @@ import { Card } from '@/components/base/Card';
 import { Typography } from '@/components/base/Typography';
 import { useYoinkCountdown } from '@/hooks/useYoinkCountdown';
 import { useYoinkFlow } from '@/hooks/useYoinkFlow';
+import { useYoinkTimer } from '@/hooks/useYoinkTimer';
 import { useCurrentUserAddress } from '@/hooks/useCurrentUserAddress';
 import { useNeynarContext } from '@neynar/react';
 import { useMiniApp } from '@neynar/react';
@@ -23,6 +24,7 @@ export function YoinkPage() {
   const { user: neynarUser } = useNeynarContext();
   const { context } = useMiniApp();
   const countdownState = useYoinkCountdown();
+  const { timerHours } = useYoinkTimer();
   const { address, isLoading: addressLoading, error: addressError } = useCurrentUserAddress();
   const { yoinkTrain, isLoading, isSuccess, isError, error, reset, loadingText } = useYoinkFlow();
   const { toast: marqueeToast } = useMarqueeToast();
@@ -104,8 +106,8 @@ export function YoinkPage() {
         <Card.Header>
           <Card.Title className="!text-white font-sans">Yoink ChooChoo</Card.Title>
           <Card.Description className="!text-white font-sans">
-            If ChooChoo hasn&apos;t moved in 12 hours, anyone who hasn&apos;t ridden before can pay
-            1 USDC to become the next passenger.
+            If ChooChoo hasn&apos;t moved in {timerHours} {timerHours === 1 ? 'hour' : 'hours'},
+            anyone who hasn&apos;t ridden before can pay 1 USDC to become the next passenger.
           </Card.Description>
         </Card.Header>
         <Card.Content>
@@ -160,7 +162,8 @@ export function YoinkPage() {
                 inactive holder
               </Typography>
               <Typography variant="small" className="!text-white font-sans block">
-                • Yoink is available 12 hours after the last transfer
+                • Yoink is available {timerHours} {timerHours === 1 ? 'hour' : 'hours'} after the
+                last transfer
               </Typography>
               <Typography variant="small" className="!text-blue-300 font-sans-bold block">
                 • After yoinking, send a cast from the home page to let everyone know you&apos;re on
