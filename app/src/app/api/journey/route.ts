@@ -21,6 +21,9 @@ export interface JourneyItem {
  *
  * Returns the complete journey timeline with all minted tokens.
  * Calculates duration each holder had the train and formats data for the timeline.
+ * 
+ * @notice Token timestamps represent when holders SENT the train (departure time),
+ * so we calculate arrival times by using the previous holder's departure timestamp.
  */
 export async function GET() {
   try {
@@ -49,22 +52,34 @@ export async function GET() {
     // Transform token data into journey items with duration calculation
     const journeyItems: JourneyItem[] = validTokens.map((token, index) => {
       // Calculate duration (time this holder had the train)
-      const holderStartTime = new Date(token.timestamp);
+      // @note this incorrectly calculates the duration because it's not the arrival time
+      // const holderStartTime = new Date(token.timestamp);
+      // @notice Token timestamp represents when holder SENT the train (departure time),
+      // but we need when they RECEIVED it (arrival time) to calculate correct duration
+      let holderStartTime: Date;
       let holderEndTime: Date;
+
+      if (index === validTokens.length - 1) {
+        // Last token in array (lowest tokenId = first holder), use token timestamp as start
+        // This is the only case where token timestamp represents arrival time
+        holderStartTime = new Date(token.timestamp);
+      } else {
+        // For all other holders, their start time is when the previous holder sent the train
+        // (which is the next token's timestamp in our descending sort)
+        holderStartTime = new Date(validTokens[index + 1].timestamp);
+      }
 
       if (index === 0) {
         // First token in array (highest tokenId = current holder), use current time
         holderEndTime = new Date();
       } else {
-        // Previous holder - use the timestamp of when the next person got the train
-        // Since tokens are sorted by tokenId descending, the previous token in array
-        // has the timestamp of when this holder lost the train
-        holderEndTime = new Date(validTokens[index - 1].timestamp);
+        // Previous holder - use the timestamp of when they sent the train (token timestamp)
+        holderEndTime = new Date(token.timestamp);
       }
 
       const durationMs = holderEndTime.getTime() - holderStartTime.getTime();
 
-      // Log negative durations for debugging
+      // Log negative durations for debugging (should be rare now with corrected logic)
       if (durationMs < 0) {
         console.warn(
           `[journey] Negative duration detected for token ${token.tokenId}: ${durationMs}ms`,
@@ -73,6 +88,7 @@ export async function GET() {
             holderStartTime: holderStartTime.toISOString(),
             holderEndTime: holderEndTime.toISOString(),
             durationMs,
+            note: 'This should be rare with corrected timestamp logic',
           }
         );
       }
