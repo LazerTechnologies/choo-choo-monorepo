@@ -138,20 +138,23 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
           >
             🚂 All aboard!
           </Button> */}
-          <div className="mt-4 flex justify-center">
-            <Button
-              onClick={handleShareChooChoo}
-              disabled={isAddressLoading || rideHistoryStatus === 'loading'}
-              className="!text-white hover:!text-white !bg-purple-500 !border-2 !border-white px-6 py-2"
-              style={{ backgroundColor: '#a855f7' }}
-            >
-              <Typography variant="small" className="!text-white">
-                {isAddressLoading || rideHistoryStatus === 'loading'
-                  ? 'Loading...'
-                  : 'Share ChooChoo'}
-              </Typography>
-            </Button>
-          </div>
+          {/* Hide Share ChooChoo button if user is current holder to avoid confusion */}
+          {!isCurrentHolder && (
+            <div className="mt-4 flex justify-center">
+              <Button
+                onClick={handleShareChooChoo}
+                disabled={isAddressLoading || rideHistoryStatus === 'loading'}
+                className="!text-white hover:!text-white !bg-purple-500 !border-2 !border-white px-6 py-2"
+                style={{ backgroundColor: '#a855f7' }}
+              >
+                <Typography variant="small" className="!text-white">
+                  {isAddressLoading || rideHistoryStatus === 'loading'
+                    ? 'Loading...'
+                    : 'Share ChooChoo'}
+                </Typography>
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
