@@ -64,7 +64,7 @@ export function getMiniAppEmbedMetadata(ogImageUrl?: string) {
         type: 'launch_frame',
         name: APP_NAME,
         url: APP_URL,
-        splashImageUrl: APP_SPLASH_URL,
+        splashImageUrl: APP_ICON_URL,
         iconUrl: APP_ICON_URL,
         splashBackgroundColor: APP_SPLASH_BACKGROUND_COLOR,
         description: APP_DESCRIPTION,
