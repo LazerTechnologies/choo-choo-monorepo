@@ -202,7 +202,7 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
           {!isCurrentHolder &&
             workflowData.state !== WorkflowState.NOT_CASTED &&
             workflowData.currentCastHash && (
-              <div className="w-full mt-4">
+              <div className="w-full mt-4 flex justify-center">
                 <CastDisplayWidget castHash={workflowData.currentCastHash} />
               </div>
             )}
