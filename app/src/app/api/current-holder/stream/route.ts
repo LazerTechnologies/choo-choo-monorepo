@@ -10,6 +10,19 @@ export async function GET(req: NextRequest) {
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       const sub = redisSub.duplicate();
+      
+      sub.on('error', (err) => {
+        console.warn('[Redis Stream] Subscription error:', err.message);
+      });
+
+      sub.on('connect', () => {
+        console.log('[Redis Stream] Subscription connected');
+      });
+
+      sub.on('ready', () => {
+        console.log('[Redis Stream] Subscription ready');
+      });
+
       await sub.subscribe(CURRENT_HOLDER_CHANNEL);
 
       // Initial handshake + heartbeat

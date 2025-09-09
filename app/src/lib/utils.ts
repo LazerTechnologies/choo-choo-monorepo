@@ -13,7 +13,6 @@ import {
   APP_URL,
   APP_WEBHOOK_URL,
 } from './constants';
-import { APP_SPLASH_URL } from './constants';
 
 interface MiniAppMetadata {
   version: string;
@@ -88,7 +87,7 @@ export async function getFarcasterMetadata(): Promise<MiniAppManifest> {
     homeUrl: APP_URL,
     imageUrl: APP_OG_IMAGE_URL,
     buttonTitle: APP_BUTTON_TEXT ?? 'Get your ticket!',
-    splashImageUrl: APP_SPLASH_URL,
+    splashImageUrl: APP_ICON_URL,
     splashBackgroundColor: APP_SPLASH_BACKGROUND_COLOR,
     webhookUrl: APP_WEBHOOK_URL,
     description: APP_DESCRIPTION,
