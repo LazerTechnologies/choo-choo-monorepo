@@ -30,6 +30,16 @@ vi.mock('@/lib/auth/require-admin', () => ({
   requireAdmin: vi.fn(),
 }));
 
+// Mock the entire module
+vi.mock('@/app/api/admin/send-train/route', async () => {
+  const actual = await vi.importActual('@/app/api/admin/send-train/route');
+  return {
+    ...actual,
+    __esModule: true,
+    fetchUserByFid: vi.fn(),
+  };
+});
+
 vi.mock('@/lib/services/contract', () => ({
   __esModule: true,
   getContractService: vi.fn(() => ({
@@ -53,6 +63,7 @@ import { POST as userSendTrainPOST } from '@/app/api/user-send-train/route';
 import { POST as adminSendTrainPOST } from '@/app/api/admin/send-train/route';
 import { POST as sendTrainPOST } from '@/app/api/send-train/route';
 import { POST as yoinkPOST } from '@/app/api/yoink/route';
+import { fetchUserByFid } from '@/app/api/admin/send-train/route';
 
 describe('API Route Integration', () => {
   beforeAll(() => {
@@ -237,6 +248,15 @@ describe('API Route Integration', () => {
       async () => {
         vi.mocked(requireAdmin).mockResolvedValue({ ok: true, adminFid: 1 } as any);
 
+        // Mock the user fetch
+        vi.mocked(fetchUserByFid).mockResolvedValue({
+          address: '0x456',
+          username: 'winner',
+          fid: 456,
+          displayName: 'Winner',
+          pfpUrl: 'pfp',
+        });
+
         vi.mocked(orchestrateManualSend).mockResolvedValue({
           status: 200,
           body: { success: true, tokenId: 2, txHash: '0xabc', tokenURI: 'ipfs://t' },
@@ -263,6 +283,15 @@ describe('API Route Integration', () => {
     it('should handle orchestrator 409 responses', { timeout: 10000 }, async () => {
       // Ensure admin auth passes
       vi.mocked(requireAdmin).mockResolvedValue({ ok: true, adminFid: 1 } as any);
+
+      // Mock the user fetch
+      vi.mocked(fetchUserByFid).mockResolvedValue({
+        address: '0x456',
+        username: 'winner',
+        fid: 456,
+        displayName: 'Winner',
+        pfpUrl: 'pfp',
+      });
 
       // Mock orchestrateManualSend to return 409 conflict
       vi.mocked(orchestrateManualSend).mockResolvedValue({

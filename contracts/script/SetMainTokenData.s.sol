@@ -6,8 +6,8 @@ import {ChooChooTrain} from "../src/ChooChooTrain.sol";
 
 contract SetMainTokenData is Script {
     // IPFS URIs - update these values as needed
-    string constant MAIN_IMAGE = "ipfs://bafybeibrvjscvkspyexa6lcio2lk72e6l3faqzdgr7pcmrebtwkt75lpbu";
-    string constant MAIN_TOKEN_URI = "ipfs://bafkreih4woyxv6x4ypigqbvqxlugm5bz7qk4wh2sae7kse4horx2nknli4";
+    string constant MAIN_IMAGE = "ipfs://QmNQJCBYV2kbqsdZmoCsUQV4Lh6yUqLwMJ3SV1x9ozUo72";
+    string constant MAIN_TOKEN_URI = "ipfs://QmW9UvMToz38ykgzpFpYWCvQ5hdEqVsZwgLu8tW1Y8vuo1";
 
     function run() public {
         uint256 deployerPrivateKey = vm.envUint("DEPLOYER_PRIVATE_KEY");

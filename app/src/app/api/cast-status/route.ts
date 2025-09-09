@@ -47,8 +47,8 @@ export async function GET(request: Request) {
           `https://api.neynar.com/v2/farcaster/casts?fid=${fid}&limit=5`,
           {
             headers: {
-              'accept': 'application/json',
-              'api_key': process.env.NEYNAR_API_KEY,
+              accept: 'application/json',
+              api_key: process.env.NEYNAR_API_KEY,
             },
           }
         );
@@ -56,22 +56,22 @@ export async function GET(request: Request) {
         if (response.ok) {
           const data = await response.json();
           const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-          
+
           for (const cast of data.casts || []) {
             const castDate = new Date(cast.timestamp);
             const castText = cast.text?.toLowerCase() || '';
-            
+
             if (castDate > fiveMinutesAgo && castText.includes('@choochoo')) {
               console.log(`✅ Found recent @choochoo cast via API: ${cast.hash}`);
-              
+
               const workflowData = {
                 state: WorkflowState.CASTED,
                 winnerSelectionStart: null,
                 currentCastHash: cast.hash,
               };
-              
+
               await redis.set('workflowState', JSON.stringify(workflowData));
-              
+
               return NextResponse.json({
                 hasCurrentUserCasted: true,
                 currentCastHash: cast.hash,

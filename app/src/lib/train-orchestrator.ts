@@ -416,7 +416,9 @@ export async function orchestrateManualSend(currentHolderFid: number, targetFid:
       });
       if (!welcomeResponse.ok) {
         const errorData = await welcomeResponse.json();
-        console.warn(`[train-orchestrator] Welcome cast failed: ${welcomeResponse.status} - ${errorData.error}`);
+        console.warn(
+          `[train-orchestrator] Welcome cast failed: ${welcomeResponse.status} - ${errorData.error}`
+        );
       }
 
       // Ticket issued cast for departing passenger with image
@@ -432,7 +434,9 @@ export async function orchestrateManualSend(currentHolderFid: number, targetFid:
       });
       if (!ticketResponse.ok) {
         const errorData = await ticketResponse.json();
-        console.warn(`[train-orchestrator] Ticket cast failed: ${ticketResponse.status} - ${errorData.error}`);
+        console.warn(
+          `[train-orchestrator] Ticket cast failed: ${ticketResponse.status} - ${errorData.error}`
+        );
       }
     } catch (err) {
       console.warn(`[train-orchestrator] Cast request failed:`, err);
@@ -670,7 +674,9 @@ export async function orchestrateRandomSend(castHash: string) {
       });
       if (!welcomeResponse.ok) {
         const errorData = await welcomeResponse.json();
-        console.warn(`[train-orchestrator] Welcome cast failed: ${welcomeResponse.status} - ${errorData.error}`);
+        console.warn(
+          `[train-orchestrator] Welcome cast failed: ${welcomeResponse.status} - ${errorData.error}`
+        );
       }
 
       // Ticket issued cast for departing passenger with image
@@ -686,7 +692,9 @@ export async function orchestrateRandomSend(castHash: string) {
       });
       if (!ticketResponse.ok) {
         const errorData = await ticketResponse.json();
-        console.warn(`[train-orchestrator] Ticket cast failed: ${ticketResponse.status} - ${errorData.error}`);
+        console.warn(
+          `[train-orchestrator] Ticket cast failed: ${ticketResponse.status} - ${errorData.error}`
+        );
       }
     } catch (err) {
       console.warn(`[train-orchestrator] Cast request failed:`, err);
@@ -953,7 +961,9 @@ export async function orchestrateYoink(userFid: number, targetAddress: string) {
       });
       if (!welcomeResponse.ok) {
         const errorData = await welcomeResponse.json();
-        console.warn(`[train-orchestrator] Welcome cast failed: ${welcomeResponse.status} - ${errorData.error}`);
+        console.warn(
+          `[train-orchestrator] Welcome cast failed: ${welcomeResponse.status} - ${errorData.error}`
+        );
       }
 
       // Ticket issued cast for departing passenger with image
@@ -969,7 +979,9 @@ export async function orchestrateYoink(userFid: number, targetAddress: string) {
       });
       if (!ticketResponse.ok) {
         const errorData = await ticketResponse.json();
-        console.warn(`[train-orchestrator] Ticket cast failed: ${ticketResponse.status} - ${errorData.error}`);
+        console.warn(
+          `[train-orchestrator] Ticket cast failed: ${ticketResponse.status} - ${errorData.error}`
+        );
       }
     } catch (err) {
       console.warn(`[train-orchestrator] Cast request failed:`, err);
