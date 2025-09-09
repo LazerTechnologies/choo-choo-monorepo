@@ -24,6 +24,7 @@ export interface JourneyItem {
  * 
  * @notice Token timestamps represent when holders SENT the train (departure time),
  * so we calculate arrival times by using the previous holder's departure timestamp.
+ * Special case: First holder uses contract deployment time as their start time.
  */
 export async function GET() {
   try {
@@ -49,6 +50,9 @@ export async function GET() {
     // Build the gateway URL for images
     const pinataGateway = process.env.PINATA_GATEWAY_URL || 'https://gateway.pinata.cloud';
 
+    // Contract deployment timestamp (when first holder received ChooChoo)
+    const CONTRACT_DEPLOYMENT_TIME = new Date('2025-09-08T15:43:55.000Z');
+
     // Transform token data into journey items with duration calculation
     const journeyItems: JourneyItem[] = validTokens.map((token, index) => {
       // Calculate duration (time this holder had the train)
@@ -60,9 +64,9 @@ export async function GET() {
       let holderEndTime: Date;
 
       if (index === validTokens.length - 1) {
-        // Last token in array (lowest tokenId = first holder), use token timestamp as start
-        // This is the only case where token timestamp represents arrival time
-        holderStartTime = new Date(token.timestamp);
+        // Last token in array (lowest tokenId = first holder)
+        // Use contract deployment time as their start time (when they received ChooChoo)
+        holderStartTime = CONTRACT_DEPLOYMENT_TIME;
       } else {
         // For all other holders, their start time is when the previous holder sent the train
         // (which is the next token's timestamp in our descending sort)
