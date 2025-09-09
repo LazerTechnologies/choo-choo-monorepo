@@ -76,22 +76,43 @@ export function getMiniAppEmbedMetadata(ogImageUrl?: string) {
 }
 
 export async function getFarcasterMetadata(): Promise<MiniAppManifest> {
-  // First check for MINI_APP_METADATA in .env and use that if it exists
+  if (!APP_URL) {
+    throw new Error('NEXT_PUBLIC_URL not configured');
+  }
+
+  // Always generate the frame section with dynamic values
+  const frameSection = {
+    version: '1',
+    name: APP_NAME ?? 'ChooChoo on Base',
+    iconUrl: APP_ICON_URL,
+    homeUrl: APP_URL,
+    imageUrl: APP_OG_IMAGE_URL,
+    buttonTitle: APP_BUTTON_TEXT ?? 'Get your ticket!',
+    splashImageUrl: APP_SPLASH_URL,
+    splashBackgroundColor: APP_SPLASH_BACKGROUND_COLOR,
+    webhookUrl: APP_WEBHOOK_URL,
+    description: APP_DESCRIPTION,
+    primaryCategory: APP_PRIMARY_CATEGORY,
+    tags: APP_TAGS,
+  };
+
   if (process.env.MINI_APP_METADATA) {
     try {
-      const metadata = JSON.parse(process.env.MINI_APP_METADATA);
-      console.log('📝 Fetched pre-signed metadata.');
-      return metadata;
+      const envMetadata = JSON.parse(process.env.MINI_APP_METADATA);
+      console.log('📝 Using accountAssociation from MINI_APP_METADATA with dynamic frame section');
+      
+      return {
+        ...(envMetadata.accountAssociation && { 
+          accountAssociation: envMetadata.accountAssociation 
+        }),
+        frame: frameSection,
+      };
     } catch (error) {
       console.warn('Failed to parse MINI_APP_METADATA from environment:', error);
     }
   }
 
-  if (!APP_URL) {
-    throw new Error('NEXT_PUBLIC_URL not configured');
-  }
-
-  // Get the domain from the URL (without https:// prefix)
+  // fallback generate accountAssociation from seed phrase
   const domain = new URL(APP_URL).hostname;
   console.log('Using domain for manifest:', domain);
 
@@ -100,53 +121,37 @@ export async function getFarcasterMetadata(): Promise<MiniAppManifest> {
     console.warn(
       'No seed phrase or FID found in environment variables -- generating unsigned metadata'
     );
+    return { frame: frameSection };
   }
 
-  let accountAssociation;
-  if (secretEnvVars) {
-    // Generate account from seed phrase
-    const account = mnemonicToAccount(secretEnvVars.seedPhrase);
-    const custodyAddress = account.address;
+  const account = mnemonicToAccount(secretEnvVars.seedPhrase);
+  const custodyAddress = account.address;
 
-    const header = {
-      fid: parseInt(secretEnvVars.fid),
-      type: 'custody',
-      key: custodyAddress,
-    };
-    const encodedHeader = Buffer.from(JSON.stringify(header), 'utf-8').toString('base64');
+  const header = {
+    fid: parseInt(secretEnvVars.fid),
+    type: 'custody',
+    key: custodyAddress,
+  };
+  const encodedHeader = Buffer.from(JSON.stringify(header), 'utf-8').toString('base64');
 
-    const payload = {
-      domain,
-    };
-    const encodedPayload = Buffer.from(JSON.stringify(payload), 'utf-8').toString('base64url');
+  const payload = {
+    domain,
+  };
+  const encodedPayload = Buffer.from(JSON.stringify(payload), 'utf-8').toString('base64url');
 
-    const signature = await account.signMessage({
-      message: `${encodedHeader}.${encodedPayload}`,
-    });
-    const encodedSignature = Buffer.from(signature, 'utf-8').toString('base64url');
+  const signature = await account.signMessage({
+    message: `${encodedHeader}.${encodedPayload}`,
+  });
+  const encodedSignature = Buffer.from(signature, 'utf-8').toString('base64url');
 
-    accountAssociation = {
-      header: encodedHeader,
-      payload: encodedPayload,
-      signature: encodedSignature,
-    };
-  }
+  const accountAssociation = {
+    header: encodedHeader,
+    payload: encodedPayload,
+    signature: encodedSignature,
+  };
 
   return {
     accountAssociation,
-    frame: {
-      version: '1',
-      name: APP_NAME ?? 'Neynar Starter Kit',
-      iconUrl: APP_ICON_URL,
-      homeUrl: APP_URL,
-      imageUrl: APP_OG_IMAGE_URL,
-      buttonTitle: APP_BUTTON_TEXT ?? 'Launch Mini App',
-      splashImageUrl: APP_SPLASH_URL,
-      splashBackgroundColor: APP_SPLASH_BACKGROUND_COLOR,
-      webhookUrl: APP_WEBHOOK_URL,
-      description: APP_DESCRIPTION,
-      primaryCategory: APP_PRIMARY_CATEGORY,
-      tags: APP_TAGS,
-    },
+    frame: frameSection,
   };
 }
