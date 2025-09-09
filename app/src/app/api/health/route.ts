@@ -15,7 +15,7 @@ export async function GET() {
 
   // Test Redis connection (don't fail health check if Redis is down)
   try {
-    if (process.env.REDIS_URL) {
+    if (process.env.REDIS_PRIVATE_URL || process.env.REDIS_URL) {
       await redis.ping();
       response.services.redis = 'connected';
     } else {
