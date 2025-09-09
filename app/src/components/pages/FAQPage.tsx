@@ -2,14 +2,72 @@
 
 import { Typography } from '@/components/base/Typography';
 import { Accordion } from '@/components/base/Accordion';
-import { CHOOCHOO_TRAIN_ADDRESS } from '@/lib/constants';
+import { CHOOCHOO_TRAIN_ADDRESS, APP_URL } from '@/lib/constants';
+import { sdk } from '@farcaster/miniapp-sdk';
+import { Button } from '../base/Button';
 
 export function FAQPage() {
+  const handleLetEveryoneKnow = async () => {
+    try {
+      await sdk.actions.composeCast({
+        text: 'I want to ride @choochoo! 🚂',
+        embeds: [APP_URL],
+      });
+    } catch (error) {
+      console.error('[FAQPage] Failed to compose "let everyone know" cast:', error);
+    }
+  };
+
   return (
     <div className="space-y-3 px-6 w-full max-w-md mx-auto">
       <Typography variant="h2" className="text-center mb-6 text-white">
         About ChooChoo
       </Typography>
+
+      {/* How to Play Section */}
+      <div className="space-y-4 mb-6">
+        <Typography variant="h3" className="text-center mb-6 text-white">
+          How to Play
+        </Typography>
+        <ol className="space-y-2 list-decimal list-inside">
+          <li>
+            <Typography variant="body" className="!text-white inline">
+              Get ChooChoo
+            </Typography>
+          </li>
+          <li>
+            <Typography variant="body" className="!text-white inline">
+              Send a cast from the mini-app home page (you can edit it, just make sure to send it
+              from the mini-app and mention `@choochoo`!)
+            </Typography>
+          </li>
+          <li>
+            <Typography variant="body" className="!text-white inline">
+              Either pay 1 USDC to send ChooChoo to someone of your choice, or wait 30 minutes and
+              let it go to a random person who replied to your cast
+            </Typography>
+          </li>
+          <li>
+            <Typography variant="body" className="!text-white inline">
+              If ChooChoo hasn&apos;t moved in 12 hours, anyone who hasn&apos;t ridden before can
+              &quot;yoink&quot; it (first come first serve!)
+            </Typography>
+          </li>
+        </ol>
+
+        <div className="text-center mt-4">
+          <Typography variant="body" className="!text-white">
+            Want to ride ChooChoo?{' '}
+            <Button
+              variant="link"
+              onClick={handleLetEveryoneKnow}
+              className="mt-2 text-gray-300 dark:text-gray-300 hover:text-purple-500 dark:hover:text-purple-500 transition-colors"
+            >
+              Send a cast to let everyone know!
+            </Button>
+          </Typography>
+        </div>
+      </div>
 
       <div className="space-y-4">
         <Accordion type="single" collapsible className="w-full">
