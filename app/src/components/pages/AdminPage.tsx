@@ -29,8 +29,13 @@ interface AdminPageProps {
   onTokenMinted?: () => void;
 }
 
-// @todo: remove this when we go live
-function AppStateTesting({ adminFid }: { adminFid?: number }) {
+function AppStateTesting({
+  adminFid,
+  disabled = false,
+}: {
+  adminFid?: number;
+  disabled?: boolean;
+}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<string | null>(null);
@@ -136,6 +141,10 @@ function AppStateTesting({ adminFid }: { adminFid?: number }) {
     }
   }, [adminFid, selectedStateId, testStates]);
 
+  if (disabled) {
+    return null;
+  }
+
   return (
     <Card className="my-8 w-full !bg-blue-600 !border-white">
       <Card.Header>
@@ -206,7 +215,7 @@ function AppStateTesting({ adminFid }: { adminFid?: number }) {
   );
 }
 
-function AdminGenerate({ adminFid }: { adminFid?: number }) {
+function AdminGenerate({ adminFid, disabled = false }: { adminFid?: number; disabled?: boolean }) {
   const [result, setResult] = useState<(PinataUploadResult & { message?: string }) | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -240,6 +249,10 @@ function AdminGenerate({ adminFid }: { adminFid?: number }) {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (disabled) {
+    return null;
   }
 
   return (
@@ -338,9 +351,11 @@ function AdminGenerate({ adminFid }: { adminFid?: number }) {
 function SetInitialHolder({
   onTokenMinted,
   adminFid,
+  disabled = false,
 }: {
   onTokenMinted?: () => void;
   adminFid?: number;
+  disabled?: boolean;
 }) {
   const [selectedUser, setSelectedUser] = useState<{
     fid: number;
@@ -449,6 +464,10 @@ function SetInitialHolder({
     }
   }, [selectedUser, adminFid, onTokenMinted, isDisabled]);
 
+  if (disabled) {
+    return null;
+  }
+
   return (
     <Card className={`my-8 w-full !border-white ${isDisabled ? '!bg-gray-400' : '!bg-purple-600'}`}>
       <Card.Header>
@@ -554,7 +573,13 @@ function SetInitialHolder({
   );
 }
 
-function SetTicketMetadata({ adminFid }: { adminFid?: number }) {
+function SetTicketMetadata({
+  adminFid,
+  disabled = false,
+}: {
+  adminFid?: number;
+  disabled?: boolean;
+}) {
   const [tokenId, setTokenId] = useState('');
   const [metadataHash, setMetadataHash] = useState('');
   const [result, setResult] = useState<{
@@ -617,6 +642,10 @@ function SetTicketMetadata({ adminFid }: { adminFid?: number }) {
       setLoading(false);
     }
   }, [tokenId, metadataHash, adminFid]);
+
+  if (disabled) {
+    return null;
+  }
 
   return (
     <Card className="my-8 w-full !bg-blue-600 !border-white">
@@ -709,9 +738,11 @@ function SetTicketMetadata({ adminFid }: { adminFid?: number }) {
 function TestAdminNextStop({
   onTokenMinted,
   adminFid,
+  disabled = false,
 }: {
   onTokenMinted?: () => void;
   adminFid?: number;
+  disabled?: boolean;
 }) {
   const { refetch: refreshWorkflowState } = useWorkflowState();
   const [selectedUser, setSelectedUser] = useState<{
@@ -777,6 +808,10 @@ function TestAdminNextStop({
       setLoading(false);
     }
   }, [selectedUser, adminFid, onTokenMinted, refreshWorkflowState]);
+
+  if (disabled) {
+    return null;
+  }
 
   return (
     <Card className="my-8 w-full !bg-purple-600 !border-white">
@@ -880,7 +915,7 @@ function TestAdminNextStop({
   );
 }
 
-function AppPauseToggle({ adminFid }: { adminFid?: number }) {
+function AppPauseToggle({ adminFid, disabled = false }: { adminFid?: number; disabled?: boolean }) {
   const [isPaused, setIsPaused] = useState(false);
   const [pendingState, setPendingState] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
@@ -965,6 +1000,10 @@ function AppPauseToggle({ adminFid }: { adminFid?: number }) {
   }, []);
 
   const currentDisplayState = pendingState !== null ? pendingState : isPaused;
+
+  if (disabled) {
+    return null;
+  }
 
   return (
     <Card className="my-8 w-full !bg-red-100 !border-red-300 dark:!bg-red-900/20 dark:!border-red-700">
@@ -1066,7 +1105,13 @@ function AppPauseToggle({ adminFid }: { adminFid?: number }) {
   );
 }
 
-function JourneyAnnouncement({ adminFid }: { adminFid?: number }) {
+function JourneyAnnouncement({
+  adminFid,
+  disabled = false,
+}: {
+  adminFid?: number;
+  disabled?: boolean;
+}) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -1108,6 +1153,10 @@ function JourneyAnnouncement({ adminFid }: { adminFid?: number }) {
     }
   }, [adminFid]);
 
+  if (disabled) {
+    return null;
+  }
+
   return (
     <Card className="my-8 w-full !bg-purple-600 !border-white">
       <Card.Header>
@@ -1146,7 +1195,7 @@ function JourneyAnnouncement({ adminFid }: { adminFid?: number }) {
   );
 }
 
-function CustomCast({ adminFid }: { adminFid?: number }) {
+function CustomCast({ adminFid, disabled = false }: { adminFid?: number; disabled?: boolean }) {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -1187,6 +1236,10 @@ function CustomCast({ adminFid }: { adminFid?: number }) {
       setLoading(false);
     }
   }, [adminFid, text]);
+
+  if (disabled) {
+    return null;
+  }
 
   return (
     <Card className="my-8 w-full !bg-purple-600 !border-white">
@@ -1229,7 +1282,7 @@ function CustomCast({ adminFid }: { adminFid?: number }) {
   );
 }
 
-function RedisRepair({ adminFid }: { adminFid?: number }) {
+function RedisRepair({ adminFid, disabled = false }: { adminFid?: number; disabled?: boolean }) {
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<{
     onChainTotalTickets: number;
@@ -1278,6 +1331,10 @@ function RedisRepair({ adminFid }: { adminFid?: number }) {
       setLoading(false);
     }
   };
+
+  if (disabled) {
+    return null;
+  }
 
   return (
     <Card className="my-8 w-full !bg-orange-100 !border-orange-300 dark:!bg-orange-900/20 dark:!border-orange-700">
@@ -1343,6 +1400,22 @@ function RedisRepair({ adminFid }: { adminFid?: number }) {
 export function AdminPage({ onTokenMinted }: AdminPageProps) {
   const { isAdmin, currentUserFid } = useAdminAccess();
 
+  /**
+   * @description flag to show/hide cards
+   * set `true` to show a card, `false` to hide it
+   */
+  const SHOW_CARD = {
+    setInitialHolder: false,
+    journeyAnnouncement: true,
+    customCast: true,
+    adminGenerate: false,
+    setTicketMetadata: false,
+    testAdminNextStop: true,
+    redisRepair: false,
+    appPauseToggle: true,
+    appStateTesting: false,
+  };
+
   if (!isAdmin) {
     return (
       <div className="space-y-3 px-6 w-full max-w-md mx-auto">
@@ -1363,19 +1436,25 @@ export function AdminPage({ onTokenMinted }: AdminPageProps) {
   return (
     <div className="space-y-3 px-6 w-full max-w-md mx-auto">
       {/* Admin Actions */}
-      <SetInitialHolder onTokenMinted={onTokenMinted} adminFid={currentUserFid} />
-      <JourneyAnnouncement adminFid={currentUserFid} />
-      <CustomCast adminFid={currentUserFid} />
-      <AdminGenerate adminFid={currentUserFid} />
-      <SetTicketMetadata adminFid={currentUserFid} />
-      <TestAdminNextStop onTokenMinted={onTokenMinted} adminFid={currentUserFid} />
-      {/* Redis Repair */}
-      <RedisRepair adminFid={currentUserFid} />
-      {/* App Pause Toggle */}
-      <AppPauseToggle adminFid={currentUserFid} />
+      <SetInitialHolder
+        onTokenMinted={onTokenMinted}
+        adminFid={currentUserFid}
+        disabled={!SHOW_CARD.setInitialHolder}
+      />
+      <JourneyAnnouncement adminFid={currentUserFid} disabled={!SHOW_CARD.journeyAnnouncement} />
+      <CustomCast adminFid={currentUserFid} disabled={!SHOW_CARD.customCast} />
+      <AdminGenerate adminFid={currentUserFid} disabled={!SHOW_CARD.adminGenerate} />
+      <SetTicketMetadata adminFid={currentUserFid} disabled={!SHOW_CARD.setTicketMetadata} />
+      <TestAdminNextStop
+        onTokenMinted={onTokenMinted}
+        adminFid={currentUserFid}
+        disabled={!SHOW_CARD.testAdminNextStop}
+      />
+      <RedisRepair adminFid={currentUserFid} disabled={!SHOW_CARD.redisRepair} />
+      <AppPauseToggle adminFid={currentUserFid} disabled={!SHOW_CARD.appPauseToggle} />
       {/* App State Testing */}
       {/* @todo: remove this when we go live */}
-      <AppStateTesting adminFid={currentUserFid} />
+      <AppStateTesting adminFid={currentUserFid} disabled={!SHOW_CARD.appStateTesting} />
     </div>
   );
 }
