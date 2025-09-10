@@ -19,6 +19,11 @@ const redis = new Redis(
     },
     // Retry strategy for failed connections
     retryStrategy: (times) => {
+      // Limit retries to prevent log flooding
+      if (times > 10) {
+        console.error(`[Redis] Max retries (10) exceeded, stopping retries`);
+        return null; // Stop retrying
+      }
       const delay = Math.min(times * 50, 2000);
       console.log(`[Redis] Retrying connection in ${delay}ms (attempt ${times})`);
       return delay;

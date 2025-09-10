@@ -2,4 +2,5 @@
 buildCommand = "pnpm --filter generator build && pnpm --filter app build"
 
 [deploy]
+startCommand = "cd app && HOSTNAME=:: node .next/standalone/app/server.js"
 healthcheckPath = "/api/health" 
