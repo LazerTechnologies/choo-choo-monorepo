@@ -13,6 +13,7 @@ import { APP_URL } from '@/lib/constants';
 import { sendChooChooNotification } from '@/lib/notifications';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
+const TRAIN_MOVEMENT_LOCK_KEY = 'lock:train:movement';
 
 /**
  * Verifies that the contract's nextTicketId has advanced correctly after minting.
@@ -211,6 +212,7 @@ export async function orchestrateTrainMovement(
  * 3. Post-Commit Phase: Update app state with prepared data (should rarely fail)
  */
 export async function orchestrateManualSend(currentHolderFid: number, targetFid: number) {
+  const globalLockKey = TRAIN_MOVEMENT_LOCK_KEY;
   const lockKey = `lock:manual:${currentHolderFid}:${targetFid}`;
   const INTERNAL_SECRET = process.env.INTERNAL_SECRET || '';
 
@@ -218,12 +220,23 @@ export async function orchestrateManualSend(currentHolderFid: number, targetFid:
     `[orchestrateManualSend] Starting manual send orchestration: FID ${currentHolderFid} -> ${targetFid}`
   );
 
-  // Acquire distributed lock
+  /**  @dev degens spawn camp yoink, need to serialize all movements */
+  const lockedGlobal = await acquireLock(globalLockKey, 40_000);
+  if (!lockedGlobal) {
+    console.warn('[orchestrateManualSend] Global movement lock acquisition failed');
+    return {
+      status: 409,
+      body: { success: false, error: 'Another train movement is in progress' },
+    } as const;
+  }
+
+  /**  @dev dedupe manual sends */
   const locked = await acquireLock(lockKey, 30_000);
   if (!locked) {
     console.warn(
       `[orchestrateManualSend] Lock acquisition failed for ${currentHolderFid} -> ${targetFid}`
     );
+    await releaseLock(globalLockKey);
     return {
       status: 409,
       body: { success: false, error: 'Manual send already in progress' },
@@ -487,8 +500,9 @@ export async function orchestrateManualSend(currentHolderFid: number, targetFid:
     } catch {}
     return { status: 500, body: { success: false, error: (error as Error).message } } as const;
   } finally {
-    // 11) Release lock
+    /**  @dev release locks */
     await releaseLock(lockKey);
+    await releaseLock(globalLockKey);
   }
 }
 
@@ -498,12 +512,23 @@ export async function orchestrateManualSend(currentHolderFid: number, targetFid:
  */
 export async function orchestrateRandomSend(castHash: string) {
   const contractService = getContractService();
+  const globalLockKey = TRAIN_MOVEMENT_LOCK_KEY;
   const lockKey = `lock:random:${castHash}`;
   const INTERNAL_SECRET = process.env.INTERNAL_SECRET || '';
 
-  // 1) Acquire short-lived lock
+  /**  @dev degens spawn camp yoink, need to serialize all movements */
+  const lockedGlobal = await acquireLock(globalLockKey, 45_000);
+  if (!lockedGlobal) {
+    return {
+      status: 409,
+      body: { success: false, error: 'Another train movement is in progress' },
+    } as const;
+  }
+
+  /**  @dev dedupe random sends */
   const locked = await acquireLock(lockKey, 30_000);
   if (!locked) {
+    await releaseLock(globalLockKey);
     return {
       status: 409,
       body: { success: false, error: 'Random send already in progress' },
@@ -758,8 +783,9 @@ export async function orchestrateRandomSend(castHash: string) {
     } catch {}
     return { status: 500, body: { success: false, error: (error as Error).message } } as const;
   } finally {
-    // 13) Release lock
+    // 13) Release locks
     await releaseLock(lockKey);
+    await releaseLock(globalLockKey);
   }
 }
 
@@ -769,17 +795,28 @@ export async function orchestrateRandomSend(castHash: string) {
  */
 export async function orchestrateYoink(userFid: number, targetAddress: string) {
   const contractService = getContractService();
+  const globalLockKey = TRAIN_MOVEMENT_LOCK_KEY;
   const lockKey = `lock:yoink:${userFid}:${targetAddress}`;
   const INTERNAL_SECRET = process.env.INTERNAL_SECRET || '';
 
-  // 1) Acquire short-lived lock
+  // 1) Acquire global movement lock first to serialize yoinks with all movements
+  const lockedGlobal = await acquireLock(globalLockKey, 45_000);
+  if (!lockedGlobal) {
+    return {
+      status: 409,
+      body: { success: false, error: 'Another train movement is in progress' },
+    } as const;
+  }
+
+  // 1b) Acquire short-lived per-request lock (secondary dedupe)
   const locked = await acquireLock(lockKey, 30_000);
   if (!locked) {
+    await releaseLock(globalLockKey);
     return { status: 409, body: { success: false, error: 'Yoink already in progress' } } as const;
   }
 
   try {
-    // 2) Check eligibility: isYoinkable(), hasBeenPassenger(), deposit
+    // 2) Check eligibility inside the lock to avoid TOCTOU races
     const yoinkStatus = await contractService.isYoinkable();
     if (!yoinkStatus.canYoink) {
       throw new Error(`Yoink not available: ${yoinkStatus.reason}`);
@@ -863,21 +900,10 @@ export async function orchestrateYoink(userFid: number, targetAddress: string) {
       };
     });
 
-    // 6) Acquire mint lock to prevent double yoink for same tokenId
-    const mintLockKey = `lock:mint:${nextTokenId}`;
-    const mintLocked = await acquireLock(mintLockKey, 30_000);
-    if (!mintLocked) {
-      throw new Error('Mint in progress for this token ID');
-    }
-
-    let txHash: string;
-    try {
-      console.log(`[orchestrateYoink] Executing yoink to address: ${targetAddress}`);
-      txHash = await contractService.executeYoink(targetAddress as `0x${string}`);
-      console.log(`[orchestrateYoink] Yoink transaction hash: ${txHash}`);
-    } finally {
-      await releaseLock(mintLockKey);
-    }
+    // 6) Execute yoink while holding the global movement lock
+    const txHash: string = await contractService.executeYoink(targetAddress as `0x${string}`);
+    console.log(`[orchestrateYoink] Executing yoink to address: ${targetAddress}`);
+    console.log(`[orchestrateYoink] Yoink transaction hash: ${txHash}`);
 
     // Get the actual minted token ID from the transaction receipt
     let actualTokenId: number;
@@ -1058,7 +1084,8 @@ export async function orchestrateYoink(userFid: number, targetAddress: string) {
     } catch {}
     return { status: 500, body: { success: false, error: (error as Error).message } } as const;
   } finally {
-    // 13) Release lock
+    // 13) Release locks
     await releaseLock(lockKey);
+    await releaseLock(globalLockKey);
   }
 }
