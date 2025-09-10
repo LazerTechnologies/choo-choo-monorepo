@@ -6,7 +6,7 @@ export const APP_TAGS = process.env.NEXT_PUBLIC_MINI_APP_TAGS?.split(',');
 export const APP_ICON_URL = `${APP_URL}/icon.png`;
 export const APP_OG_IMAGE_URL = `${APP_URL}/api/opengraph-image`;
 export const APP_SPLASH_URL = `${APP_URL}/splash.png`;
-export const APP_SPLASH_BACKGROUND_COLOR = '#f7f7f7';
+export const APP_SPLASH_BACKGROUND_COLOR = process.env.SPLASH_COLOR || '#8B5CF6';
 export const APP_BUTTON_TEXT = process.env.NEXT_PUBLIC_MINI_APP_BUTTON_TEXT;
 export const APP_WEBHOOK_URL =
   process.env.NEYNAR_API_KEY && process.env.NEYNAR_CLIENT_ID
