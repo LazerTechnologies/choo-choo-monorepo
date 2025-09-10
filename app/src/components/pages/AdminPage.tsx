@@ -789,6 +789,12 @@ function TestAdminNextStop({
         credentials: 'include',
         body: JSON.stringify({
           targetFid: selectedUser.fid,
+          miniAppContext: {
+            userFid: adminFid,
+            isAuthenticated: true,
+            hasContext: true,
+          },
+          fid: adminFid,
         }),
       });
 
@@ -1137,6 +1143,12 @@ function JourneyAnnouncement({
           text,
           embeds: [{ url: APP_URL }],
           idem: `journey-continues-${today}`,
+          miniAppContext: {
+            userFid: adminFid,
+            isAuthenticated: true,
+            hasContext: true,
+          },
+          fid: adminFid,
         }),
       });
       const data = await res.json();
@@ -1220,7 +1232,15 @@ function CustomCast({ adminFid, disabled = false }: { adminFid?: number; disable
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({
+          text,
+          miniAppContext: {
+            userFid: adminFid,
+            isAuthenticated: true,
+            hasContext: true,
+          },
+          fid: adminFid,
+        }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
