@@ -55,8 +55,11 @@ export async function GET(request: Request) {
     if (process.env.NEYNAR_API_KEY) {
       console.log(`🔍 [cast-status] Checking fallback API for FID ${fid} - webhook detection failed`);
       try {
+        const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+        const afterTime = fifteenMinutesAgo.toISOString().split('.')[0]; // Remove milliseconds for API
+        
         const response = await fetch(
-          `https://api.neynar.com/v2/farcaster/casts?fid=${fid}&limit=10`,
+          `https://api.neynar.com/v2/farcaster/cast/search/?q=@choochoo after:${afterTime}&author_fid=${fid}&limit=5`,
           {
             headers: {
               accept: 'application/json',
@@ -67,32 +70,30 @@ export async function GET(request: Request) {
 
         if (response.ok) {
           const data = await response.json();
-          const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-          console.log(`🔍 [cast-status] Checking ${data.casts?.length || 0} casts since ${fifteenMinutesAgo.toISOString()}`);
+          const casts = Array.isArray(data?.result?.casts) ? (data.result.casts as Array<Record<string, unknown>>) : [];
+          console.log(`🔍 [cast-status] Checking ${casts.length} casts since ${fifteenMinutesAgo.toISOString()}`);
 
-          for (const cast of data.casts || []) {
-            const castDate = new Date(cast.timestamp);
-            const castText = cast.text?.toLowerCase() || '';
-            const embeds: Array<Record<string, unknown>> = Array.isArray(cast.embeds)
-              ? (cast.embeds as Array<Record<string, unknown>>)
-              : [];
-            const hasChoochooEmbed = embeds.some((e: Record<string, unknown>) => {
-              const raw = (e as { url?: unknown; uri?: unknown; href?: unknown });
-              const candidate = (raw.url || raw.uri || raw.href) as unknown;
-              const url = typeof candidate === 'string' ? candidate.toLowerCase() : undefined;
-              return !!url && (url.includes('choochoo.pro') || url.includes('choochoo'));
-            });
+          for (const cast of casts) {
+            const ts = (cast as { timestamp?: unknown }).timestamp;
+            const castDate = ts && (typeof ts === 'string' || typeof ts === 'number') ? new Date(ts) : new Date(0);
+            const rawText = (cast as { text?: unknown }).text;
 
-            console.log(`🔍 [cast-status] Examining cast ${cast.hash}: "${cast.text?.substring(0, 50)}..." (${castDate.toISOString()})`);
+            const hash = (cast as { hash?: unknown }).hash;
+            const hashStr = typeof hash === 'string' ? hash : 'unknown-hash';
+            const preview = typeof rawText === 'string' ? rawText.substring(0, 50) : '';
+            console.log(`🔍 [cast-status] Examining cast ${hashStr}: "${preview}..." (${castDate.toISOString()})`);
 
-            if (castDate > fifteenMinutesAgo && (castText.includes('@choochoo') || hasChoochooEmbed)) {
-              console.log(`✅ [cast-status] Found recent @choochoo cast via API fallback: ${cast.hash}`);
-              console.log(`✅ [cast-status] Cast details: FID=${cast.author.fid}, text="${cast.text}", timestamp=${cast.timestamp}`);
+            // Search already filtered for @choochoo and time, so any result is a match
+            if (castDate > fifteenMinutesAgo) {
+              console.log(`✅ [cast-status] Found recent @choochoo cast via API fallback: ${hashStr}`);
+              const author = (cast as { author?: unknown }).author as { fid?: unknown } | undefined;
+              const fidStr = author && typeof author.fid === 'number' ? String(author.fid) : 'unknown';
+              console.log(`✅ [cast-status] Cast details: FID=${fidStr}, text="${typeof rawText === 'string' ? rawText : ''}", timestamp=${typeof ts === 'string' || typeof ts === 'number' ? String(ts) : ''}`);
 
               const workflowData = {
                 state: WorkflowState.CASTED,
                 winnerSelectionStart: null,
-                currentCastHash: cast.hash,
+                currentCastHash: hashStr,
               };
 
               await redis.set('workflowState', JSON.stringify(workflowData));
@@ -100,7 +101,7 @@ export async function GET(request: Request) {
 
               return NextResponse.json({
                 hasCurrentUserCasted: true,
-                currentCastHash: cast.hash,
+                currentCastHash: hashStr,
               });
             }
           }
