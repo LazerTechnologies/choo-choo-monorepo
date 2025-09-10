@@ -467,7 +467,7 @@ export async function orchestrateManualSend(currentHolderFid: number, targetFid:
       console.warn('[orchestrateManualSend] Failed to send notifications:', err);
     }
 
-    // 10) Workflow state: set NOT_CASTED for new holder
+    // 10) Workflow state: set NOT_CASTED for new holder; clear prior cast metadata
     try {
       await fetch(`${APP_URL}/api/workflow-state`, {
         method: 'POST',
@@ -490,14 +490,7 @@ export async function orchestrateManualSend(currentHolderFid: number, targetFid:
       },
     } as const;
   } catch (error) {
-    // 10) On failure: reset state to CASTED
-    try {
-      await fetch(`${APP_URL}/api/workflow-state`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ state: 'CASTED' }),
-      });
-    } catch {}
+    // 10) On failure: do not modify workflow state
     return { status: 500, body: { success: false, error: (error as Error).message } } as const;
   } finally {
     /**  @dev release locks */
@@ -516,8 +509,8 @@ export async function orchestrateRandomSend(castHash: string) {
   const lockKey = `lock:random:${castHash}`;
   const INTERNAL_SECRET = process.env.INTERNAL_SECRET || '';
 
-  /**  @dev degens spawn camp yoink, need to serialize all movements */
-  const lockedGlobal = await acquireLock(globalLockKey, 45_000);
+  // 1) Acquire global movement lock
+  const lockedGlobal = await acquireLock(globalLockKey, 40_000);
   if (!lockedGlobal) {
     return {
       status: 409,
@@ -773,14 +766,7 @@ export async function orchestrateRandomSend(castHash: string) {
       },
     } as const;
   } catch (error) {
-    // 12) On failure: reset state to CASTED
-    try {
-      await fetch(`${APP_URL}/api/workflow-state`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ state: 'CASTED' }),
-      });
-    } catch {}
+    // 12) On failure: do not modify workflow state
     return { status: 500, body: { success: false, error: (error as Error).message } } as const;
   } finally {
     // 13) Release locks
@@ -800,7 +786,7 @@ export async function orchestrateYoink(userFid: number, targetAddress: string) {
   const INTERNAL_SECRET = process.env.INTERNAL_SECRET || '';
 
   // 1) Acquire global movement lock first to serialize yoinks with all movements
-  const lockedGlobal = await acquireLock(globalLockKey, 45_000);
+  const lockedGlobal = await acquireLock(globalLockKey, 40_000);
   if (!lockedGlobal) {
     return {
       status: 409,
@@ -1074,14 +1060,7 @@ export async function orchestrateYoink(userFid: number, targetAddress: string) {
       },
     } as const;
   } catch (error) {
-    // 12) On failure: set state to CASTED
-    try {
-      await fetch(`${APP_URL}/api/workflow-state`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ state: 'CASTED' }),
-      });
-    } catch {}
+    // 12) On failure: do not modify workflow state
     return { status: 500, body: { success: false, error: (error as Error).message } } as const;
   } finally {
     // 13) Release locks

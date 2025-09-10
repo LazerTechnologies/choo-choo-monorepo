@@ -53,6 +53,29 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
             }),
           });
 
+          // Confirm persistence for a few seconds; re-POST if missing
+          const confirmDeadline = Date.now() + 5000; // 5s
+          while (Date.now() < confirmDeadline) {
+            const confirmRes = await fetch('/api/workflow-state', { cache: 'no-store' });
+            if (confirmRes.ok) {
+              const wf = await confirmRes.json();
+              if (wf?.currentCastHash === result.cast.hash && wf?.state === WorkflowState.CASTED) {
+                break;
+              }
+            }
+            await new Promise((r) => setTimeout(r, 300));
+            // Try re-posting if still missing
+            await fetch('/api/workflow-state', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                state: WorkflowState.CASTED,
+                winnerSelectionStart: null,
+                currentCastHash: result.cast.hash,
+              }),
+            });
+          }
+
           window.dispatchEvent(
             new CustomEvent('workflow-state-changed', {
               detail: {
