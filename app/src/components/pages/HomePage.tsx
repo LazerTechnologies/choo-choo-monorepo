@@ -127,7 +127,7 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
           {APP_NAME}
         </Typography> */}
           <Image
-            src="/ChooChoo.webp"
+            src="https://scarlet-quick-grouse-388.mypinata.cloud/ipfs/QmNQJCBYV2kbqsdZmoCsUQV4Lh6yUqLwMJ3SV1x9ozUo72"
             alt="ChooChoo App Logo"
             width={320}
             height={320}

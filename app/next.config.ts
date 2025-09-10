@@ -19,6 +19,14 @@ const nextConfig: NextConfig = {
   },
   images: {
     unoptimized: true,
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'scarlet-quick-grouse-388.mypinata.cloud',
+        port: '',
+        pathname: '/ipfs/**',
+      },
+    ],
   },
 };
 
