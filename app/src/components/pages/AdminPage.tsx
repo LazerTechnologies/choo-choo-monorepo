@@ -1462,7 +1462,7 @@ export function AdminPage({ onTokenMinted }: AdminPageProps) {
     journeyAnnouncement: true,
     customCast: true,
     adminGenerate: false,
-    setTicketMetadata: false,
+    setTicketMetadata: true,
     testAdminNextStop: true,
     redisRepair: false,
     appPauseToggle: true,
