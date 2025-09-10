@@ -32,7 +32,16 @@ export default function Home({ title = 'Choo Choo on Base' }: HomeProps) {
 
   useEffect(() => {
     if (isSDKLoaded) {
-      setInitialTab('home');
+      // Check for tab parameter in URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const tabParam = urlParams.get('tab');
+      const validTabs = ['home', 'actions', 'faq', 'yoink'];
+
+      if (tabParam && validTabs.includes(tabParam)) {
+        setInitialTab(tabParam as Tab);
+      } else {
+        setInitialTab('home');
+      }
     }
   }, [isSDKLoaded, setInitialTab]);
 

@@ -84,7 +84,7 @@ class Scheduler {
       const result = await response.json();
       
       if (result.notificationSent) {
-        console.log(`[Scheduler] Yoink availability notification sent for holder: ${result.currentHolder}`);
+        console.log(`[Scheduler] Yoink availability notification sent to all users. ChooChoo can be yoinked from: ${result.currentHolder})`);
       } else if (result.yoinkAvailable) {
         console.log(`[Scheduler] Yoink is available but notification already sent`);
       } else {

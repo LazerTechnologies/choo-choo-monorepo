@@ -137,7 +137,7 @@ export const ChooChooNotifications = {
   yoinkAvailable: (currentHolderUsername: string) => ({
     title: '⏰ YOINK Time!',
     body: `The yoink timer has expired! ChooChoo can now be yoinked from @${currentHolderUsername}. First come, first served!`,
-    targetUrl: `${process.env.NEXT_PUBLIC_URL}/yoink`,
+    targetUrl: `${process.env.NEXT_PUBLIC_URL}?tab=yoink`,
     targetFids: [], // Send to all users
   }),
 } as const;
