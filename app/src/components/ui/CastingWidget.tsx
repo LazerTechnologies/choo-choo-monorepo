@@ -27,6 +27,8 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
 
   const handlePostCast = async () => {
     const castText = CHOOCHOO_CAST_TEMPLATES.USER_NEW_PASSENGER_CAST();
+    console.log(`🚀 [CastingWidget] Starting cast composition for FID ${currentUserFid}`);
+    console.log(`🚀 [CastingWidget] Cast text: "${castText}"`);
 
     try {
       const result = await sdk.actions.composeCast({
@@ -34,8 +36,11 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
         embeds: [APP_URL],
       });
 
+      console.log(`🔍 [CastingWidget] ComposeCast result:`, result);
+
       if (result?.cast) {
-        console.log('✅ Cast sent directly via composeCast:', result.cast.hash);
+        console.log(`✅ [CastingWidget] Cast sent directly via composeCast: ${result.cast.hash}`);
+        console.log(`✅ [CastingWidget] Direct cast success - bypassing polling`);
 
         try {
           window.dispatchEvent(
@@ -47,7 +52,13 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
               },
             })
           );
-        } catch {}
+          console.log(`✅ [CastingWidget] Dispatched workflow-state-changed event for direct cast`);
+        } catch (eventError) {
+          console.error(
+            `🚨 [CastingWidget] Failed to dispatch workflow event for direct cast:`,
+            eventError
+          );
+        }
 
         toast({
           description: '🗨️ Cast sent! You can now choose where ChooChoo goes next!',
@@ -57,6 +68,11 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
         return;
       }
 
+      console.log(`🔄 [CastingWidget] No direct cast result - falling back to polling`);
+      console.log(
+        `🔄 [CastingWidget] This means the cast composer opened but we don't have the hash yet`
+      );
+
       // fallback: polling for casts containing "@choochoo"
       setIsWaitingForCast(true);
       startPolling();
@@ -65,7 +81,12 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
         description: "🗨️ Casting... Come back when you're done",
       });
     } catch (error) {
-      console.error('Failed to compose cast:', error);
+      console.error(`🚨 [CastingWidget] Failed to compose cast:`, error);
+      console.error(`🚨 [CastingWidget] Error details:`, {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : undefined,
+      });
       toast({
         description: '❌ Failed to open cast composer',
         variant: 'destructive',
@@ -76,21 +97,42 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
   const startPolling = () => {
     let pollCount = 0;
     const maxPolls = 100; // 5 minutes at 3-second intervals
+    console.log(`🔄 [CastingWidget] Starting cast detection polling for FID ${currentUserFid}`);
+    console.log(
+      `🔄 [CastingWidget] Will poll up to ${maxPolls} times (${(maxPolls * 3) / 60} minutes)`
+    );
 
     const interval = setInterval(async () => {
       pollCount++;
+      console.log(
+        `🔄 [CastingWidget] Poll attempt ${pollCount}/${maxPolls} for FID ${currentUserFid}`
+      );
 
       try {
         // Check cast status (webhook + recent cast fallback)
         const statusResponse = await fetch(`/api/cast-status?fid=${currentUserFid}`);
+
+        if (!statusResponse.ok) {
+          console.error(
+            `🚨 [CastingWidget] Cast status API error: ${statusResponse.status} ${statusResponse.statusText}`
+          );
+          const errorText = await statusResponse.text();
+          console.error(`🚨 [CastingWidget] Error response body:`, errorText);
+          return;
+        }
+
         const statusData = await statusResponse.json();
+        console.log(`🔍 [CastingWidget] Poll ${pollCount} response:`, statusData);
 
         if (statusData.hasCurrentUserCasted && statusData.currentCastHash) {
           clearInterval(interval);
           setPollInterval(null);
           setIsWaitingForCast(false);
 
-          console.log(`✅ Cast detected: ${statusData.currentCastHash}`);
+          console.log(
+            `✅ [CastingWidget] Cast detected on poll ${pollCount}: ${statusData.currentCastHash}`
+          );
+          console.log(`✅ [CastingWidget] Stopping polling and updating UI state`);
 
           try {
             window.dispatchEvent(
@@ -102,7 +144,10 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
                 },
               })
             );
-          } catch {}
+            console.log(`✅ [CastingWidget] Dispatched workflow-state-changed event`);
+          } catch (eventError) {
+            console.error(`🚨 [CastingWidget] Failed to dispatch workflow event:`, eventError);
+          }
 
           toast({
             description: '✅ Cast found! Proceed to picking the next stop',
@@ -113,6 +158,10 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
         }
 
         if (pollCount >= maxPolls) {
+          console.warn(`⏰ [CastingWidget] Polling timeout reached (${pollCount}/${maxPolls})`);
+          console.warn(
+            `⏰ [CastingWidget] No cast detected for FID ${currentUserFid} after ${(maxPolls * 3) / 60} minutes`
+          );
           clearInterval(interval);
           setPollInterval(null);
           setIsWaitingForCast(false);
@@ -122,7 +171,11 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
           });
         }
       } catch (error) {
-        console.error('Status polling error:', error);
+        console.error(`🚨 [CastingWidget] Status polling error on attempt ${pollCount}:`, error);
+        console.error(`🚨 [CastingWidget] Error details:`, {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+        });
       }
     }, 3000); // Poll every 3 seconds
 
