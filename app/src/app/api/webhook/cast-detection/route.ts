@@ -55,9 +55,21 @@ export async function POST(request: Request) {
       console.log(`🔍 [webhook] Cast text: "${castText}"`);
 
       const containsChoochoo = castText.toLowerCase().includes('@choochoo');
-      console.log(`🔍 [webhook] Contains @choochoo: ${containsChoochoo}`);
+      let containsChoochooEmbed = false;
+      try {
+        const embeds: Array<Record<string, unknown>> = Array.isArray(cast.embeds)
+          ? (cast.embeds as Array<Record<string, unknown>>)
+          : [];
+        containsChoochooEmbed = embeds.some((e: Record<string, unknown>) => {
+          const raw = e as { url?: unknown; uri?: unknown; href?: unknown };
+          const candidate = (raw.url || raw.uri || raw.href) as unknown;
+          const url = typeof candidate === 'string' ? candidate.toLowerCase() : undefined;
+          return !!url && (url.includes('choochoo.pro') || url.includes('choochoo'));
+        });
+      } catch {}
+      console.log(`🔍 [webhook] Contains @choochoo: ${containsChoochoo}, contains choochoo.pro embed: ${containsChoochooEmbed}`);
 
-      if (containsChoochoo) {
+      if (containsChoochoo || containsChoochooEmbed) {
         console.log(`🎯 [webhook] @choochoo cast detected! Processing...`);
         
         const holderDataString = await redis.get('current-holder');

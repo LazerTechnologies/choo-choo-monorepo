@@ -43,6 +43,16 @@ export function CastingWidget({ onCastSent }: CastingWidgetProps) {
         console.log(`✅ [CastingWidget] Direct cast success - bypassing polling`);
 
         try {
+          await fetch('/api/workflow-state', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              state: WorkflowState.CASTED,
+              winnerSelectionStart: null,
+              currentCastHash: result.cast.hash,
+            }),
+          });
+
           window.dispatchEvent(
             new CustomEvent('workflow-state-changed', {
               detail: {

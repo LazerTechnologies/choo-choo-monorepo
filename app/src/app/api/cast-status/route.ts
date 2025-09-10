@@ -51,7 +51,7 @@ export async function GET(request: Request) {
       console.log(`ℹ️ [cast-status] No workflow state found in Redis - checking API fallback`);
     }
 
-    // Fallback: Check recent casts for @choochoo (only if webhook hasn't detected it yet)
+    // Fallback: Check recent casts for @choochoo or embeds containing choochoo.pro
     if (process.env.NEYNAR_API_KEY) {
       console.log(`🔍 [cast-status] Checking fallback API for FID ${fid} - webhook detection failed`);
       try {
@@ -60,7 +60,7 @@ export async function GET(request: Request) {
           {
             headers: {
               accept: 'application/json',
-              api_key: process.env.NEYNAR_API_KEY,
+              'x-api-key': process.env.NEYNAR_API_KEY,
             },
           }
         );
@@ -73,10 +73,19 @@ export async function GET(request: Request) {
           for (const cast of data.casts || []) {
             const castDate = new Date(cast.timestamp);
             const castText = cast.text?.toLowerCase() || '';
+            const embeds: Array<Record<string, unknown>> = Array.isArray(cast.embeds)
+              ? (cast.embeds as Array<Record<string, unknown>>)
+              : [];
+            const hasChoochooEmbed = embeds.some((e: Record<string, unknown>) => {
+              const raw = (e as { url?: unknown; uri?: unknown; href?: unknown });
+              const candidate = (raw.url || raw.uri || raw.href) as unknown;
+              const url = typeof candidate === 'string' ? candidate.toLowerCase() : undefined;
+              return !!url && (url.includes('choochoo.pro') || url.includes('choochoo'));
+            });
 
             console.log(`🔍 [cast-status] Examining cast ${cast.hash}: "${cast.text?.substring(0, 50)}..." (${castDate.toISOString()})`);
 
-            if (castDate > fifteenMinutesAgo && castText.includes('@choochoo')) {
+            if (castDate > fifteenMinutesAgo && (castText.includes('@choochoo') || hasChoochooEmbed)) {
               console.log(`✅ [cast-status] Found recent @choochoo cast via API fallback: ${cast.hash}`);
               console.log(`✅ [cast-status] Cast details: FID=${cast.author.fid}, text="${cast.text}", timestamp=${cast.timestamp}`);
 
