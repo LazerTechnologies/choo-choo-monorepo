@@ -1,15 +1,13 @@
 import { NextResponse } from 'next/server';
-import { APP_URL, ADMIN_FIDS } from '@/lib/constants';
-import { isTrustedOrigin } from '@/lib/auth/require-admin';
+import { APP_URL } from '@/lib/constants';
+import { adminMiddleware } from '@/lib/auth/simple-admin-middleware';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function POST(request: Request) {
-  // Basic origin check for CSRF protection
-  if (!isTrustedOrigin(request)) {
-    return NextResponse.json({ error: 'Forbidden origin' }, { status: 403 });
-  }
+  const auth = await adminMiddleware(request);
+  if (!auth.ok) return auth.response;
 
   const ADMIN_SECRET = process.env.ADMIN_SECRET || '';
   if (!ADMIN_SECRET) {
@@ -20,18 +18,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    // Extract the actual request data (no frame wrapper needed)
-    const body = await request.json();
-
-    // Use first admin FID as fallback since we're relying on UI gating
-    const fallbackAdminFid = ADMIN_FIDS[0] || 0;
+    const body = auth.body;
 
     const upstream = await fetch(`${APP_URL}/api/admin/generate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-admin-secret': ADMIN_SECRET,
-        'x-admin-fid': String(fallbackAdminFid),
+        'x-admin-fid': String(auth.adminFid),
       },
       body: JSON.stringify(body),
       cache: 'no-store',

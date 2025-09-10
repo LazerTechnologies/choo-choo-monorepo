@@ -234,7 +234,14 @@ function AdminGenerate({ adminFid, disabled = false }: { adminFid?: number; disa
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({}),
+        body: JSON.stringify({
+          miniAppContext: {
+            userFid: adminFid,
+            isAuthenticated: true,
+            hasContext: true,
+          },
+          fid: adminFid,
+        }),
       });
       const data = await res.json();
 
@@ -437,6 +444,12 @@ function SetInitialHolder({
         credentials: 'include',
         body: JSON.stringify({
           targetFid: selectedUser.fid,
+          miniAppContext: {
+            userFid: adminFid,
+            isAuthenticated: true,
+            hasContext: true,
+          },
+          fid: adminFid,
         }),
       });
 
@@ -625,6 +638,12 @@ function SetTicketMetadata({
           tokenId: tokenIdNumber,
           tokenURI,
           image: '',
+          miniAppContext: {
+            userFid: adminFid,
+            isAuthenticated: true,
+            hasContext: true,
+          },
+          fid: adminFid,
         }),
       });
 
@@ -981,6 +1000,12 @@ function AppPauseToggle({ adminFid, disabled = false }: { adminFid?: number; dis
         credentials: 'include',
         body: JSON.stringify({
           isPaused: pendingState,
+          miniAppContext: {
+            userFid: adminFid,
+            isAuthenticated: true,
+            hasContext: true,
+          },
+          fid: adminFid,
         }),
       });
 
@@ -1333,7 +1358,15 @@ function RedisRepair({ adminFid, disabled = false }: { adminFid?: number; disabl
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ dryRun }),
+        body: JSON.stringify({
+          dryRun,
+          miniAppContext: {
+            userFid: adminFid,
+            isAuthenticated: true,
+            hasContext: true,
+          },
+          fid: adminFid,
+        }),
         credentials: 'include',
       });
 
