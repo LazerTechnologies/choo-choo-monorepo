@@ -10,9 +10,10 @@ interface NeynarConversationResponse {
           username: string;
           display_name: string;
           pfp_url: string;
+          custody_address: string;
+          verifications: string[];
           verified_addresses: {
-            eth_addresses: string[];
-            primary: { eth_address: string | null };
+            eth_addresses?: string[];
           };
         };
       }>;
@@ -58,6 +59,12 @@ async function fetchReplies(castHash: string): Promise<
 > {
   if (!NEYNAR_API_KEY) throw new Error('Missing NEYNAR_API_KEY');
 
+  // Validate cast hash
+  console.log(`[internal/select-winner] Processing cast hash: ${castHash}`);
+  if (!castHash || typeof castHash !== 'string') {
+    throw new Error(`Invalid cast hash: ${castHash}`);
+  }
+
   // Fetch all replies to the cast with pagination
   let allReplies: Array<{
     author: {
@@ -65,9 +72,10 @@ async function fetchReplies(castHash: string): Promise<
       username: string;
       display_name: string;
       pfp_url: string;
+      custody_address: string;
+      verifications: string[];
       verified_addresses: {
-        eth_addresses: string[];
-        primary: { eth_address: string | null };
+        eth_addresses?: string[];
       };
     };
   }> = [];
@@ -80,24 +88,39 @@ async function fetchReplies(castHash: string): Promise<
     url.searchParams.set('reply_depth', '1');
     url.searchParams.set('limit', '50');
     url.searchParams.set('include_chronological_parent_casts', 'false');
-    url.searchParams.set('fold', 'true'); // only high quality replies
+    url.searchParams.set('fold', 'above'); // fold replies above threshold
     if (cursor) url.searchParams.set('cursor', cursor);
+
+    console.log(`[internal/select-winner] Making Neynar API request to: ${url.toString()}`);
 
     const conversationRes = await fetch(url.toString(), {
       headers: { accept: 'application/json', 'x-api-key': NEYNAR_API_KEY },
     });
 
     if (!conversationRes.ok) {
+      let errorDetails = '';
+      try {
+        const errorBody = await conversationRes.text();
+        errorDetails = errorBody;
+        console.error(`[internal/select-winner] Neynar API error response: ${errorBody}`);
+      } catch {
+        console.error(`[internal/select-winner] Could not read error response body`);
+      }
+      
       throw new Error(
-        `Failed to fetch conversation from Neynar: ${conversationRes.status} ${conversationRes.statusText}`
+        `Failed to fetch conversation from Neynar: ${conversationRes.status} ${conversationRes.statusText}. Response: ${errorDetails}`
       );
     }
 
     const conversationData: NeynarConversationResponse = await conversationRes.json();
     const replies = conversationData?.conversation?.cast?.direct_replies ?? [];
+    console.log(`[internal/select-winner] Fetched ${replies.length} replies in this batch`);
     allReplies = allReplies.concat(replies);
     cursor = conversationData?.next?.cursor || undefined;
+    console.log(`[internal/select-winner] Next cursor: ${cursor ? 'exists' : 'none'}`);
   } while (cursor);
+
+  console.log(`[internal/select-winner] Total raw replies fetched: ${allReplies.length}`);
 
   // Collect unique users who replied (deduplicate by FID)
   const uniqueUsers: Map<
@@ -118,11 +141,29 @@ async function fetchReplies(castHash: string): Promise<
 
     if (uniqueUsers.has(fid)) continue;
 
-    const verifiedAddresses = user.verified_addresses;
-    const primaryWallet =
-      verifiedAddresses?.primary?.eth_address || verifiedAddresses?.eth_addresses?.[0];
+    // Try to get a valid Ethereum address from various sources
+    let primaryWallet: string | undefined;
+    
+    // First try verified_addresses.eth_addresses (most reliable)
+    if (user.verified_addresses?.eth_addresses?.length) {
+      primaryWallet = user.verified_addresses.eth_addresses[0];
+    }
+    // Fallback to verifications array (legacy format)
+    else if (user.verifications?.length > 0) {
+      // Find first valid Ethereum address in verifications
+      primaryWallet = user.verifications.find(addr => 
+        typeof addr === 'string' && isAddress(addr)
+      );
+    }
+    // Last resort: custody address
+    else if (user.custody_address && isAddress(user.custody_address)) {
+      primaryWallet = user.custody_address;
+    }
 
-    if (!primaryWallet || !isAddress(primaryWallet)) continue;
+    if (!primaryWallet || !isAddress(primaryWallet)) {
+      console.log(`[internal/select-winner] Skipping user ${user.username} (${user.fid}) - no valid wallet address`);
+      continue;
+    }
 
     uniqueUsers.set(fid, {
       fid,
@@ -133,7 +174,15 @@ async function fetchReplies(castHash: string): Promise<
     });
   }
 
-  return Array.from(uniqueUsers.values());
+  const finalRepliers = Array.from(uniqueUsers.values());
+  console.log(`[internal/select-winner] Final eligible repliers: ${finalRepliers.length}`);
+  console.log(`[internal/select-winner] Filtered out ${allReplies.length - finalRepliers.length} replies (duplicates/no-wallet)`);
+  
+  if (finalRepliers.length > 0) {
+    console.log(`[internal/select-winner] Sample repliers:`, finalRepliers.slice(0, 3).map(r => `${r.username} (${r.fid})`));
+  }
+
+  return finalRepliers;
 }
 
 /**
