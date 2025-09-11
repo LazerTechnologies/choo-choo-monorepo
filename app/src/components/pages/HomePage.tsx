@@ -16,7 +16,7 @@ import { WorkflowState } from '@/lib/workflow-types';
 import { APP_URL } from '@/lib/constants';
 import { sdk } from '@farcaster/miniapp-sdk';
 import Image from 'next/image';
-import { ChevronDown } from 'lucide-react';
+import { ChevronsDown } from 'lucide-react';
 import { useEffect, useState, useRef, useCallback } from 'react';
 
 interface HomePageProps {
@@ -397,7 +397,7 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
               }
             }}
           >
-            <ChevronDown size={hasScrolled ? 20 : 24} className="transition-all duration-300" />
+            <ChevronsDown size={hasScrolled ? 20 : 24} className="transition-all duration-300" />
           </div>
         </div>
       )}
