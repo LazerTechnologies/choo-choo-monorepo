@@ -16,6 +16,8 @@ import { WorkflowState } from '@/lib/workflow-types';
 import { APP_URL } from '@/lib/constants';
 import { sdk } from '@farcaster/miniapp-sdk';
 import Image from 'next/image';
+import { ChevronDown } from 'lucide-react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 
 interface HomePageProps {
   title: string;
@@ -33,9 +35,116 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
   //   'loading' | 'has-ridden' | 'not-ridden' | 'error'
   // >('loading');
 
+  // Scroll indicator state
+  const [showScrollIndicator, setShowScrollIndicator] = useState(true);
+  const [hasScrolled, setHasScrolled] = useState(false);
+
+  // Refs for scroll targets
+  const winnerSelectionRef = useRef<HTMLDivElement>(null);
+  const castingWidgetRef = useRef<HTMLDivElement>(null);
+  const castDisplayRef = useRef<HTMLDivElement>(null);
+  const publicChanceRef = useRef<HTMLDivElement>(null);
+  const currentHolderRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const [visible, setVisible] = useState<Record<string, boolean>>({});
+
   const handleWorkflowRefresh = () => {
     refreshWorkflow();
   };
+
+  const getScrollTarget = useCallback(() => {
+    const targets = [winnerSelectionRef, castingWidgetRef, castDisplayRef, publicChanceRef];
+
+    for (const ref of targets) {
+      if (ref.current && ref.current.offsetParent !== null) {
+        return ref.current;
+      }
+    }
+
+    return currentHolderRef.current;
+  }, []);
+
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return;
+
+    const entriesToState = (entries: IntersectionObserverEntry[]) => {
+      setVisible((prev) => {
+        const next = { ...prev } as Record<string, boolean>;
+        for (const e of entries) {
+          const id = (e.target as HTMLElement).dataset.scrollid as string;
+          if (!id) continue;
+          next[id] = e.isIntersecting && e.intersectionRatio > 0.05;
+        }
+        return next;
+      });
+    };
+
+    const io = new IntersectionObserver(entriesToState, {
+      root,
+      threshold: [0, 0.05, 0.5, 1],
+      rootMargin: '0px 0px -15% 0px',
+    });
+
+    const targets: Array<{ id: string; el: HTMLElement | null }> = [
+      { id: 'winner', el: winnerSelectionRef.current },
+      { id: 'casting', el: castingWidgetRef.current },
+      { id: 'display', el: castDisplayRef.current },
+      { id: 'chance', el: publicChanceRef.current },
+    ];
+
+    const observed: HTMLElement[] = [];
+    for (const { id, el } of targets) {
+      if (el) {
+        el.dataset.scrollid = id;
+        io.observe(el);
+        observed.push(el);
+      }
+    }
+
+    // Kick an initial measurement
+    root.dispatchEvent(new Event('scroll'));
+
+    return () => {
+      for (const el of observed) io.unobserve(el);
+      io.disconnect();
+    };
+  }, [workflowData.state, isCurrentHolder]);
+
+  // use container metrics for scroll indicator logic
+  useEffect(() => {
+    const root = containerRef.current;
+    if (!root) return;
+
+    let ticking = false;
+    const handleScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        ticking = false;
+        const scrollTop = root.scrollTop;
+        const containerHeight = root.clientHeight;
+        const contentHeight = root.scrollHeight;
+
+        if (scrollTop > 0 && !hasScrolled) setHasScrolled(true);
+
+        const isNearBottom = scrollTop + containerHeight >= contentHeight - 100;
+
+        // Determine if there is a next target to scroll to (first non-visible prioritized target)
+        const nextExists =
+          !visible['winner'] || !visible['casting'] || !visible['display'] || !visible['chance'];
+        const isPageScrollable = contentHeight > containerHeight + 50; // buffer
+
+        setShowScrollIndicator(!isNearBottom && (nextExists || isPageScrollable));
+      });
+    };
+
+    root.addEventListener('scroll', handleScroll, { passive: true });
+    // Initial check
+    handleScroll();
+    return () => root.removeEventListener('scroll', handleScroll);
+  }, [hasScrolled, visible]);
 
   const handleAllAboard = async () => {
     try {
@@ -120,7 +229,7 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
     isCurrentHolder;
 
   return (
-    <div className="overflow-y-auto h-[calc(100vh-200px)] px-6">
+    <div ref={containerRef} className="overflow-y-auto h-[calc(100vh-200px)] px-6">
       {!shouldShowCastingWidget && (
         <div className="flex flex-col items-center justify-center py-8">
           {/* <Typography variant="h1" className="text-center mb-4 text-white text-4xl">
@@ -186,7 +295,7 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
                 You&apos;re the current passenger! Send out a cast to let everyone know. After,
                 you&apos;ll be able to choose where ChooChoo goes next.
               </Typography>
-              <div className="w-full flex justify-center">
+              <div ref={castingWidgetRef} className="w-full flex justify-center">
                 <CastingWidget onCastSent={handleWorkflowRefresh} />
               </div>
             </>
@@ -194,7 +303,7 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
 
           {/* CASTED: Show winner selection widget only to current holder */}
           {workflowData.state === WorkflowState.CASTED && isCurrentHolder && (
-            <div className="w-full">
+            <div ref={winnerSelectionRef} className="w-full">
               <WinnerSelectionWidget onTokenMinted={handleWorkflowRefresh} />
             </div>
           )}
@@ -202,7 +311,7 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
           {/* CHANCE_ACTIVE & CHANCE_EXPIRED: Show public chance widget to everyone */}
           {(workflowData.state === WorkflowState.CHANCE_ACTIVE ||
             workflowData.state === WorkflowState.CHANCE_EXPIRED) && (
-            <div className="w-full space-y-4">
+            <div ref={publicChanceRef} className="w-full space-y-4">
               <PublicChanceWidget />
             </div>
           )}
@@ -220,7 +329,7 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
           {!isCurrentHolder &&
             workflowData.state !== WorkflowState.NOT_CASTED &&
             workflowData.currentCastHash && (
-              <div className="w-full mt-4 flex justify-center">
+              <div ref={castDisplayRef} className="w-full mt-4 flex justify-center">
                 <CastDisplayWidget castHash={workflowData.currentCastHash} />
               </div>
             )}
@@ -228,7 +337,7 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
       )}
 
       {/* Current Stop Section */}
-      <div className="w-full max-w-md mx-auto mb-8">
+      <div ref={currentHolderRef} className="w-full max-w-md mx-auto mb-8">
         <Typography variant="h3" className="text-center mb-4 text-gray-100 dark:text-gray-100">
           ChooChoo&apos;s Journey
         </Typography>
@@ -267,6 +376,31 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
           <p className="text-sm text-white dark:text-white">Base 🔵 | Farcaster 💜</p>
         </div>
       </div>
+
+      {/* Scroll Indicator */}
+      {showScrollIndicator && (
+        <div className="fixed bottom-32 right-6 z-50">
+          <div
+            className={`
+              bg-purple-600 text-white rounded-full p-2 shadow-lg cursor-pointer
+              transition-all duration-300 ease-in-out
+              ${hasScrolled ? 'scale-90' : 'scale-100'}
+              hover:bg-purple-700 hover:scale-105
+            `}
+            onClick={() => {
+              const target = getScrollTarget();
+              const root = containerRef.current;
+              if (target && root) {
+                const offset = target.offsetTop - root.offsetTop - root.clientHeight * 0.2;
+                const top = Math.max(0, offset);
+                root.scrollTo({ top, behavior: 'smooth' });
+              }
+            }}
+          >
+            <ChevronDown size={hasScrolled ? 20 : 24} className="transition-all duration-300" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
