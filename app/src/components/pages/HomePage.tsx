@@ -12,6 +12,7 @@ import { JourneyTimeline } from '@/components/ui/timeline';
 import { useCurrentHolder } from '@/hooks/useCurrentHolder';
 import { useWorkflowState } from '@/hooks/useWorkflowState';
 import { useSoundPlayer } from '@/hooks/useSoundPlayer';
+import { useYoinkCountdown } from '@/hooks/useYoinkCountdown';
 import { WorkflowState } from '@/lib/workflow-types';
 import { APP_URL } from '@/lib/constants';
 import { sdk } from '@farcaster/miniapp-sdk';
@@ -25,12 +26,13 @@ interface HomePageProps {
 }
 
 export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
-  const { context } = useMiniApp();
+  const { context, setActiveTab } = useMiniApp();
   const { isCurrentHolder, loading: isHolderLoading } = useCurrentHolder();
   const { workflowData, loading: isWorkflowLoading, refetch: refreshWorkflow } = useWorkflowState();
   // disabled for now -- share button
   //const { address: userAddress, isLoading: isAddressLoading } = useCurrentUserAddress();
   const { playChooChoo } = useSoundPlayer();
+  const countdownState = useYoinkCountdown();
   // const [rideHistoryStatus, setRideHistoryStatus] = useState<
   //   'loading' | 'has-ridden' | 'not-ridden' | 'error'
   // >('loading');
@@ -257,11 +259,39 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
           <Button
             variant="link"
             onClick={handleAllAboard}
-            className="mt-2 text-gray-300 dark:text-gray-300 hover:text-purple-500 
+            className="mt-2 text-gray-300 dark:text-gray-300 hover:text-purple-500
             dark:hover:text-purple-500 transition-colors"
           >
             🚂 All aboard!
           </Button>
+
+          {/* Yoink Timer Display */}
+          <div className="mt-4 flex justify-center">
+            {countdownState.isLoading ? (
+              <Typography variant="body" className="!text-white font-sans">
+                Loading countdown...
+              </Typography>
+            ) : countdownState.error ? (
+              <Typography variant="body" className="!text-red-300 font-sans">
+                Error: {countdownState.error}
+              </Typography>
+            ) : countdownState.isAvailable ? (
+              <Button
+                onClick={() => setActiveTab('yoink')}
+                className="!text-white hover:!text-white !bg-purple-500 !border-2 !border-white px-4 py-2 text-sm"
+                style={{ backgroundColor: '#a855f7' }}
+              >
+                <Typography variant="body" className="!text-white font-sans">
+                  Yoink ChooChoo now!
+                </Typography>
+              </Button>
+            ) : (
+              <Typography variant="body" className="!text-white font-sans">
+                ⏱️ Yoink in: {countdownState.shortFormat}
+              </Typography>
+            )}
+          </div>
+
           {/* Hide Share ChooChoo button if user is current holder to avoid confusion */}
           {/* {!isCurrentHolder && (
             <div className="mt-4 flex justify-center">
