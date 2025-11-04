@@ -6,8 +6,9 @@ import {
   type Abi,
   getContract,
   decodeEventLog,
+  NonceTooLowError,
 } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
+import { privateKeyToAccount, nonceManager } from 'viem/accounts';
 import { base, baseSepolia } from 'wagmi/chains';
 import ChooChooTrainAbiJson from '@/abi/ChooChooTrain.abi.json';
 
@@ -36,6 +37,8 @@ interface TrainStatus {
 export class ContractService {
   private config: ContractConfig;
   private chain;
+  private adminAccount: ReturnType<typeof privateKeyToAccount> | null = null;
+  private walletClient: ReturnType<typeof createWalletClient> | null = null;
 
   constructor(config: ContractConfig) {
     this.config = config;
@@ -58,6 +61,62 @@ export class ContractService {
       adminPrivateKey,
       useMainnet,
     });
+  }
+
+  private getAdminAccount() {
+    if (!this.config.adminPrivateKey) {
+      throw new Error(
+        'Missing ADMIN_PRIVATE_KEY for contract execution. Admin role required for this operation.',
+      );
+    }
+
+    if (!this.adminAccount) {
+      this.adminAccount = privateKeyToAccount(this.config.adminPrivateKey, { nonceManager });
+    }
+
+    return this.adminAccount;
+  }
+
+  private getWalletClient() {
+    if (!this.walletClient) {
+      const account = this.getAdminAccount();
+      this.walletClient = createWalletClient({
+        account,
+        chain: this.chain,
+        transport: http(this.config.rpcUrl),
+      });
+    }
+
+    return this.walletClient;
+  }
+
+  private resetNonceManager() {
+    const account = this.adminAccount;
+    if (account?.nonceManager) {
+      account.nonceManager.reset({ address: account.address, chainId: this.chain.id });
+    }
+  }
+
+  private isNonceTooLowError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') return false;
+    if (error instanceof NonceTooLowError) return true;
+
+    const cause = (error as { cause?: unknown }).cause;
+    if (!cause) return false;
+    return this.isNonceTooLowError(cause);
+  }
+
+  private async executeWithNonceRetry<T>(operation: () => Promise<T>): Promise<T> {
+    try {
+      return await operation();
+    } catch (error) {
+      if (this.isNonceTooLowError(error)) {
+        console.warn('[ContractService] Nonce too low detected, resetting nonce manager and retrying.');
+        this.resetNonceManager();
+        return await operation();
+      }
+      throw error;
+    }
   }
 
   private createPublicClient() {
@@ -200,19 +259,8 @@ export class ContractService {
    * @todo: use coinbase paymaster to cover gas costs
    */
   async executeYoink(recipient: Address): Promise<`0x${string}`> {
-    if (!this.config.adminPrivateKey) {
-      throw new Error(
-        'Missing ADMIN_PRIVATE_KEY for contract execution. Admin role required for yoink operation.'
-      );
-    }
-
     try {
-      const account = privateKeyToAccount(this.config.adminPrivateKey);
-      const walletClient = createWalletClient({
-        account,
-        chain: this.chain,
-        transport: http(this.config.rpcUrl),
-      });
+      const walletClient = this.getWalletClient();
 
       const contract = getContract({
         address: this.config.address,
@@ -220,7 +268,7 @@ export class ContractService {
         client: walletClient,
       });
 
-      const hash = await contract.write.yoink([recipient]);
+      const hash = await this.executeWithNonceRetry(() => contract.write.yoink([recipient]));
       return hash;
     } catch (error) {
       // Enhanced error handling for yoink-specific restrictions
@@ -253,19 +301,8 @@ export class ContractService {
    * Set ticket metadata on the contract (admin-only)
    */
   async setTicketData(tokenId: number, tokenURI: string, image: string): Promise<`0x${string}`> {
-    if (!this.config.adminPrivateKey) {
-      throw new Error(
-        'Missing ADMIN_PRIVATE_KEY for contract execution. Admin role required for setting ticket data.'
-      );
-    }
-
     try {
-      const account = privateKeyToAccount(this.config.adminPrivateKey);
-      const walletClient = createWalletClient({
-        account,
-        chain: this.chain,
-        transport: http(this.config.rpcUrl),
-      });
+      const walletClient = this.getWalletClient();
 
       const contract = getContract({
         address: this.config.address,
@@ -273,7 +310,9 @@ export class ContractService {
         client: walletClient,
       });
 
-      const hash = await contract.write.setTicketData([BigInt(tokenId), tokenURI, image]);
+      const hash = await this.executeWithNonceRetry(() =>
+        contract.write.setTicketData([BigInt(tokenId), tokenURI, image])
+      );
       return hash;
     } catch (error) {
       // Enhanced error handling for setTicketData-specific restrictions
@@ -303,19 +342,8 @@ export class ContractService {
    * @todo: use coinbase paymaster to cover gas costs
    */
   async executeNextStop(recipient: Address, tokenURI: string): Promise<`0x${string}`> {
-    if (!this.config.adminPrivateKey) {
-      throw new Error(
-        'Missing ADMIN_PRIVATE_KEY for contract execution. Admin role required for train movement.'
-      );
-    }
-
     try {
-      const account = privateKeyToAccount(this.config.adminPrivateKey);
-      const walletClient = createWalletClient({
-        account,
-        chain: this.chain,
-        transport: http(this.config.rpcUrl),
-      });
+      const walletClient = this.getWalletClient();
 
       const contract = getContract({
         address: this.config.address,
@@ -323,7 +351,9 @@ export class ContractService {
         client: walletClient,
       });
 
-      const hash = await contract.write.nextStop([recipient, tokenURI]);
+      const hash = await this.executeWithNonceRetry(() =>
+        contract.write.nextStop([recipient, tokenURI])
+      );
       return hash;
     } catch (error) {
       // Enhanced error handling for admin-only restrictions
@@ -354,7 +384,7 @@ export class ContractService {
       throw new Error('Missing ADMIN_PRIVATE_KEY for gas estimation');
     }
 
-    const account = privateKeyToAccount(this.config.adminPrivateKey);
+    const account = this.getAdminAccount();
     const publicClient = this.createPublicClient();
 
     const gasEstimate = await publicClient.estimateContractGas({
@@ -377,12 +407,7 @@ export class ContractService {
     }
 
     try {
-      const account = privateKeyToAccount(this.config.adminPrivateKey);
-      const walletClient = createWalletClient({
-        account,
-        chain: this.chain,
-        transport: http(this.config.rpcUrl),
-      });
+      const walletClient = this.getWalletClient();
 
       const contract = getContract({
         address: this.config.address,
@@ -390,7 +415,9 @@ export class ContractService {
         client: walletClient,
       });
 
-      const hash = await contract.write.setMainTokenURI([tokenURI]);
+      const hash = await this.executeWithNonceRetry(() =>
+        contract.write.setMainTokenURI([tokenURI])
+      );
       console.log(`[ContractService] setMainTokenURI transaction hash: ${hash}`);
       return hash;
     } catch (error) {
