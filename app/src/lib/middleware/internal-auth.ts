@@ -1,3 +1,5 @@
+import '@/lib/sanitize-logging';
+
 import { NextResponse } from 'next/server';
 
 export type ApiHandler = (request: Request) => Promise<Response>;

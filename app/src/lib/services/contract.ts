@@ -1,3 +1,5 @@
+import '@/lib/sanitize-logging';
+
 import {
   createPublicClient,
   createWalletClient,
