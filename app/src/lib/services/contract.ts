@@ -281,6 +281,29 @@ export class ContractService {
 				contract.write.yoink([recipient]),
 			);
 
+			console.log(`[ContractService] Yoink transaction hash returned: ${hash}`);
+
+			// Verify transaction was actually broadcast to the network
+			try {
+				const tx = await publicClient.getTransaction({ hash });
+				if (!tx) {
+					throw new Error(
+						`Yoink transaction ${hash} was not found on the network. The transaction may have failed to broadcast.`,
+					);
+				}
+				console.log(
+					`[ContractService] Yoink transaction ${hash} confirmed on network, waiting for mining...`,
+				);
+			} catch (txCheckError) {
+				console.error(
+					`[ContractService] Failed to verify yoink transaction ${hash} exists:`,
+					txCheckError,
+				);
+				throw new Error(
+					`Yoink transaction ${hash} does not exist on the blockchain. The RPC may have failed to broadcast. Check RPC connectivity and try again.`,
+				);
+			}
+
 			// Wait for transaction to be mined and check status
 			console.log(
 				`[ContractService] Waiting for yoink transaction ${hash} to be mined...`,
@@ -386,6 +409,46 @@ export class ContractService {
 		try {
 			const walletClient = this.getWalletClient();
 			const publicClient = this.createPublicClient();
+			const account = this.getAdminAccount();
+
+			// Pre-flight: Estimate gas to catch issues before broadcasting
+			try {
+				console.log(
+					`[ContractService] Estimating gas for nextStop to ${recipient}...`,
+				);
+				const gasEstimate = await publicClient.estimateContractGas({
+					address: this.config.address,
+					abi: ChooChooTrainAbi,
+					functionName: "nextStop",
+					args: [recipient, tokenURI],
+					account,
+				});
+				console.log(
+					`[ContractService] Gas estimate: ${gasEstimate.toString()} units`,
+				);
+			} catch (gasError) {
+				console.error(
+					`[ContractService] Gas estimation failed for nextStop:`,
+					gasError,
+				);
+				// Try to extract useful error message from the gas estimation failure
+				if (gasError instanceof Error) {
+					if (gasError.message.includes("AlreadyRodeTrain")) {
+						throw new Error(
+							`Recipient ${recipient} has already ridden the train and cannot receive it again (caught during gas estimation)`,
+						);
+					}
+					if (gasError.message.includes("CannotSendToCurrentPassenger")) {
+						throw new Error(
+							`Cannot send train to current holder ${recipient} (caught during gas estimation)`,
+						);
+					}
+					throw new Error(
+						`Transaction will likely fail: ${gasError.message}. Gas estimation failed, indicating the transaction would revert.`,
+					);
+				}
+				throw gasError;
+			}
 
 			const contract = getContract({
 				address: this.config.address,
@@ -396,6 +459,29 @@ export class ContractService {
 			const hash = await this.executeWithNonceRetry(() =>
 				contract.write.nextStop([recipient, tokenURI]),
 			);
+
+			console.log(`[ContractService] Transaction hash returned: ${hash}`);
+
+			// Verify transaction was actually broadcast to the network
+			try {
+				const tx = await publicClient.getTransaction({ hash });
+				if (!tx) {
+					throw new Error(
+						`Transaction ${hash} was not found on the network. The transaction may have failed to broadcast or was rejected by the RPC. This could be due to gas issues, nonce problems, or network connectivity.`,
+					);
+				}
+				console.log(
+					`[ContractService] Transaction ${hash} confirmed on network, waiting for mining...`,
+				);
+			} catch (txCheckError) {
+				console.error(
+					`[ContractService] Failed to verify transaction ${hash} exists on network:`,
+					txCheckError,
+				);
+				throw new Error(
+					`Transaction ${hash} does not exist on the blockchain. The RPC may have returned a hash but failed to broadcast the transaction. Check RPC connectivity and try again.`,
+				);
+			}
 
 			// Wait for transaction to be mined and check status
 			console.log(
