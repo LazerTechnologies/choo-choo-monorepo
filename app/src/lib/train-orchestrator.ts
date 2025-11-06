@@ -231,10 +231,16 @@ export async function orchestrateTrainMovement(
 /**
  * Manual send orchestrator using prepare-then-commit pattern
  *
- * This function implements a two-phase approach:
- * 1. Preparation Phase: Fetch all data, validate, prepare structures (reversible)
- * 2. Commit Phase: Execute blockchain transaction (point of no return)
- * 3. Post-Commit Phase: Update app state with prepared data (should rarely fail)
+ * This function implements a multi-phase approach with pre-flight validation:
+ * 1. Pre-Flight Phase: Validate contract conditions BEFORE generating NFT (prevents wasteful Pinata uploads)
+ * 2. Preparation Phase: Generate NFT and upload to Pinata (cached in Redis for idempotency)
+ * 3. Commit Phase: Execute blockchain transaction (point of no return, waits for confirmation)
+ * 4. Post-Commit Phase: Update app state with prepared data (should rarely fail)
+ * 5. Cleanup on Error: Clear pending cache if commit fails (allows retry with regeneration)
+ *
+ * ARCHITECTURE NOTE: Pinata uploads cannot be rolled back. If a mint fails after upload,
+ * the data remains on IPFS. However, we clear the Redis cache to allow regeneration on retry.
+ * The pre-flight validation minimizes this by catching contract rejections before upload.
  */
 export async function orchestrateManualSend(
 	currentHolderFid: number,
@@ -275,7 +281,7 @@ export async function orchestrateManualSend(
 	}
 
 	try {
-		// 2) Authoritative next token id
+		// 2) Authoritative next token id and contract service
 		const contractService = getContractService();
 		const nextTokenId = await contractService.getNextOnChainTicketId();
 
@@ -301,6 +307,34 @@ export async function orchestrateManualSend(
 			user.verified_addresses?.primary?.eth_address ||
 			user.verified_addresses?.eth_addresses?.[0];
 		if (!targetAddress) throw new Error("Target user missing address");
+
+		// PRE-FLIGHT VALIDATION: Check contract conditions BEFORE generating NFT
+		// This prevents wasteful Pinata uploads if the transaction will revert
+		console.log(
+			`[orchestrateManualSend] Pre-flight validation for target ${targetAddress}`,
+		);
+
+		// Check if target has already ridden the train
+		const hasRidden = await contractService.hasBeenPassenger(
+			targetAddress as `0x${string}`,
+		);
+		if (hasRidden) {
+			throw new Error(
+				`Target user ${user.username} (${targetAddress}) has already ridden the train and cannot receive it again`,
+			);
+		}
+
+		// Check if trying to send to current holder
+		const currentContractHolder = await contractService.getCurrentTrainHolder();
+		if (currentContractHolder.toLowerCase() === targetAddress.toLowerCase()) {
+			throw new Error(
+				`Cannot send train to current holder ${user.username} (${targetAddress})`,
+			);
+		}
+
+		console.log(
+			"[orchestrateManualSend] Pre-flight validation passed - target is eligible",
+		);
 
 		if (!skipNeynarScoreCheck) {
 			const targetScoreCheck = await checkNeynarScore(targetFid);
@@ -365,36 +399,54 @@ export async function orchestrateManualSend(
 		});
 
 		// 4) Pure mint (no Redis writes - mint endpoint is now pure)
-		const mintRes = await fetch(`${APP_URL}/api/internal/mint-token`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				"x-internal-secret": INTERNAL_SECRET,
-			},
-			body: JSON.stringify({
-				newHolderAddress: targetAddress,
-				tokenURI: pending.tokenURI,
-				newHolderData: {
-					username: user.username,
-					fid: user.fid,
-					displayName: user.display_name,
-					pfpUrl: user.pfp_url,
+		let mintRes: Response;
+		let mint: { success: boolean; txHash: string; actualTokenId: number };
+		try {
+			mintRes = await fetch(`${APP_URL}/api/internal/mint-token`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"x-internal-secret": INTERNAL_SECRET,
 				},
-				previousHolderData: {
-					username: departingPassengerData.currentHolder.username,
-					fid: departingPassengerData.currentHolder.fid,
-					displayName: departingPassengerData.currentHolder.displayName,
-					pfpUrl: departingPassengerData.currentHolder.pfpUrl,
-				},
-				sourceCastHash: undefined,
-				totalEligibleReactors: 1,
-			}),
-		});
-		if (!mintRes.ok) {
-			const errText = await mintRes.text();
-			throw new Error(`mint-token failed: ${errText}`);
+				body: JSON.stringify({
+					newHolderAddress: targetAddress,
+					tokenURI: pending.tokenURI,
+					newHolderData: {
+						username: user.username,
+						fid: user.fid,
+						displayName: user.display_name,
+						pfpUrl: user.pfp_url,
+					},
+					previousHolderData: {
+						username: departingPassengerData.currentHolder.username,
+						fid: departingPassengerData.currentHolder.fid,
+						displayName: departingPassengerData.currentHolder.displayName,
+						pfpUrl: departingPassengerData.currentHolder.pfpUrl,
+					},
+					sourceCastHash: undefined,
+					totalEligibleReactors: 1,
+				}),
+			});
+			if (!mintRes.ok) {
+				const errText = await mintRes.text();
+				throw new Error(`mint-token failed: ${errText}`);
+			}
+			mint = await mintRes.json();
+		} catch (mintError) {
+			// Mint failed - clean up the pending NFT cache to allow retry
+			console.error(
+				`[orchestrateManualSend] Mint failed for token ${nextTokenId}, cleaning up pending cache`,
+			);
+			try {
+				await redis.del(REDIS_KEYS.pendingNFT(nextTokenId));
+			} catch (cleanupErr) {
+				console.warn(
+					`[orchestrateManualSend] Failed to clean up pending cache:`,
+					cleanupErr,
+				);
+			}
+			throw mintError;
 		}
-		const mint = await mintRes.json();
 
 		// Get the actual minted token ID from the transaction receipt
 		let actualTokenId: number;
@@ -646,6 +698,36 @@ export async function orchestrateRandomSend(castHash: string) {
 			);
 		}
 
+		// PRE-FLIGHT VALIDATION: Check contract conditions BEFORE generating NFT
+		console.log(
+			`[orchestrateRandomSend] Pre-flight validation for winner ${winnerData.winner.address}`,
+		);
+
+		// Check if winner has already ridden the train
+		const hasRidden = await contractService.hasBeenPassenger(
+			winnerData.winner.address as `0x${string}`,
+		);
+		if (hasRidden) {
+			throw new Error(
+				`Winner ${winnerData.winner.username} (${winnerData.winner.address}) has already ridden the train. Selecting a new winner is required.`,
+			);
+		}
+
+		// Check if trying to send to current holder
+		const currentContractHolder = await contractService.getCurrentTrainHolder();
+		if (
+			currentContractHolder.toLowerCase() ===
+			winnerData.winner.address.toLowerCase()
+		) {
+			throw new Error(
+				`Cannot send train to current holder ${winnerData.winner.username} (${winnerData.winner.address})`,
+			);
+		}
+
+		console.log(
+			"[orchestrateRandomSend] Pre-flight validation passed - winner is eligible",
+		);
+
 		// 4) Resolve departing passenger (current holder)
 		const currentHolderRes = await fetch(`${APP_URL}/api/current-holder`);
 		if (!currentHolderRes.ok) throw new Error("Failed to fetch current holder");
@@ -703,29 +785,47 @@ export async function orchestrateRandomSend(castHash: string) {
 		});
 
 		// 6) Pure mint (no Redis writes - mint endpoint is now pure)
-		const mintRes = await fetch(`${APP_URL}/api/internal/mint-token`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				"x-internal-secret": INTERNAL_SECRET,
-			},
-			body: JSON.stringify({
-				newHolderAddress: winnerData.winner.address,
-				tokenURI: pending.tokenURI,
-				newHolderData: winnerData.winner,
-				previousHolderData: {
-					username: departingPassengerData.currentHolder.username,
-					fid: departingPassengerData.currentHolder.fid,
-					displayName: departingPassengerData.currentHolder.displayName,
-					pfpUrl: departingPassengerData.currentHolder.pfpUrl,
+		let mintRes: Response;
+		let mint: { success: boolean; txHash: string; actualTokenId: number };
+		try {
+			mintRes = await fetch(`${APP_URL}/api/internal/mint-token`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"x-internal-secret": INTERNAL_SECRET,
 				},
-			}),
-		});
-		if (!mintRes.ok) {
-			const errText = await mintRes.text();
-			throw new Error(`mint-token failed: ${errText}`);
+				body: JSON.stringify({
+					newHolderAddress: winnerData.winner.address,
+					tokenURI: pending.tokenURI,
+					newHolderData: winnerData.winner,
+					previousHolderData: {
+						username: departingPassengerData.currentHolder.username,
+						fid: departingPassengerData.currentHolder.fid,
+						displayName: departingPassengerData.currentHolder.displayName,
+						pfpUrl: departingPassengerData.currentHolder.pfpUrl,
+					},
+				}),
+			});
+			if (!mintRes.ok) {
+				const errText = await mintRes.text();
+				throw new Error(`mint-token failed: ${errText}`);
+			}
+			mint = await mintRes.json();
+		} catch (mintError) {
+			// Mint failed - clean up the pending NFT cache to allow retry
+			console.error(
+				`[orchestrateRandomSend] Mint failed for token ${nextTokenId}, cleaning up pending cache`,
+			);
+			try {
+				await redis.del(REDIS_KEYS.pendingNFT(nextTokenId));
+			} catch (cleanupErr) {
+				console.warn(
+					`[orchestrateRandomSend] Failed to clean up pending cache:`,
+					cleanupErr,
+				);
+			}
+			throw mintError;
 		}
-		const mint = await mintRes.json();
 
 		// Get the actual minted token ID from the transaction receipt
 		let actualTokenId: number;
@@ -1063,13 +1163,30 @@ export async function orchestrateYoink(userFid: number, targetAddress: string) {
 		});
 
 		// 6) Execute yoink while holding the global movement lock
-		const txHash: string = await contractService.executeYoink(
-			targetAddress as `0x${string}`,
-		);
-		console.log(
-			`[orchestrateYoink] Executing yoink to address: ${targetAddress}`,
-		);
-		console.log(`[orchestrateYoink] Yoink transaction hash: ${txHash}`);
+		let txHash: string;
+		try {
+			txHash = await contractService.executeYoink(
+				targetAddress as `0x${string}`,
+			);
+			console.log(
+				`[orchestrateYoink] Executing yoink to address: ${targetAddress}`,
+			);
+			console.log(`[orchestrateYoink] Yoink transaction hash: ${txHash}`);
+		} catch (yoinkError) {
+			// Yoink transaction failed - clean up the pending NFT cache to allow retry
+			console.error(
+				`[orchestrateYoink] Yoink failed for token ${nextTokenId}, cleaning up pending cache`,
+			);
+			try {
+				await redis.del(REDIS_KEYS.pendingNFT(nextTokenId));
+			} catch (cleanupErr) {
+				console.warn(
+					`[orchestrateYoink] Failed to clean up pending cache:`,
+					cleanupErr,
+				);
+			}
+			throw yoinkError;
+		}
 
 		// Get the actual minted token ID from the transaction receipt
 		let actualTokenId: number;

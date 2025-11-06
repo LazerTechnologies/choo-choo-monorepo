@@ -269,6 +269,7 @@ export class ContractService {
 	async executeYoink(recipient: Address): Promise<`0x${string}`> {
 		try {
 			const walletClient = this.getWalletClient();
+			const publicClient = this.createPublicClient();
 
 			const contract = getContract({
 				address: this.config.address,
@@ -278,6 +279,29 @@ export class ContractService {
 
 			const hash = await this.executeWithNonceRetry(() =>
 				contract.write.yoink([recipient]),
+			);
+
+			// Wait for transaction to be mined and check status
+			console.log(
+				`[ContractService] Waiting for yoink transaction ${hash} to be mined...`,
+			);
+			const receipt = await publicClient.waitForTransactionReceipt({
+				hash,
+				timeout: 60_000, // 60 seconds
+			});
+
+			// Check if transaction reverted
+			if (receipt.status === "reverted") {
+				console.error(
+					`[ContractService] Yoink transaction ${hash} reverted on-chain`,
+				);
+				throw new Error(
+					`Yoink transaction reverted on-chain. The contract may have rejected the operation due to validation failures.`,
+				);
+			}
+
+			console.log(
+				`[ContractService] Yoink transaction ${hash} confirmed with status: ${receipt.status}`,
 			);
 			return hash;
 		} catch (error) {
@@ -361,6 +385,7 @@ export class ContractService {
 	): Promise<`0x${string}`> {
 		try {
 			const walletClient = this.getWalletClient();
+			const publicClient = this.createPublicClient();
 
 			const contract = getContract({
 				address: this.config.address,
@@ -370,6 +395,29 @@ export class ContractService {
 
 			const hash = await this.executeWithNonceRetry(() =>
 				contract.write.nextStop([recipient, tokenURI]),
+			);
+
+			// Wait for transaction to be mined and check status
+			console.log(
+				`[ContractService] Waiting for transaction ${hash} to be mined...`,
+			);
+			const receipt = await publicClient.waitForTransactionReceipt({
+				hash,
+				timeout: 60_000, // 60 seconds
+			});
+
+			// Check if transaction reverted
+			if (receipt.status === "reverted") {
+				console.error(
+					`[ContractService] Transaction ${hash} reverted on-chain`,
+				);
+				throw new Error(
+					`Transaction reverted on-chain. The contract may have rejected the operation due to validation failures (e.g., recipient already rode train, sending to current holder, etc.)`,
+				);
+			}
+
+			console.log(
+				`[ContractService] Transaction ${hash} confirmed with status: ${receipt.status}`,
 			);
 			return hash;
 		} catch (error) {
@@ -584,9 +632,31 @@ export class ContractService {
 				attempt++;
 			}
 			// If we got here, the receipt exists but has no mint events
-			console.error(
-				`[ContractService] Transaction ${txHash} receipt found but contains no mint events. This usually means the transaction reverted.`,
-			);
+			try {
+				const finalReceipt = await publicClient.getTransactionReceipt({
+					hash: txHash,
+				});
+				console.error(
+					`[ContractService] Transaction ${txHash} receipt found but contains no mint events.`,
+					{
+						status: finalReceipt.status,
+						gasUsed: finalReceipt.gasUsed.toString(),
+						logs: finalReceipt.logs.length,
+					},
+				);
+
+				if (finalReceipt.status === "reverted") {
+					throw new Error(
+						`Transaction reverted on-chain. Status: ${finalReceipt.status}. This usually means the contract rejected the operation (e.g., recipient already rode train, sending to current holder, or other validation failure).`,
+					);
+				}
+			} catch (receiptError) {
+				console.error(
+					`[ContractService] Could not fetch receipt for detailed error:`,
+					receiptError,
+				);
+			}
+
 			throw new Error(
 				"Transaction receipt did not include a recognizable mint event. The transaction may have reverted on-chain.",
 			);
