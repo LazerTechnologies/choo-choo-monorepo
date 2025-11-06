@@ -1,19 +1,23 @@
-import { getContractService } from '@/lib/services/contract';
+import { APP_URL } from "@/lib/constants";
+import { redis } from "@/lib/kv";
+import { sendChooChooNotification } from "@/lib/notifications";
 import {
-  acquireLock,
-  releaseLock,
-  getOrSetPendingGeneration,
-  storeTokenDataWriteOnce,
-  storeLastMovedTimestamp,
-  REDIS_KEYS,
-} from '@/lib/redis-token-utils';
-import { redis } from '@/lib/kv';
-import type { TokenData } from '@/types/nft';
-import { APP_URL } from '@/lib/constants';
-import { sendChooChooNotification } from '@/lib/notifications';
+	acquireLock,
+	getOrSetPendingGeneration,
+	REDIS_KEYS,
+	releaseLock,
+	storeLastMovedTimestamp,
+	storeTokenDataWriteOnce,
+} from "@/lib/redis-token-utils";
+import { getContractService } from "@/lib/services/contract";
+import {
+	checkNeynarScore,
+	MIN_NEYNAR_SCORE,
+} from "@/lib/services/neynar-score";
+import type { TokenData } from "@/types/nft";
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
-const TRAIN_MOVEMENT_LOCK_KEY = 'lock:train:movement';
+const TRAIN_MOVEMENT_LOCK_KEY = "lock:train:movement";
 
 /**
  * Verifies that the contract's nextTicketId has advanced correctly after minting.
@@ -25,50 +29,53 @@ const TRAIN_MOVEMENT_LOCK_KEY = 'lock:train:movement';
  * @param context - Context string for logging (e.g., 'train-orchestrator', 'orchestrateYoink')
  */
 async function verifyNextIdAdvanced(
-  contractService: ReturnType<typeof getContractService>,
-  mintedTokenId: number,
-  context: string
+	contractService: ReturnType<typeof getContractService>,
+	mintedTokenId: number,
+	context: string,
 ): Promise<void> {
-  try {
-    const postNextId = await contractService.getNextOnChainTicketId();
-    // The next ID should be at least one more than the minted token ID
-    // This is more tolerant since we're using the authoritative minted ID
-    if (postNextId <= mintedTokenId) {
-      console.warn(
-        `[${context}] Contract nextTicketId verification: expected > ${mintedTokenId}, got ${postNextId}`
-      );
-    } else {
-      console.log(
-        `[${context}] Contract nextTicketId verification passed: ${postNextId} > ${mintedTokenId}`
-      );
-    }
-  } catch (err) {
-    console.warn(`[${context}] Failed to verify post-mint contract state (non-critical):`, err);
-  }
+	try {
+		const postNextId = await contractService.getNextOnChainTicketId();
+		// The next ID should be at least one more than the minted token ID
+		// This is more tolerant since we're using the authoritative minted ID
+		if (postNextId <= mintedTokenId) {
+			console.warn(
+				`[${context}] Contract nextTicketId verification: expected > ${mintedTokenId}, got ${postNextId}`,
+			);
+		} else {
+			console.log(
+				`[${context}] Contract nextTicketId verification passed: ${postNextId} > ${mintedTokenId}`,
+			);
+		}
+	} catch (err) {
+		console.warn(
+			`[${context}] Failed to verify post-mint contract state (non-critical):`,
+			err,
+		);
+	}
 }
 
 export interface PassengerData {
-  username: string;
-  fid: number;
-  displayName: string;
-  pfpUrl: string;
-  address: string;
+	username: string;
+	fid: number;
+	displayName: string;
+	pfpUrl: string;
+	address: string;
 }
 
 export interface TrainMovementRequest {
-  newHolder: PassengerData;
-  departingPassenger: PassengerData;
-  sourceCastHash?: string;
-  totalEligibleReactors?: number;
-  sourceType: 'send-train' | 'user-send-train' | 'admin-send-train' | 'yoink';
+	newHolder: PassengerData;
+	departingPassenger: PassengerData;
+	sourceCastHash?: string;
+	totalEligibleReactors?: number;
+	sourceType: "send-train" | "user-send-train" | "admin-send-train" | "yoink";
 }
 
 export interface TrainMovementResult {
-  success: boolean;
-  tokenId: number;
-  txHash: string;
-  tokenURI: string;
-  error?: string;
+	success: boolean;
+	tokenId: number;
+	txHash: string;
+	tokenURI: string;
+	error?: string;
 }
 
 /**
@@ -86,121 +93,139 @@ export interface TrainMovementResult {
  * @returns Promise<TrainMovementResult> - The result of the train movement
  */
 export async function orchestrateTrainMovement(
-  request: TrainMovementRequest
+	request: TrainMovementRequest,
 ): Promise<TrainMovementResult> {
-  const { newHolder, departingPassenger, sourceCastHash, totalEligibleReactors, sourceType } =
-    request;
+	const {
+		newHolder,
+		departingPassenger,
+		sourceCastHash,
+		totalEligibleReactors,
+		sourceType,
+	} = request;
 
-  try {
-    // 1. Get the authoritative next token ID from the contract
-    const contractService = getContractService();
-    const tokenId = await contractService.getNextOnChainTicketId();
-    console.log(`[train-orchestrator] Next token ID from contract: ${tokenId}`);
+	try {
+		// 1. Get the authoritative next token ID from the contract
+		const contractService = getContractService();
+		const tokenId = await contractService.getNextOnChainTicketId();
+		console.log(`[train-orchestrator] Next token ID from contract: ${tokenId}`);
 
-    // 2. Generate NFT metadata with the departing passenger's username
-    let nftData;
-    try {
-      const generateResponse = await fetch(`${APP_URL}/api/internal/generate-nft`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-secret': INTERNAL_SECRET || '',
-        },
-        body: JSON.stringify({
-          tokenId,
-          passengerUsername: departingPassenger.username,
-        }),
-      });
+		// 2. Generate NFT metadata with the departing passenger's username
+		// biome-ignore lint/suspicious/noImplicitAnyLet: generation is internal
+		let nftData;
+		try {
+			const generateResponse = await fetch(
+				`${APP_URL}/api/internal/generate-nft`,
+				{
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						"x-internal-secret": INTERNAL_SECRET || "",
+					},
+					body: JSON.stringify({
+						tokenId,
+						passengerUsername: departingPassenger.username,
+					}),
+				},
+			);
 
-      if (!generateResponse.ok) {
-        const errorData = await generateResponse.json();
-        throw new Error(`NFT generation failed: ${errorData.error || 'Unknown error'}`);
-      }
+			if (!generateResponse.ok) {
+				const errorData = await generateResponse.json();
+				throw new Error(
+					`NFT generation failed: ${errorData.error || "Unknown error"}`,
+				);
+			}
 
-      nftData = await generateResponse.json();
-      if (!nftData.success) {
-        throw new Error(`NFT generation failed: ${nftData.error || 'Unknown error'}`);
-      }
-    } catch (err) {
-      console.error('[train-orchestrator] Failed to generate NFT:', err);
-      return {
-        success: false,
-        tokenId: 0,
-        txHash: '',
-        tokenURI: '',
-        error: `Failed to generate NFT: ${err instanceof Error ? err.message : 'Unknown error'}`,
-      };
-    }
+			nftData = await generateResponse.json();
+			if (!nftData.success) {
+				throw new Error(
+					`NFT generation failed: ${nftData.error || "Unknown error"}`,
+				);
+			}
+		} catch (err) {
+			console.error("[train-orchestrator] Failed to generate NFT:", err);
+			return {
+				success: false,
+				tokenId: 0,
+				txHash: "",
+				tokenURI: "",
+				error: `Failed to generate NFT: ${err instanceof Error ? err.message : "Unknown error"}`,
+			};
+		}
 
-    // 3. Execute train movement and mint ticket NFT
-    let mintData;
-    try {
-      const mintResponse = await fetch(`${APP_URL}/api/internal/mint-token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-secret': INTERNAL_SECRET || '',
-        },
-        body: JSON.stringify({
-          newHolderAddress: newHolder.address,
-          tokenURI: nftData.tokenURI,
-          newHolderData: {
-            username: newHolder.username,
-            fid: newHolder.fid,
-            displayName: newHolder.displayName,
-            pfpUrl: newHolder.pfpUrl,
-          },
-          previousHolderData: {
-            username: departingPassenger.username,
-            fid: departingPassenger.fid,
-            displayName: departingPassenger.displayName,
-            pfpUrl: departingPassenger.pfpUrl,
-          },
-          sourceCastHash,
-          totalEligibleReactors,
-        }),
-      });
+		// 3. Execute train movement and mint ticket NFT
+		// biome-ignore lint/suspicious/noImplicitAnyLet: mint data comes from internal service, okay
+		let mintData;
+		try {
+			const mintResponse = await fetch(`${APP_URL}/api/internal/mint-token`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"x-internal-secret": INTERNAL_SECRET || "",
+				},
+				body: JSON.stringify({
+					newHolderAddress: newHolder.address,
+					tokenURI: nftData.tokenURI,
+					newHolderData: {
+						username: newHolder.username,
+						fid: newHolder.fid,
+						displayName: newHolder.displayName,
+						pfpUrl: newHolder.pfpUrl,
+					},
+					previousHolderData: {
+						username: departingPassenger.username,
+						fid: departingPassenger.fid,
+						displayName: departingPassenger.displayName,
+						pfpUrl: departingPassenger.pfpUrl,
+					},
+					sourceCastHash,
+					totalEligibleReactors,
+				}),
+			});
 
-      if (!mintResponse.ok) {
-        const errorData = await mintResponse.json();
-        throw new Error(`Token minting failed: ${errorData.error || 'Unknown error'}`);
-      }
+			if (!mintResponse.ok) {
+				const errorData = await mintResponse.json();
+				throw new Error(
+					`Token minting failed: ${errorData.error || "Unknown error"}`,
+				);
+			}
 
-      mintData = await mintResponse.json();
-      if (!mintData.success) {
-        throw new Error(`Token minting failed: ${mintData.error || 'Unknown error'}`);
-      }
-    } catch (err) {
-      console.error('[train-orchestrator] Failed to mint token:', err);
-      return {
-        success: false,
-        tokenId: 0,
-        txHash: '',
-        tokenURI: '',
-        error: `Failed to mint token: ${err instanceof Error ? err.message : 'Unknown error'}`,
-      };
-    }
+			mintData = await mintResponse.json();
+			if (!mintData.success) {
+				throw new Error(
+					`Token minting failed: ${mintData.error || "Unknown error"}`,
+				);
+			}
+		} catch (err) {
+			console.error("[train-orchestrator] Failed to mint token:", err);
+			return {
+				success: false,
+				tokenId: 0,
+				txHash: "",
+				tokenURI: "",
+				error: `Failed to mint token: ${err instanceof Error ? err.message : "Unknown error"}`,
+			};
+		}
 
-    console.log(
-      `[train-orchestrator] Successfully orchestrated ${sourceType} movement for token ${mintData.actualTokenId}`
-    );
+		console.log(
+			`[train-orchestrator] Successfully orchestrated ${sourceType} movement for token ${mintData.actualTokenId}`,
+		);
 
-    return {
-      success: true,
-      tokenId: mintData.actualTokenId,
-      txHash: mintData.txHash,
-      tokenURI: nftData.tokenURI,
-    };
-  } catch (error) {
-    console.error('[train-orchestrator] Orchestration failed:', error);
-    return {
-      success: false,
-      tokenId: 0,
-      txHash: '',
-      tokenURI: '',
-      error: `Orchestration failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
-    };
-  }
+		return {
+			success: true,
+			tokenId: mintData.actualTokenId,
+			txHash: mintData.txHash,
+			tokenURI: nftData.tokenURI,
+		};
+	} catch (error) {
+		console.error("[train-orchestrator] Orchestration failed:", error);
+		return {
+			success: false,
+			tokenId: 0,
+			txHash: "",
+			tokenURI: "",
+			error: `Orchestration failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+		};
+	}
 }
 
 /**
@@ -211,292 +236,359 @@ export async function orchestrateTrainMovement(
  * 2. Commit Phase: Execute blockchain transaction (point of no return)
  * 3. Post-Commit Phase: Update app state with prepared data (should rarely fail)
  */
-export async function orchestrateManualSend(currentHolderFid: number, targetFid: number) {
-  const globalLockKey = TRAIN_MOVEMENT_LOCK_KEY;
-  const lockKey = `lock:manual:${currentHolderFid}:${targetFid}`;
-  const INTERNAL_SECRET = process.env.INTERNAL_SECRET || '';
+export async function orchestrateManualSend(
+	currentHolderFid: number,
+	targetFid: number,
+	skipNeynarScoreCheck = false,
+) {
+	const globalLockKey = TRAIN_MOVEMENT_LOCK_KEY;
+	const lockKey = `lock:manual:${currentHolderFid}:${targetFid}`;
+	const INTERNAL_SECRET = process.env.INTERNAL_SECRET || "";
 
-  console.log(
-    `[orchestrateManualSend] Starting manual send orchestration: FID ${currentHolderFid} -> ${targetFid}`
-  );
+	console.log(
+		`[orchestrateManualSend] Starting manual send orchestration: FID ${currentHolderFid} -> ${targetFid}`,
+	);
 
-  /**  @dev degens spawn camp yoink, need to serialize all movements */
-  const lockedGlobal = await acquireLock(globalLockKey, 40_000);
-  if (!lockedGlobal) {
-    console.warn('[orchestrateManualSend] Global movement lock acquisition failed');
-    return {
-      status: 409,
-      body: { success: false, error: 'Another train movement is in progress' },
-    } as const;
-  }
+	/**  @dev degens spawn camp yoink, need to serialize all movements */
+	const lockedGlobal = await acquireLock(globalLockKey, 40_000);
+	if (!lockedGlobal) {
+		console.warn(
+			"[orchestrateManualSend] Global movement lock acquisition failed",
+		);
+		return {
+			status: 409,
+			body: { success: false, error: "Another train movement is in progress" },
+		} as const;
+	}
 
-  /**  @dev dedupe manual sends */
-  const locked = await acquireLock(lockKey, 30_000);
-  if (!locked) {
-    console.warn(
-      `[orchestrateManualSend] Lock acquisition failed for ${currentHolderFid} -> ${targetFid}`
-    );
-    await releaseLock(globalLockKey);
-    return {
-      status: 409,
-      body: { success: false, error: 'Manual send already in progress' },
-    } as const;
-  }
+	/**  @dev dedupe manual sends */
+	const locked = await acquireLock(lockKey, 30_000);
+	if (!locked) {
+		console.warn(
+			`[orchestrateManualSend] Lock acquisition failed for ${currentHolderFid} -> ${targetFid}`,
+		);
+		await releaseLock(globalLockKey);
+		return {
+			status: 409,
+			body: { success: false, error: "Manual send already in progress" },
+		} as const;
+	}
 
-  try {
-    // 2) Authoritative next token id
-    const contractService = getContractService();
-    const nextTokenId = await contractService.getNextOnChainTicketId();
+	try {
+		// 2) Authoritative next token id
+		const contractService = getContractService();
+		const nextTokenId = await contractService.getNextOnChainTicketId();
 
-    // Resolve departing passenger (current holder) + target from external sources
-    const currentHolderRes = await fetch(`${APP_URL}/api/current-holder`);
-    if (!currentHolderRes.ok) throw new Error('Failed to fetch current holder');
-    const departingPassengerData = await currentHolderRes.json();
+		// Resolve departing passenger (current holder) + target from external sources
+		const currentHolderRes = await fetch(`${APP_URL}/api/current-holder`);
+		if (!currentHolderRes.ok) throw new Error("Failed to fetch current holder");
+		const departingPassengerData = await currentHolderRes.json();
 
-    const winnerRes = await fetch(
-      `https://api.neynar.com/v2/farcaster/user/bulk?fids=${targetFid}`,
-      {
-        headers: { accept: 'application/json', 'x-api-key': process.env.NEYNAR_API_KEY || '' },
-      }
-    );
-    if (!winnerRes.ok) throw new Error('Failed to fetch target user');
-    const winnerJson = await winnerRes.json();
-    const user = winnerJson?.users?.[0];
-    if (!user) throw new Error('Target user not found');
-    const targetAddress =
-      user.verified_addresses?.primary?.eth_address || user.verified_addresses?.eth_addresses?.[0];
-    if (!targetAddress) throw new Error('Target user missing address');
+		const winnerRes = await fetch(
+			`https://api.neynar.com/v2/farcaster/user/bulk?fids=${targetFid}`,
+			{
+				headers: {
+					accept: "application/json",
+					"x-api-key": process.env.NEYNAR_API_KEY || "",
+				},
+			},
+		);
+		if (!winnerRes.ok) throw new Error("Failed to fetch target user");
+		const winnerJson = await winnerRes.json();
+		const user = winnerJson?.users?.[0];
+		if (!user) throw new Error("Target user not found");
+		const targetAddress =
+			user.verified_addresses?.primary?.eth_address ||
+			user.verified_addresses?.eth_addresses?.[0];
+		if (!targetAddress) throw new Error("Target user missing address");
 
-    // Get departing passenger address for NFT ticket holder
-    let departingPassengerAddress = departingPassengerData.currentHolder?.address;
-    if (!departingPassengerAddress) {
-      // Fallback: fetch from Neynar if not in Redis current-holder
-      const departingRes = await fetch(
-        `https://api.neynar.com/v2/farcaster/user/bulk?fids=${currentHolderFid}`,
-        {
-          headers: { accept: 'application/json', 'x-api-key': process.env.NEYNAR_API_KEY || '' },
-        }
-      );
-      if (departingRes.ok) {
-        const departingJson = await departingRes.json();
-        const departingUser = departingJson?.users?.[0];
-        departingPassengerAddress =
-          departingUser?.verified_addresses?.primary?.eth_address ||
-          departingUser?.verified_addresses?.eth_addresses?.[0];
-      }
-    }
-    if (!departingPassengerAddress) throw new Error('Departing passenger missing address');
+		if (!skipNeynarScoreCheck) {
+			const targetScoreCheck = await checkNeynarScore(targetFid);
+			if (!targetScoreCheck.meetsMinimum) {
+				throw new Error(
+					`Target user must have a Neynar score of at least ${MIN_NEYNAR_SCORE} to receive ChooChoo (current score: ${targetScoreCheck.score})`,
+				);
+			}
+		} else {
+			console.log(
+				"[orchestrateManualSend] Skipping Neynar score check (admin send)",
+			);
+		}
 
-    // 3) Pending generation cache
-    const pending = await getOrSetPendingGeneration(nextTokenId, async () => {
-      const genRes = await fetch(`${APP_URL}/api/internal/generate-nft`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-internal-secret': INTERNAL_SECRET },
-        body: JSON.stringify({
-          tokenId: nextTokenId,
-          passengerUsername: departingPassengerData.currentHolder.username,
-        }),
-      });
-      if (!genRes.ok) throw new Error('generate-nft failed');
-      const gen = await genRes.json();
-      return {
-        imageHash: gen.imageHash,
-        metadataHash: gen.metadataHash,
-        tokenURI: gen.tokenURI,
-        attributes: gen.metadata?.attributes || [],
-        passengerUsername: departingPassengerData.currentHolder.username,
-      };
-    });
+		// Get departing passenger address for NFT ticket holder
+		let departingPassengerAddress =
+			departingPassengerData.currentHolder?.address;
+		if (!departingPassengerAddress) {
+			// Fallback: fetch from Neynar if not in Redis current-holder
+			const departingRes = await fetch(
+				`https://api.neynar.com/v2/farcaster/user/bulk?fids=${currentHolderFid}`,
+				{
+					headers: {
+						accept: "application/json",
+						"x-api-key": process.env.NEYNAR_API_KEY || "",
+					},
+				},
+			);
+			if (departingRes.ok) {
+				const departingJson = await departingRes.json();
+				const departingUser = departingJson?.users?.[0];
+				departingPassengerAddress =
+					departingUser?.verified_addresses?.primary?.eth_address ||
+					departingUser?.verified_addresses?.eth_addresses?.[0];
+			}
+		}
+		if (!departingPassengerAddress)
+			throw new Error("Departing passenger missing address");
 
-    // 4) Pure mint (no Redis writes - mint endpoint is now pure)
-    const mintRes = await fetch(`${APP_URL}/api/internal/mint-token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-internal-secret': INTERNAL_SECRET,
-      },
-      body: JSON.stringify({
-        newHolderAddress: targetAddress,
-        tokenURI: pending.tokenURI,
-        newHolderData: {
-          username: user.username,
-          fid: user.fid,
-          displayName: user.display_name,
-          pfpUrl: user.pfp_url,
-        },
-        previousHolderData: {
-          username: departingPassengerData.currentHolder.username,
-          fid: departingPassengerData.currentHolder.fid,
-          displayName: departingPassengerData.currentHolder.displayName,
-          pfpUrl: departingPassengerData.currentHolder.pfpUrl,
-        },
-        sourceCastHash: undefined,
-        totalEligibleReactors: 1,
-      }),
-    });
-    if (!mintRes.ok) {
-      const errText = await mintRes.text();
-      throw new Error(`mint-token failed: ${errText}`);
-    }
-    const mint = await mintRes.json();
+		// 3) Pending generation cache
+		const pending = await getOrSetPendingGeneration(nextTokenId, async () => {
+			const genRes = await fetch(`${APP_URL}/api/internal/generate-nft`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"x-internal-secret": INTERNAL_SECRET,
+				},
+				body: JSON.stringify({
+					tokenId: nextTokenId,
+					passengerUsername: departingPassengerData.currentHolder.username,
+				}),
+			});
+			if (!genRes.ok) throw new Error("generate-nft failed");
+			const gen = await genRes.json();
+			return {
+				imageHash: gen.imageHash,
+				metadataHash: gen.metadataHash,
+				tokenURI: gen.tokenURI,
+				attributes: gen.metadata?.attributes || [],
+				passengerUsername: departingPassengerData.currentHolder.username,
+			};
+		});
 
-    // Get the actual minted token ID from the transaction receipt
-    let actualTokenId: number;
-    const mintedTokenId = await contractService.getMintedTokenIdFromTx(
-      mint.txHash as `0x${string}`
-    );
-    if (mintedTokenId !== null) {
-      actualTokenId = mintedTokenId;
-      console.log(
-        `[train-orchestrator] Using authoritative token ID from transaction: ${actualTokenId}`
-      );
-    } else {
-      actualTokenId = nextTokenId;
-      console.warn(
-        `[train-orchestrator] Failed to get token ID from transaction receipt, falling back to pre-mint nextTokenId: ${actualTokenId}`
-      );
-    }
+		// 4) Pure mint (no Redis writes - mint endpoint is now pure)
+		const mintRes = await fetch(`${APP_URL}/api/internal/mint-token`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"x-internal-secret": INTERNAL_SECRET,
+			},
+			body: JSON.stringify({
+				newHolderAddress: targetAddress,
+				tokenURI: pending.tokenURI,
+				newHolderData: {
+					username: user.username,
+					fid: user.fid,
+					displayName: user.display_name,
+					pfpUrl: user.pfp_url,
+				},
+				previousHolderData: {
+					username: departingPassengerData.currentHolder.username,
+					fid: departingPassengerData.currentHolder.fid,
+					displayName: departingPassengerData.currentHolder.displayName,
+					pfpUrl: departingPassengerData.currentHolder.pfpUrl,
+				},
+				sourceCastHash: undefined,
+				totalEligibleReactors: 1,
+			}),
+		});
+		if (!mintRes.ok) {
+			const errText = await mintRes.text();
+			throw new Error(`mint-token failed: ${errText}`);
+		}
+		const mint = await mintRes.json();
 
-    // Verify the contract state was updated correctly (now using authoritative token ID)
-    await verifyNextIdAdvanced(contractService, actualTokenId, 'train-orchestrator');
+		// Get the actual minted token ID from the transaction receipt
+		let actualTokenId: number;
+		const mintedTokenId = await contractService.getMintedTokenIdFromTx(
+			mint.txHash as `0x${string}`,
+		);
+		if (mintedTokenId !== null) {
+			actualTokenId = mintedTokenId;
+			console.log(
+				`[train-orchestrator] Using authoritative token ID from transaction: ${actualTokenId}`,
+			);
+		} else {
+			actualTokenId = nextTokenId;
+			console.warn(
+				`[train-orchestrator] Failed to get token ID from transaction receipt, falling back to pre-mint nextTokenId: ${actualTokenId}`,
+			);
+		}
 
-    // 5) Store last moved timestamp
-    try {
-      await storeLastMovedTimestamp(actualTokenId, mint.txHash);
-      console.log(`[train-orchestrator] Stored last moved timestamp for token ${actualTokenId}`);
-    } catch (err) {
-      console.error('[train-orchestrator] Failed to store last moved timestamp:', err);
-    }
+		// Verify the contract state was updated correctly (now using authoritative token ID)
+		await verifyNextIdAdvanced(
+			contractService,
+			actualTokenId,
+			"train-orchestrator",
+		);
 
-    // 6) Store token data write-once (NFT ticket holder is departing passenger)
-    const tokenData: TokenData = {
-      tokenId: actualTokenId,
-      imageHash: pending.imageHash,
-      metadataHash: pending.metadataHash,
-      tokenURI: pending.tokenURI,
-      holderAddress: departingPassengerAddress,
-      holderUsername: departingPassengerData.currentHolder.username,
-      holderFid: departingPassengerData.currentHolder.fid,
-      holderDisplayName: departingPassengerData.currentHolder.displayName,
-      holderPfpUrl: departingPassengerData.currentHolder.pfpUrl,
-      transactionHash: mint.txHash,
-      timestamp: new Date().toISOString(),
-      attributes: pending.attributes,
-      sourceType: 'manual',
-      sourceCastHash: undefined,
-      totalEligibleReactors: 1,
-    };
-    await storeTokenDataWriteOnce(tokenData);
+		// 5) Store last moved timestamp
+		try {
+			await storeLastMovedTimestamp(actualTokenId, mint.txHash);
+			console.log(
+				`[train-orchestrator] Stored last moved timestamp for token ${actualTokenId}`,
+			);
+		} catch (err) {
+			console.error(
+				"[train-orchestrator] Failed to store last moved timestamp:",
+				err,
+			);
+		}
 
-    // 7) Update current holder in Redis for frontend access
-    try {
-      const currentHolderData = {
-        fid: user.fid,
-        username: user.username,
-        displayName: user.display_name,
-        pfpUrl: user.pfp_url,
-        address: targetAddress,
-        timestamp: new Date().toISOString(),
-      };
-      await redis.set('current-holder', JSON.stringify(currentHolderData));
-      try {
-        const { redisPub, CURRENT_HOLDER_CHANNEL } = await import('@/lib/kv');
-        await redisPub.publish(CURRENT_HOLDER_CHANNEL, JSON.stringify({ type: 'holder-updated' }));
-      } catch {}
-      console.log(
-        `[train-orchestrator] Updated current holder to: ${user.username} (FID: ${user.fid})`
-      );
-    } catch (err) {
-      console.error('[train-orchestrator] Failed to store current holder in Redis:', err);
-    }
+		// 6) Store token data write-once (NFT ticket holder is departing passenger)
+		const tokenData: TokenData = {
+			tokenId: actualTokenId,
+			imageHash: pending.imageHash,
+			metadataHash: pending.metadataHash,
+			tokenURI: pending.tokenURI,
+			holderAddress: departingPassengerAddress,
+			holderUsername: departingPassengerData.currentHolder.username,
+			holderFid: departingPassengerData.currentHolder.fid,
+			holderDisplayName: departingPassengerData.currentHolder.displayName,
+			holderPfpUrl: departingPassengerData.currentHolder.pfpUrl,
+			transactionHash: mint.txHash,
+			timestamp: new Date().toISOString(),
+			attributes: pending.attributes,
+			sourceType: "manual",
+			sourceCastHash: undefined,
+			totalEligibleReactors: 1,
+		};
+		await storeTokenDataWriteOnce(tokenData);
 
-    // Optional: cleanup pending NFT cache after successful commit
-    try {
-      await redis.del(REDIS_KEYS.pendingNFT(actualTokenId));
-    } catch {}
+		// 7) Update current holder in Redis for frontend access
+		try {
+			const currentHolderData = {
+				fid: user.fid,
+				username: user.username,
+				displayName: user.display_name,
+				pfpUrl: user.pfp_url,
+				address: targetAddress,
+				timestamp: new Date().toISOString(),
+			};
+			await redis.set("current-holder", JSON.stringify(currentHolderData));
+			try {
+				const { redisPub, CURRENT_HOLDER_CHANNEL } = await import("@/lib/kv");
+				await redisPub.publish(
+					CURRENT_HOLDER_CHANNEL,
+					JSON.stringify({ type: "holder-updated" }),
+				);
+			} catch {}
+			console.log(
+				`[train-orchestrator] Updated current holder to: ${user.username} (FID: ${user.fid})`,
+			);
+		} catch (err) {
+			console.error(
+				"[train-orchestrator] Failed to store current holder in Redis:",
+				err,
+			);
+		}
 
-    // 8) Announcement casts with idempotency key
-    const timestamp = Date.now();
-    try {
-      // Welcome cast for new holder
-      const welcomeResponse = await fetch(`${APP_URL}/api/internal/send-cast`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-internal-secret': INTERNAL_SECRET },
-        body: JSON.stringify({
-          text: `🚂 ChooChoo is heading to @${user.username}!`,
-          embeds: [{ url: APP_URL }],
-          idem: `welcome-${actualTokenId}-${timestamp}`,
-        }),
-      });
-      if (!welcomeResponse.ok) {
-        const errorData = await welcomeResponse.json();
-        console.warn(
-          `[train-orchestrator] Welcome cast failed: ${welcomeResponse.status} - ${errorData.error}`
-        );
-      }
+		// Optional: cleanup pending NFT cache after successful commit
+		try {
+			await redis.del(REDIS_KEYS.pendingNFT(actualTokenId));
+		} catch {}
 
-      // Ticket issued cast for departing passenger with image
-      const imageUrl = `https://${process.env.NEXT_PUBLIC_PINATA_GATEWAY}/ipfs/${pending.imageHash}`;
-      const ticketResponse = await fetch(`${APP_URL}/api/internal/send-cast`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-internal-secret': INTERNAL_SECRET },
-        body: JSON.stringify({
-          text: `🎫 Ticket #${actualTokenId} minted to @${departingPassengerData.currentHolder.username}!`,
-          embeds: [{ url: imageUrl }],
-          idem: `ticket-${actualTokenId}-${timestamp}`,
-        }),
-      });
-      if (!ticketResponse.ok) {
-        const errorData = await ticketResponse.json();
-        console.warn(
-          `[train-orchestrator] Ticket cast failed: ${ticketResponse.status} - ${errorData.error}`
-        );
-      }
-    } catch (err) {
-      console.warn(`[train-orchestrator] Cast request failed:`, err);
-    }
+		// 8) Announcement casts with idempotency key
+		const timestamp = Date.now();
+		try {
+			// Welcome cast for new holder
+			const welcomeResponse = await fetch(`${APP_URL}/api/internal/send-cast`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"x-internal-secret": INTERNAL_SECRET,
+				},
+				body: JSON.stringify({
+					text: `🚂 ChooChoo is heading to @${user.username}!`,
+					embeds: [{ url: APP_URL }],
+					idem: `welcome-${actualTokenId}-${timestamp}`,
+				}),
+			});
+			if (!welcomeResponse.ok) {
+				const errorData = await welcomeResponse.json();
+				console.warn(
+					`[train-orchestrator] Welcome cast failed: ${welcomeResponse.status} - ${errorData.error}`,
+				);
+			}
 
-    // 9) Send notifications
-    try {
-      // Notify new holder that ChooChoo has arrived
-      await sendChooChooNotification('chooChooArrived', user.username, user.fid);
-      
-      // Notify departing passenger about their ticket NFT
-      await sendChooChooNotification('ticketMinted', departingPassengerData.currentHolder.username, actualTokenId, departingPassengerData.currentHolder.fid);
-    } catch (err) {
-      console.warn('[orchestrateManualSend] Failed to send notifications:', err);
-    }
+			// Ticket issued cast for departing passenger with image
+			const imageUrl = `https://${process.env.NEXT_PUBLIC_PINATA_GATEWAY}/ipfs/${pending.imageHash}`;
+			const ticketResponse = await fetch(`${APP_URL}/api/internal/send-cast`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"x-internal-secret": INTERNAL_SECRET,
+				},
+				body: JSON.stringify({
+					text: `🎫 Ticket #${actualTokenId} minted to @${departingPassengerData.currentHolder.username}!`,
+					embeds: [{ url: imageUrl }],
+					idem: `ticket-${actualTokenId}-${timestamp}`,
+				}),
+			});
+			if (!ticketResponse.ok) {
+				const errorData = await ticketResponse.json();
+				console.warn(
+					`[train-orchestrator] Ticket cast failed: ${ticketResponse.status} - ${errorData.error}`,
+				);
+			}
+		} catch (err) {
+			console.warn(`[train-orchestrator] Cast request failed:`, err);
+		}
 
-    // 10) Workflow state: set NOT_CASTED for new holder; clear prior cast metadata
-    try {
-      await fetch(`${APP_URL}/api/workflow-state`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          state: 'NOT_CASTED',
-          winnerSelectionStart: null,
-          currentCastHash: null,
-        }),
-      });
-    } catch {}
+		// 9) Send notifications
+		try {
+			// Notify new holder that ChooChoo has arrived
+			await sendChooChooNotification(
+				"chooChooArrived",
+				user.username,
+				user.fid,
+			);
 
-    return {
-      status: 200,
-      body: {
-        success: true,
-        tokenId: actualTokenId,
-        txHash: mint.txHash,
-        tokenURI: pending.tokenURI,
-      },
-    } as const;
-  } catch (error) {
-    // 10) On failure: do not modify workflow state
-    return { status: 500, body: { success: false, error: (error as Error).message } } as const;
-  } finally {
-    /**  @dev release locks */
-    await releaseLock(lockKey);
-    await releaseLock(globalLockKey);
-  }
+			// Notify departing passenger about their ticket NFT
+			await sendChooChooNotification(
+				"ticketMinted",
+				departingPassengerData.currentHolder.username,
+				actualTokenId,
+				departingPassengerData.currentHolder.fid,
+			);
+		} catch (err) {
+			console.warn(
+				"[orchestrateManualSend] Failed to send notifications:",
+				err,
+			);
+		}
+
+		// 10) Workflow state: set NOT_CASTED for new holder; clear prior cast metadata
+		try {
+			await fetch(`${APP_URL}/api/workflow-state`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					state: "NOT_CASTED",
+					winnerSelectionStart: null,
+					currentCastHash: null,
+				}),
+			});
+		} catch {}
+
+		return {
+			status: 200,
+			body: {
+				success: true,
+				tokenId: actualTokenId,
+				txHash: mint.txHash,
+				tokenURI: pending.tokenURI,
+			},
+		} as const;
+	} catch (error) {
+		// 10) On failure: do not modify workflow state
+		return {
+			status: 500,
+			body: { success: false, error: (error as Error).message },
+		} as const;
+	} finally {
+		/**  @dev release locks */
+		await releaseLock(lockKey);
+		await releaseLock(globalLockKey);
+	}
 }
 
 /**
@@ -504,275 +596,332 @@ export async function orchestrateManualSend(currentHolderFid: number, targetFid:
  * Used for public chance mode - selects random winner from cast reactions.
  */
 export async function orchestrateRandomSend(castHash: string) {
-  const contractService = getContractService();
-  const globalLockKey = TRAIN_MOVEMENT_LOCK_KEY;
-  const lockKey = `lock:random:${castHash}`;
-  const INTERNAL_SECRET = process.env.INTERNAL_SECRET || '';
+	const contractService = getContractService();
+	const globalLockKey = TRAIN_MOVEMENT_LOCK_KEY;
+	const lockKey = `lock:random:${castHash}`;
+	const INTERNAL_SECRET = process.env.INTERNAL_SECRET || "";
 
-  // 1) Acquire global movement lock
-  const lockedGlobal = await acquireLock(globalLockKey, 40_000);
-  if (!lockedGlobal) {
-    return {
-      status: 409,
-      body: { success: false, error: 'Another train movement is in progress' },
-    } as const;
-  }
+	// 1) Acquire global movement lock
+	const lockedGlobal = await acquireLock(globalLockKey, 40_000);
+	if (!lockedGlobal) {
+		return {
+			status: 409,
+			body: { success: false, error: "Another train movement is in progress" },
+		} as const;
+	}
 
-  /**  @dev dedupe random sends */
-  const locked = await acquireLock(lockKey, 30_000);
-  if (!locked) {
-    await releaseLock(globalLockKey);
-    return {
-      status: 409,
-      body: { success: false, error: 'Random send already in progress' },
-    } as const;
-  }
+	/**  @dev dedupe random sends */
+	const locked = await acquireLock(lockKey, 30_000);
+	if (!locked) {
+		await releaseLock(globalLockKey);
+		return {
+			status: 409,
+			body: { success: false, error: "Random send already in progress" },
+		} as const;
+	}
 
-  try {
-    // 2) Authoritative next token id
-    const nextTokenId = await contractService.getNextOnChainTicketId();
+	try {
+		// 2) Authoritative next token id
+		const nextTokenId = await contractService.getNextOnChainTicketId();
 
-    // 3) Select random winner from cast reactions
-    const winnerRes = await fetch(`${APP_URL}/api/internal/select-winner`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-internal-secret': INTERNAL_SECRET },
-      body: JSON.stringify({ castHash }),
-    });
-    if (!winnerRes.ok) throw new Error('Winner selection failed');
-    const winnerData = await winnerRes.json();
-    if (!winnerData.success) throw new Error(winnerData.error || 'Winner selection failed');
+		// 3) Select random winner from cast reactions
+		const winnerRes = await fetch(`${APP_URL}/api/internal/select-winner`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"x-internal-secret": INTERNAL_SECRET,
+			},
+			body: JSON.stringify({ castHash }),
+		});
+		if (!winnerRes.ok) throw new Error("Winner selection failed");
+		const winnerData = await winnerRes.json();
+		if (!winnerData.success)
+			throw new Error(winnerData.error || "Winner selection failed");
 
-    // 4) Resolve departing passenger (current holder)
-    const currentHolderRes = await fetch(`${APP_URL}/api/current-holder`);
-    if (!currentHolderRes.ok) throw new Error('Failed to fetch current holder');
-    const departingPassengerData = await currentHolderRes.json();
-    if (!departingPassengerData.hasCurrentHolder) throw new Error('No current holder found');
+		// Check winner's Neynar score
+		const winnerScoreCheck = await checkNeynarScore(winnerData.winner.fid);
+		if (!winnerScoreCheck.meetsMinimum) {
+			throw new Error(
+				`Selected winner does not meet the minimum Neynar score requirement (score: ${winnerScoreCheck.score})`,
+			);
+		}
 
-    // Get departing passenger address for NFT ticket holder
-    let departingPassengerAddress = departingPassengerData.currentHolder?.address;
-    if (!departingPassengerAddress) {
-      // Fallback: fetch from Neynar if not in Redis current-holder
-      const departingRes = await fetch(
-        `https://api.neynar.com/v2/farcaster/user/bulk?fids=${departingPassengerData.currentHolder.fid}`,
-        {
-          headers: { accept: 'application/json', 'x-api-key': process.env.NEYNAR_API_KEY || '' },
-        }
-      );
-      if (departingRes.ok) {
-        const departingJson = await departingRes.json();
-        const departingUser = departingJson?.users?.[0];
-        departingPassengerAddress =
-          departingUser?.verified_addresses?.primary?.eth_address ||
-          departingUser?.verified_addresses?.eth_addresses?.[0];
-      }
-    }
-    if (!departingPassengerAddress) throw new Error('Departing passenger missing address');
+		// 4) Resolve departing passenger (current holder)
+		const currentHolderRes = await fetch(`${APP_URL}/api/current-holder`);
+		if (!currentHolderRes.ok) throw new Error("Failed to fetch current holder");
+		const departingPassengerData = await currentHolderRes.json();
+		if (!departingPassengerData.hasCurrentHolder)
+			throw new Error("No current holder found");
 
-    // 5) Pending generation cache
-    const pending = await getOrSetPendingGeneration(nextTokenId, async () => {
-      const genRes = await fetch(`${APP_URL}/api/internal/generate-nft`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-internal-secret': INTERNAL_SECRET },
-        body: JSON.stringify({
-          tokenId: nextTokenId,
-          passengerUsername: departingPassengerData.currentHolder.username,
-        }),
-      });
-      if (!genRes.ok) throw new Error('generate-nft failed');
-      const gen = await genRes.json();
-      return {
-        imageHash: gen.imageHash,
-        metadataHash: gen.metadataHash,
-        tokenURI: gen.tokenURI,
-        attributes: gen.metadata?.attributes || [],
-        passengerUsername: departingPassengerData.currentHolder.username,
-      };
-    });
+		// Get departing passenger address for NFT ticket holder
+		let departingPassengerAddress =
+			departingPassengerData.currentHolder?.address;
+		if (!departingPassengerAddress) {
+			// Fallback: fetch from Neynar if not in Redis current-holder
+			const departingRes = await fetch(
+				`https://api.neynar.com/v2/farcaster/user/bulk?fids=${departingPassengerData.currentHolder.fid}`,
+				{
+					headers: {
+						accept: "application/json",
+						"x-api-key": process.env.NEYNAR_API_KEY || "",
+					},
+				},
+			);
+			if (departingRes.ok) {
+				const departingJson = await departingRes.json();
+				const departingUser = departingJson?.users?.[0];
+				departingPassengerAddress =
+					departingUser?.verified_addresses?.primary?.eth_address ||
+					departingUser?.verified_addresses?.eth_addresses?.[0];
+			}
+		}
+		if (!departingPassengerAddress)
+			throw new Error("Departing passenger missing address");
 
-    // 6) Pure mint (no Redis writes - mint endpoint is now pure)
-    const mintRes = await fetch(`${APP_URL}/api/internal/mint-token`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-internal-secret': INTERNAL_SECRET,
-      },
-      body: JSON.stringify({
-        newHolderAddress: winnerData.winner.address,
-        tokenURI: pending.tokenURI,
-        newHolderData: winnerData.winner,
-        previousHolderData: {
-          username: departingPassengerData.currentHolder.username,
-          fid: departingPassengerData.currentHolder.fid,
-          displayName: departingPassengerData.currentHolder.displayName,
-          pfpUrl: departingPassengerData.currentHolder.pfpUrl,
-        },
-      }),
-    });
-    if (!mintRes.ok) {
-      const errText = await mintRes.text();
-      throw new Error(`mint-token failed: ${errText}`);
-    }
-    const mint = await mintRes.json();
+		// 5) Pending generation cache
+		const pending = await getOrSetPendingGeneration(nextTokenId, async () => {
+			const genRes = await fetch(`${APP_URL}/api/internal/generate-nft`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"x-internal-secret": INTERNAL_SECRET,
+				},
+				body: JSON.stringify({
+					tokenId: nextTokenId,
+					passengerUsername: departingPassengerData.currentHolder.username,
+				}),
+			});
+			if (!genRes.ok) throw new Error("generate-nft failed");
+			const gen = await genRes.json();
+			return {
+				imageHash: gen.imageHash,
+				metadataHash: gen.metadataHash,
+				tokenURI: gen.tokenURI,
+				attributes: gen.metadata?.attributes || [],
+				passengerUsername: departingPassengerData.currentHolder.username,
+			};
+		});
 
-    // Get the actual minted token ID from the transaction receipt
-    let actualTokenId: number;
-    const mintedTokenId = await contractService.getMintedTokenIdFromTx(
-      mint.txHash as `0x${string}`
-    );
-    if (mintedTokenId !== null) {
-      actualTokenId = mintedTokenId;
-      console.log(
-        `[train-orchestrator] Using authoritative token ID from transaction: ${actualTokenId}`
-      );
-    } else {
-      actualTokenId = nextTokenId;
-      console.warn(
-        `[train-orchestrator] Failed to get token ID from transaction receipt, falling back to pre-mint nextTokenId: ${actualTokenId}`
-      );
-    }
+		// 6) Pure mint (no Redis writes - mint endpoint is now pure)
+		const mintRes = await fetch(`${APP_URL}/api/internal/mint-token`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"x-internal-secret": INTERNAL_SECRET,
+			},
+			body: JSON.stringify({
+				newHolderAddress: winnerData.winner.address,
+				tokenURI: pending.tokenURI,
+				newHolderData: winnerData.winner,
+				previousHolderData: {
+					username: departingPassengerData.currentHolder.username,
+					fid: departingPassengerData.currentHolder.fid,
+					displayName: departingPassengerData.currentHolder.displayName,
+					pfpUrl: departingPassengerData.currentHolder.pfpUrl,
+				},
+			}),
+		});
+		if (!mintRes.ok) {
+			const errText = await mintRes.text();
+			throw new Error(`mint-token failed: ${errText}`);
+		}
+		const mint = await mintRes.json();
 
-    // Verify the contract state was updated correctly (now using authoritative token ID)
-    await verifyNextIdAdvanced(contractService, actualTokenId, 'train-orchestrator');
+		// Get the actual minted token ID from the transaction receipt
+		let actualTokenId: number;
+		const mintedTokenId = await contractService.getMintedTokenIdFromTx(
+			mint.txHash as `0x${string}`,
+		);
+		if (mintedTokenId !== null) {
+			actualTokenId = mintedTokenId;
+			console.log(
+				`[train-orchestrator] Using authoritative token ID from transaction: ${actualTokenId}`,
+			);
+		} else {
+			actualTokenId = nextTokenId;
+			console.warn(
+				`[train-orchestrator] Failed to get token ID from transaction receipt, falling back to pre-mint nextTokenId: ${actualTokenId}`,
+			);
+		}
 
-    // 7) Store last moved timestamp
-    try {
-      await storeLastMovedTimestamp(actualTokenId, mint.txHash);
-      console.log(`[train-orchestrator] Stored last moved timestamp for token ${actualTokenId}`);
-    } catch (err) {
-      console.error('[train-orchestrator] Failed to store last moved timestamp:', err);
-    }
+		// Verify the contract state was updated correctly (now using authoritative token ID)
+		await verifyNextIdAdvanced(
+			contractService,
+			actualTokenId,
+			"train-orchestrator",
+		);
 
-    // 8) Store token data write-once (NFT ticket holder is departing passenger)
-    const tokenData: TokenData = {
-      tokenId: actualTokenId,
-      imageHash: pending.imageHash,
-      metadataHash: pending.metadataHash,
-      tokenURI: pending.tokenURI,
-      holderAddress: departingPassengerAddress,
-      holderUsername: departingPassengerData.currentHolder.username,
-      holderFid: departingPassengerData.currentHolder.fid,
-      holderDisplayName: departingPassengerData.currentHolder.displayName,
-      holderPfpUrl: departingPassengerData.currentHolder.pfpUrl,
-      transactionHash: mint.txHash,
-      timestamp: new Date().toISOString(),
-      attributes: pending.attributes,
-      sourceType: 'send-train',
-      sourceCastHash: castHash,
-      totalEligibleReactors: winnerData.totalEligibleReactors,
-    };
-    await storeTokenDataWriteOnce(tokenData);
+		// 7) Store last moved timestamp
+		try {
+			await storeLastMovedTimestamp(actualTokenId, mint.txHash);
+			console.log(
+				`[train-orchestrator] Stored last moved timestamp for token ${actualTokenId}`,
+			);
+		} catch (err) {
+			console.error(
+				"[train-orchestrator] Failed to store last moved timestamp:",
+				err,
+			);
+		}
 
-    // 9) Update current holder in Redis for frontend access
-    try {
-      const currentHolderData = {
-        fid: winnerData.winner.fid,
-        username: winnerData.winner.username,
-        displayName: winnerData.winner.displayName,
-        pfpUrl: winnerData.winner.pfpUrl,
-        address: winnerData.winner.address,
-        timestamp: new Date().toISOString(),
-      };
-      await redis.set('current-holder', JSON.stringify(currentHolderData));
-      try {
-        const { redisPub, CURRENT_HOLDER_CHANNEL } = await import('@/lib/kv');
-        await redisPub.publish(CURRENT_HOLDER_CHANNEL, JSON.stringify({ type: 'holder-updated' }));
-      } catch {}
-      console.log(
-        `[train-orchestrator] Updated current holder to: ${winnerData.winner.username} (FID: ${winnerData.winner.fid})`
-      );
-    } catch (err) {
-      console.error('[train-orchestrator] Failed to store current holder in Redis:', err);
-    }
+		// 8) Store token data write-once (NFT ticket holder is departing passenger)
+		const tokenData: TokenData = {
+			tokenId: actualTokenId,
+			imageHash: pending.imageHash,
+			metadataHash: pending.metadataHash,
+			tokenURI: pending.tokenURI,
+			holderAddress: departingPassengerAddress,
+			holderUsername: departingPassengerData.currentHolder.username,
+			holderFid: departingPassengerData.currentHolder.fid,
+			holderDisplayName: departingPassengerData.currentHolder.displayName,
+			holderPfpUrl: departingPassengerData.currentHolder.pfpUrl,
+			transactionHash: mint.txHash,
+			timestamp: new Date().toISOString(),
+			attributes: pending.attributes,
+			sourceType: "send-train",
+			sourceCastHash: castHash,
+			totalEligibleReactors: winnerData.totalEligibleReactors,
+		};
+		await storeTokenDataWriteOnce(tokenData);
 
-    // Optional: cleanup pending NFT cache after successful commit
-    try {
-      await redis.del(REDIS_KEYS.pendingNFT(actualTokenId));
-    } catch {}
+		// 9) Update current holder in Redis for frontend access
+		try {
+			const currentHolderData = {
+				fid: winnerData.winner.fid,
+				username: winnerData.winner.username,
+				displayName: winnerData.winner.displayName,
+				pfpUrl: winnerData.winner.pfpUrl,
+				address: winnerData.winner.address,
+				timestamp: new Date().toISOString(),
+			};
+			await redis.set("current-holder", JSON.stringify(currentHolderData));
+			try {
+				const { redisPub, CURRENT_HOLDER_CHANNEL } = await import("@/lib/kv");
+				await redisPub.publish(
+					CURRENT_HOLDER_CHANNEL,
+					JSON.stringify({ type: "holder-updated" }),
+				);
+			} catch {}
+			console.log(
+				`[train-orchestrator] Updated current holder to: ${winnerData.winner.username} (FID: ${winnerData.winner.fid})`,
+			);
+		} catch (err) {
+			console.error(
+				"[train-orchestrator] Failed to store current holder in Redis:",
+				err,
+			);
+		}
 
-    // 10) Announcement casts with idempotency key
-    const timestamp = Date.now();
-    try {
-      // Welcome cast for new holder
-      const welcomeResponse = await fetch(`${APP_URL}/api/internal/send-cast`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-internal-secret': INTERNAL_SECRET },
-        body: JSON.stringify({
-          text: `🚂 ChooChoo is heading to @${winnerData.winner.username}!`,
-          embeds: [{ url: APP_URL }],
-          idem: `welcome-${actualTokenId}-${timestamp}`,
-        }),
-      });
-      if (!welcomeResponse.ok) {
-        const errorData = await welcomeResponse.json();
-        console.warn(
-          `[train-orchestrator] Welcome cast failed: ${welcomeResponse.status} - ${errorData.error}`
-        );
-      }
+		// Optional: cleanup pending NFT cache after successful commit
+		try {
+			await redis.del(REDIS_KEYS.pendingNFT(actualTokenId));
+		} catch {}
 
-      // Ticket issued cast for departing passenger with image
-      const imageUrl = `https://${process.env.NEXT_PUBLIC_PINATA_GATEWAY}/ipfs/${pending.imageHash}`;
-      const ticketResponse = await fetch(`${APP_URL}/api/internal/send-cast`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-internal-secret': INTERNAL_SECRET },
-        body: JSON.stringify({
-          text: `🎫 Ticket #${actualTokenId} minted to @${departingPassengerData.currentHolder.username}!`,
-          embeds: [{ url: imageUrl }],
-          idem: `ticket-${actualTokenId}-${timestamp}`,
-        }),
-      });
-      if (!ticketResponse.ok) {
-        const errorData = await ticketResponse.json();
-        console.warn(
-          `[train-orchestrator] Ticket cast failed: ${ticketResponse.status} - ${errorData.error}`
-        );
-      }
-    } catch (err) {
-      console.warn(`[train-orchestrator] Cast request failed:`, err);
-    }
+		// 10) Announcement casts with idempotency key
+		const timestamp = Date.now();
+		try {
+			// Welcome cast for new holder
+			const welcomeResponse = await fetch(`${APP_URL}/api/internal/send-cast`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"x-internal-secret": INTERNAL_SECRET,
+				},
+				body: JSON.stringify({
+					text: `🚂 ChooChoo is heading to @${winnerData.winner.username}!`,
+					embeds: [{ url: APP_URL }],
+					idem: `welcome-${actualTokenId}-${timestamp}`,
+				}),
+			});
+			if (!welcomeResponse.ok) {
+				const errorData = await welcomeResponse.json();
+				console.warn(
+					`[train-orchestrator] Welcome cast failed: ${welcomeResponse.status} - ${errorData.error}`,
+				);
+			}
 
-    // 11) Send notifications
-    try {
-      // Notify new holder that ChooChoo has arrived
-      await sendChooChooNotification('chooChooArrived', winnerData.winner.username, winnerData.winner.fid);
-      
-      // Notify departing passenger about their ticket NFT
-      await sendChooChooNotification('ticketMinted', departingPassengerData.currentHolder.username, actualTokenId, departingPassengerData.currentHolder.fid);
-    } catch (err) {
-      console.warn('[orchestrateRandomSend] Failed to send notifications:', err);
-    }
+			// Ticket issued cast for departing passenger with image
+			const imageUrl = `https://${process.env.NEXT_PUBLIC_PINATA_GATEWAY}/ipfs/${pending.imageHash}`;
+			const ticketResponse = await fetch(`${APP_URL}/api/internal/send-cast`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"x-internal-secret": INTERNAL_SECRET,
+				},
+				body: JSON.stringify({
+					text: `🎫 Ticket #${actualTokenId} minted to @${departingPassengerData.currentHolder.username}!`,
+					embeds: [{ url: imageUrl }],
+					idem: `ticket-${actualTokenId}-${timestamp}`,
+				}),
+			});
+			if (!ticketResponse.ok) {
+				const errorData = await ticketResponse.json();
+				console.warn(
+					`[train-orchestrator] Ticket cast failed: ${ticketResponse.status} - ${errorData.error}`,
+				);
+			}
+		} catch (err) {
+			console.warn(`[train-orchestrator] Cast request failed:`, err);
+		}
 
-    // 12) Workflow state: set NOT_CASTED for new holder
-    try {
-      await fetch(`${APP_URL}/api/workflow-state`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          state: 'NOT_CASTED',
-          winnerSelectionStart: null,
-          currentCastHash: null,
-        }),
-      });
-    } catch {}
+		// 11) Send notifications
+		try {
+			// Notify new holder that ChooChoo has arrived
+			await sendChooChooNotification(
+				"chooChooArrived",
+				winnerData.winner.username,
+				winnerData.winner.fid,
+			);
 
-    return {
-      status: 200,
-      body: {
-        success: true,
-        tokenId: actualTokenId,
-        txHash: mint.txHash,
-        tokenURI: pending.tokenURI,
-        winner: winnerData.winner,
-        totalEligibleReactors: winnerData.totalEligibleReactors,
-      },
-    } as const;
-  } catch (error) {
-    // 12) On failure: do not modify workflow state
-    return { status: 500, body: { success: false, error: (error as Error).message } } as const;
-  } finally {
-    // 13) Release locks
-    await releaseLock(lockKey);
-    await releaseLock(globalLockKey);
-  }
+			// Notify departing passenger about their ticket NFT
+			await sendChooChooNotification(
+				"ticketMinted",
+				departingPassengerData.currentHolder.username,
+				actualTokenId,
+				departingPassengerData.currentHolder.fid,
+			);
+		} catch (err) {
+			console.warn(
+				"[orchestrateRandomSend] Failed to send notifications:",
+				err,
+			);
+		}
+
+		// 12) Workflow state: set NOT_CASTED for new holder
+		try {
+			await fetch(`${APP_URL}/api/workflow-state`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					state: "NOT_CASTED",
+					winnerSelectionStart: null,
+					currentCastHash: null,
+				}),
+			});
+		} catch {}
+
+		return {
+			status: 200,
+			body: {
+				success: true,
+				tokenId: actualTokenId,
+				txHash: mint.txHash,
+				tokenURI: pending.tokenURI,
+				winner: winnerData.winner,
+				totalEligibleReactors: winnerData.totalEligibleReactors,
+			},
+		} as const;
+	} catch (error) {
+		// 12) On failure: do not modify workflow state
+		return {
+			status: 500,
+			body: { success: false, error: (error as Error).message },
+		} as const;
+	} finally {
+		// 13) Release locks
+		await releaseLock(lockKey);
+		await releaseLock(globalLockKey);
+	}
 }
 
 /**
@@ -780,291 +929,361 @@ export async function orchestrateRandomSend(castHash: string) {
  * Used for yoink operations - allows users to yoink the train if conditions are met.
  */
 export async function orchestrateYoink(userFid: number, targetAddress: string) {
-  const contractService = getContractService();
-  const globalLockKey = TRAIN_MOVEMENT_LOCK_KEY;
-  const lockKey = `lock:yoink:${userFid}:${targetAddress}`;
-  const INTERNAL_SECRET = process.env.INTERNAL_SECRET || '';
+	const contractService = getContractService();
+	const globalLockKey = TRAIN_MOVEMENT_LOCK_KEY;
+	const lockKey = `lock:yoink:${userFid}:${targetAddress}`;
+	const INTERNAL_SECRET = process.env.INTERNAL_SECRET || "";
 
-  // 1) Acquire global movement lock first to serialize yoinks with all movements
-  const lockedGlobal = await acquireLock(globalLockKey, 40_000);
-  if (!lockedGlobal) {
-    return {
-      status: 409,
-      body: { success: false, error: 'Another train movement is in progress' },
-    } as const;
-  }
+	// 1) Acquire global movement lock first to serialize yoinks with all movements
+	const lockedGlobal = await acquireLock(globalLockKey, 40_000);
+	if (!lockedGlobal) {
+		return {
+			status: 409,
+			body: { success: false, error: "Another train movement is in progress" },
+		} as const;
+	}
 
-  // 1b) Acquire short-lived per-request lock (secondary dedupe)
-  const locked = await acquireLock(lockKey, 30_000);
-  if (!locked) {
-    await releaseLock(globalLockKey);
-    return { status: 409, body: { success: false, error: 'Yoink already in progress' } } as const;
-  }
+	// 1b) Acquire short-lived per-request lock (secondary dedupe)
+	const locked = await acquireLock(lockKey, 30_000);
+	if (!locked) {
+		await releaseLock(globalLockKey);
+		return {
+			status: 409,
+			body: { success: false, error: "Yoink already in progress" },
+		} as const;
+	}
 
-  try {
-    // 2) Check eligibility inside the lock to avoid TOCTOU races
-    const yoinkStatus = await contractService.isYoinkable();
-    if (!yoinkStatus.canYoink) {
-      throw new Error(`Yoink not available: ${yoinkStatus.reason}`);
-    }
+	try {
+		// 2) Check eligibility inside the lock to avoid TOCTOU races
+		const yoinkStatus = await contractService.isYoinkable();
+		if (!yoinkStatus.canYoink) {
+			throw new Error(`Yoink not available: ${yoinkStatus.reason}`);
+		}
 
-    const hasRidden = await contractService.hasBeenPassenger(targetAddress as `0x${string}`);
-    if (hasRidden) {
-      throw new Error('Target address has already ridden the train');
-    }
+		const hasRidden = await contractService.hasBeenPassenger(
+			targetAddress as `0x${string}`,
+		);
+		if (hasRidden) {
+			throw new Error("Target address has already ridden the train");
+		}
 
-    const hasDeposited = await contractService.hasDepositedEnough(userFid);
-    if (!hasDeposited) {
-      throw new Error('Insufficient USDC deposit. You must deposit at least 1 USDC to yoink.');
-    }
+		const hasDeposited = await contractService.hasDepositedEnough(userFid);
+		if (!hasDeposited) {
+			throw new Error(
+				"Insufficient USDC deposit. You must deposit at least 1 USDC to yoink.",
+			);
+		}
 
-    // 3) Authoritative next token id
-    const nextTokenId = await contractService.getNextOnChainTicketId();
+		// Check yoinker's Neynar score
+		const yoinkScoreCheck = await checkNeynarScore(userFid);
+		if (!yoinkScoreCheck.meetsMinimum) {
+			throw new Error(
+				`You must have a Neynar score of at least ${MIN_NEYNAR_SCORE} to yoink ChooChoo (current score: ${yoinkScoreCheck.score})`,
+			);
+		}
 
-    // 4) Resolve departing passenger (current holder) + yoinker data
-    const currentHolderRes = await fetch(`${APP_URL}/api/current-holder`);
-    if (!currentHolderRes.ok) throw new Error('Failed to fetch current holder');
-    const departingPassengerData = await currentHolderRes.json();
-    if (!departingPassengerData.hasCurrentHolder) throw new Error('No current holder found');
+		// 3) Authoritative next token id
+		const nextTokenId = await contractService.getNextOnChainTicketId();
 
-    const yoinkerRes = await fetch(
-      `https://api.neynar.com/v2/farcaster/user/bulk?fids=${userFid}`,
-      {
-        headers: { accept: 'application/json', 'x-api-key': process.env.NEYNAR_API_KEY || '' },
-      }
-    );
-    if (!yoinkerRes.ok) throw new Error('Failed to fetch yoinker user data');
-    const yoinkerJson = await yoinkerRes.json();
-    const yoinkerUser = yoinkerJson?.users?.[0];
-    if (!yoinkerUser) throw new Error('Yoinker user not found');
+		// 4) Resolve departing passenger (current holder) + yoinker data
+		const currentHolderRes = await fetch(`${APP_URL}/api/current-holder`);
+		if (!currentHolderRes.ok) throw new Error("Failed to fetch current holder");
+		const departingPassengerData = await currentHolderRes.json();
+		if (!departingPassengerData.hasCurrentHolder)
+			throw new Error("No current holder found");
 
-    const yoinkerData = {
-      fid: yoinkerUser.fid,
-      username: yoinkerUser.username,
-      display_name: yoinkerUser.display_name,
-      pfp_url: yoinkerUser.pfp_url,
-    };
+		const yoinkerRes = await fetch(
+			`https://api.neynar.com/v2/farcaster/user/bulk?fids=${userFid}`,
+			{
+				headers: {
+					accept: "application/json",
+					"x-api-key": process.env.NEYNAR_API_KEY || "",
+				},
+			},
+		);
+		if (!yoinkerRes.ok) throw new Error("Failed to fetch yoinker user data");
+		const yoinkerJson = await yoinkerRes.json();
+		const yoinkerUser = yoinkerJson?.users?.[0];
+		if (!yoinkerUser) throw new Error("Yoinker user not found");
 
-    // Get departing passenger address for NFT ticket holder
-    let departingPassengerAddress = departingPassengerData.currentHolder?.address;
-    if (!departingPassengerAddress) {
-      // Fallback: fetch from Neynar if not in Redis current-holder
-      const departingRes = await fetch(
-        `https://api.neynar.com/v2/farcaster/user/bulk?fids=${departingPassengerData.currentHolder.fid}`,
-        {
-          headers: { accept: 'application/json', 'x-api-key': process.env.NEYNAR_API_KEY || '' },
-        }
-      );
-      if (departingRes.ok) {
-        const departingJson = await departingRes.json();
-        const departingUser = departingJson?.users?.[0];
-        departingPassengerAddress =
-          departingUser?.verified_addresses?.primary?.eth_address ||
-          departingUser?.verified_addresses?.eth_addresses?.[0];
-      }
-    }
-    if (!departingPassengerAddress) throw new Error('Departing passenger missing address');
+		const yoinkerData = {
+			fid: yoinkerUser.fid,
+			username: yoinkerUser.username,
+			display_name: yoinkerUser.display_name,
+			pfp_url: yoinkerUser.pfp_url,
+		};
 
-    // 5) Pending generation cache
-    const pending = await getOrSetPendingGeneration(nextTokenId, async () => {
-      const genRes = await fetch(`${APP_URL}/api/internal/generate-nft`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-internal-secret': INTERNAL_SECRET },
-        body: JSON.stringify({
-          tokenId: nextTokenId,
-          passengerUsername: departingPassengerData.currentHolder.username,
-        }),
-      });
-      if (!genRes.ok) throw new Error('generate-nft failed');
-      const gen = await genRes.json();
-      return {
-        imageHash: gen.imageHash,
-        metadataHash: gen.metadataHash,
-        tokenURI: gen.tokenURI,
-        attributes: gen.metadata?.attributes || [],
-        passengerUsername: departingPassengerData.currentHolder.username,
-      };
-    });
+		// Get departing passenger address for NFT ticket holder
+		let departingPassengerAddress =
+			departingPassengerData.currentHolder?.address;
+		if (!departingPassengerAddress) {
+			// Fallback: fetch from Neynar if not in Redis current-holder
+			const departingRes = await fetch(
+				`https://api.neynar.com/v2/farcaster/user/bulk?fids=${departingPassengerData.currentHolder.fid}`,
+				{
+					headers: {
+						accept: "application/json",
+						"x-api-key": process.env.NEYNAR_API_KEY || "",
+					},
+				},
+			);
+			if (departingRes.ok) {
+				const departingJson = await departingRes.json();
+				const departingUser = departingJson?.users?.[0];
+				departingPassengerAddress =
+					departingUser?.verified_addresses?.primary?.eth_address ||
+					departingUser?.verified_addresses?.eth_addresses?.[0];
+			}
+		}
+		if (!departingPassengerAddress)
+			throw new Error("Departing passenger missing address");
 
-    // 6) Execute yoink while holding the global movement lock
-    const txHash: string = await contractService.executeYoink(targetAddress as `0x${string}`);
-    console.log(`[orchestrateYoink] Executing yoink to address: ${targetAddress}`);
-    console.log(`[orchestrateYoink] Yoink transaction hash: ${txHash}`);
+		// 5) Pending generation cache
+		const pending = await getOrSetPendingGeneration(nextTokenId, async () => {
+			const genRes = await fetch(`${APP_URL}/api/internal/generate-nft`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"x-internal-secret": INTERNAL_SECRET,
+				},
+				body: JSON.stringify({
+					tokenId: nextTokenId,
+					passengerUsername: departingPassengerData.currentHolder.username,
+				}),
+			});
+			if (!genRes.ok) throw new Error("generate-nft failed");
+			const gen = await genRes.json();
+			return {
+				imageHash: gen.imageHash,
+				metadataHash: gen.metadataHash,
+				tokenURI: gen.tokenURI,
+				attributes: gen.metadata?.attributes || [],
+				passengerUsername: departingPassengerData.currentHolder.username,
+			};
+		});
 
-    // Get the actual minted token ID from the transaction receipt
-    let actualTokenId: number;
-    const mintedTokenId = await contractService.getMintedTokenIdFromTx(txHash as `0x${string}`);
-    if (mintedTokenId !== null) {
-      actualTokenId = mintedTokenId;
-      console.log(
-        `[orchestrateYoink] Using authoritative token ID from transaction: ${actualTokenId}`
-      );
-    } else {
-      actualTokenId = nextTokenId;
-      console.warn(
-        `[orchestrateYoink] Failed to get token ID from transaction receipt, falling back to pre-mint nextTokenId: ${actualTokenId}`
-      );
-    }
+		// 6) Execute yoink while holding the global movement lock
+		const txHash: string = await contractService.executeYoink(
+			targetAddress as `0x${string}`,
+		);
+		console.log(
+			`[orchestrateYoink] Executing yoink to address: ${targetAddress}`,
+		);
+		console.log(`[orchestrateYoink] Yoink transaction hash: ${txHash}`);
 
-    // Verify the contract state was updated correctly (optional validation, now tolerant)
-    await verifyNextIdAdvanced(contractService, actualTokenId, 'orchestrateYoink');
+		// Get the actual minted token ID from the transaction receipt
+		let actualTokenId: number;
+		const mintedTokenId = await contractService.getMintedTokenIdFromTx(
+			txHash as `0x${string}`,
+		);
+		if (mintedTokenId !== null) {
+			actualTokenId = mintedTokenId;
+			console.log(
+				`[orchestrateYoink] Using authoritative token ID from transaction: ${actualTokenId}`,
+			);
+		} else {
+			actualTokenId = nextTokenId;
+			console.warn(
+				`[orchestrateYoink] Failed to get token ID from transaction receipt, falling back to pre-mint nextTokenId: ${actualTokenId}`,
+			);
+		}
 
-    // 6.5) Set ticket metadata on-chain
-    try {
-      console.log(`[orchestrateYoink] Setting ticket metadata for token ${actualTokenId}`);
-      await contractService.setTicketData(
-        actualTokenId,
-        pending.tokenURI,
-        `ipfs://${pending.imageHash}`
-      );
-      console.log(`[orchestrateYoink] Ticket metadata set for token ${actualTokenId}`);
-    } catch (err) {
-      console.error(
-        `[orchestrateYoink] Failed to set ticket metadata for token ${actualTokenId}:`,
-        err
-      );
-      // Don't throw - the yoink succeeded, metadata setting is secondary
-    }
+		// Verify the contract state was updated correctly (optional validation, now tolerant)
+		await verifyNextIdAdvanced(
+			contractService,
+			actualTokenId,
+			"orchestrateYoink",
+		);
 
-    // 7) Store last moved timestamp
-    try {
-      await storeLastMovedTimestamp(actualTokenId, txHash);
-      console.log(`[orchestrateYoink] Stored last moved timestamp for token ${actualTokenId}`);
-    } catch (err) {
-      console.error('[orchestrateYoink] Failed to store last moved timestamp:', err);
-    }
+		// 6.5) Set ticket metadata on-chain
+		try {
+			console.log(
+				`[orchestrateYoink] Setting ticket metadata for token ${actualTokenId}`,
+			);
+			await contractService.setTicketData(
+				actualTokenId,
+				pending.tokenURI,
+				`ipfs://${pending.imageHash}`,
+			);
+			console.log(
+				`[orchestrateYoink] Ticket metadata set for token ${actualTokenId}`,
+			);
+		} catch (err) {
+			console.error(
+				`[orchestrateYoink] Failed to set ticket metadata for token ${actualTokenId}:`,
+				err,
+			);
+			// Don't throw - the yoink succeeded, metadata setting is secondary
+		}
 
-    // 8) Store token data write-once (NFT ticket holder is departing passenger)
-    const tokenData: TokenData = {
-      tokenId: actualTokenId,
-      imageHash: pending.imageHash,
-      metadataHash: pending.metadataHash,
-      tokenURI: pending.tokenURI,
-      holderAddress: departingPassengerAddress,
-      holderUsername: departingPassengerData.currentHolder.username,
-      holderFid: departingPassengerData.currentHolder.fid,
-      holderDisplayName: departingPassengerData.currentHolder.displayName,
-      holderPfpUrl: departingPassengerData.currentHolder.pfpUrl,
-      transactionHash: txHash,
-      timestamp: new Date().toISOString(),
-      attributes: pending.attributes,
-      sourceType: 'yoink',
-      sourceCastHash: undefined,
-      totalEligibleReactors: 1,
-    };
-    await storeTokenDataWriteOnce(tokenData);
+		// 7) Store last moved timestamp
+		try {
+			await storeLastMovedTimestamp(actualTokenId, txHash);
+			console.log(
+				`[orchestrateYoink] Stored last moved timestamp for token ${actualTokenId}`,
+			);
+		} catch (err) {
+			console.error(
+				"[orchestrateYoink] Failed to store last moved timestamp:",
+				err,
+			);
+		}
 
-    // 9) Update current holder = yoinker (address = targetAddress)
-    try {
-      const currentHolderData = {
-        fid: yoinkerData.fid,
-        username: yoinkerData.username,
-        displayName: yoinkerData.display_name,
-        pfpUrl: yoinkerData.pfp_url,
-        address: targetAddress,
-        timestamp: new Date().toISOString(),
-      };
-      await redis.set('current-holder', JSON.stringify(currentHolderData));
-      try {
-        const { redisPub, CURRENT_HOLDER_CHANNEL } = await import('@/lib/kv');
-        await redisPub.publish(CURRENT_HOLDER_CHANNEL, JSON.stringify({ type: 'holder-updated' }));
-      } catch {}
-      console.log(
-        `[orchestrateYoink] Updated current holder to: ${yoinkerData.username} (FID: ${yoinkerData.fid})`
-      );
-    } catch (err) {
-      console.error('[orchestrateYoink] Failed to store current holder in Redis:', err);
-    }
+		// 8) Store token data write-once (NFT ticket holder is departing passenger)
+		const tokenData: TokenData = {
+			tokenId: actualTokenId,
+			imageHash: pending.imageHash,
+			metadataHash: pending.metadataHash,
+			tokenURI: pending.tokenURI,
+			holderAddress: departingPassengerAddress,
+			holderUsername: departingPassengerData.currentHolder.username,
+			holderFid: departingPassengerData.currentHolder.fid,
+			holderDisplayName: departingPassengerData.currentHolder.displayName,
+			holderPfpUrl: departingPassengerData.currentHolder.pfpUrl,
+			transactionHash: txHash,
+			timestamp: new Date().toISOString(),
+			attributes: pending.attributes,
+			sourceType: "yoink",
+			sourceCastHash: undefined,
+			totalEligibleReactors: 1,
+		};
+		await storeTokenDataWriteOnce(tokenData);
 
-    // Optional: cleanup pending NFT cache after successful commit
-    try {
-      await redis.del(REDIS_KEYS.pendingNFT(actualTokenId));
-    } catch {}
+		// 9) Update current holder = yoinker (address = targetAddress)
+		try {
+			const currentHolderData = {
+				fid: yoinkerData.fid,
+				username: yoinkerData.username,
+				displayName: yoinkerData.display_name,
+				pfpUrl: yoinkerData.pfp_url,
+				address: targetAddress,
+				timestamp: new Date().toISOString(),
+			};
+			await redis.set("current-holder", JSON.stringify(currentHolderData));
+			try {
+				const { redisPub, CURRENT_HOLDER_CHANNEL } = await import("@/lib/kv");
+				await redisPub.publish(
+					CURRENT_HOLDER_CHANNEL,
+					JSON.stringify({ type: "holder-updated" }),
+				);
+			} catch {}
+			console.log(
+				`[orchestrateYoink] Updated current holder to: ${yoinkerData.username} (FID: ${yoinkerData.fid})`,
+			);
+		} catch (err) {
+			console.error(
+				"[orchestrateYoink] Failed to store current holder in Redis:",
+				err,
+			);
+		}
 
-    // 10) Send two idempotent casts
-    const timestamp = Date.now();
-    try {
-      // Welcome cast for yoinker
-      const welcomeResponse = await fetch(`${APP_URL}/api/internal/send-cast`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-internal-secret': INTERNAL_SECRET },
-        body: JSON.stringify({
-          text: `🚂 ChooChoo was yoinked by @${yoinkerData.username}!`,
-          embeds: [{ url: APP_URL }],
-          idem: `welcome-${actualTokenId}-${timestamp}`,
-        }),
-      });
-      if (!welcomeResponse.ok) {
-        const errorData = await welcomeResponse.json();
-        console.warn(
-          `[train-orchestrator] Welcome cast failed: ${welcomeResponse.status} - ${errorData.error}`
-        );
-      }
+		// Optional: cleanup pending NFT cache after successful commit
+		try {
+			await redis.del(REDIS_KEYS.pendingNFT(actualTokenId));
+		} catch {}
 
-      // Ticket issued cast for departing passenger with image
-      const imageUrl = `https://${process.env.NEXT_PUBLIC_PINATA_GATEWAY}/ipfs/${pending.imageHash}`;
-      const ticketResponse = await fetch(`${APP_URL}/api/internal/send-cast`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-internal-secret': INTERNAL_SECRET },
-        body: JSON.stringify({
-          text: `🎫 Ticket #${actualTokenId} minted to @${departingPassengerData.currentHolder.username}!`,
-          embeds: [{ url: imageUrl }],
-          idem: `ticket-${actualTokenId}-${timestamp}`,
-        }),
-      });
-      if (!ticketResponse.ok) {
-        const errorData = await ticketResponse.json();
-        console.warn(
-          `[train-orchestrator] Ticket cast failed: ${ticketResponse.status} - ${errorData.error}`
-        );
-      }
-    } catch (err) {
-      console.warn(`[train-orchestrator] Cast request failed:`, err);
-    }
+		// 10) Send two idempotent casts
+		const timestamp = Date.now();
+		try {
+			// Welcome cast for yoinker
+			const welcomeResponse = await fetch(`${APP_URL}/api/internal/send-cast`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"x-internal-secret": INTERNAL_SECRET,
+				},
+				body: JSON.stringify({
+					text: `🚂 ChooChoo was yoinked by @${yoinkerData.username}!`,
+					embeds: [{ url: APP_URL }],
+					idem: `welcome-${actualTokenId}-${timestamp}`,
+				}),
+			});
+			if (!welcomeResponse.ok) {
+				const errorData = await welcomeResponse.json();
+				console.warn(
+					`[train-orchestrator] Welcome cast failed: ${welcomeResponse.status} - ${errorData.error}`,
+				);
+			}
 
-    // 11) Send notifications
-    try {
-      // Notify everyone about the yoink
-      await sendChooChooNotification('yoinkAnnouncement', yoinkerData.username);
-      
-      // Notify departing passenger about their ticket NFT
-      await sendChooChooNotification('ticketMinted', departingPassengerData.currentHolder.username, actualTokenId, departingPassengerData.currentHolder.fid);
-      
-      // Notify yoinker that ChooChoo has arrived
-      await sendChooChooNotification('chooChooArrived', yoinkerData.username, yoinkerData.fid);
-    } catch (err) {
-      console.warn('[orchestrateYoink] Failed to send notifications:', err);
-    }
+			// Ticket issued cast for departing passenger with image
+			const imageUrl = `https://${process.env.NEXT_PUBLIC_PINATA_GATEWAY}/ipfs/${pending.imageHash}`;
+			const ticketResponse = await fetch(`${APP_URL}/api/internal/send-cast`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					"x-internal-secret": INTERNAL_SECRET,
+				},
+				body: JSON.stringify({
+					text: `🎫 Ticket #${actualTokenId} minted to @${departingPassengerData.currentHolder.username}!`,
+					embeds: [{ url: imageUrl }],
+					idem: `ticket-${actualTokenId}-${timestamp}`,
+				}),
+			});
+			if (!ticketResponse.ok) {
+				const errorData = await ticketResponse.json();
+				console.warn(
+					`[train-orchestrator] Ticket cast failed: ${ticketResponse.status} - ${errorData.error}`,
+				);
+			}
+		} catch (err) {
+			console.warn(`[train-orchestrator] Cast request failed:`, err);
+		}
 
-    // 12) Set workflow to NOT_CASTED
-    try {
-      await fetch(`${APP_URL}/api/workflow-state`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          state: 'NOT_CASTED',
-          winnerSelectionStart: null,
-          currentCastHash: null,
-        }),
-      });
-    } catch {}
+		// 11) Send notifications
+		try {
+			// Notify everyone about the yoink
+			await sendChooChooNotification("yoinkAnnouncement", yoinkerData.username);
 
-    return {
-      status: 200,
-      body: {
-        success: true,
-        tokenId: actualTokenId,
-        txHash,
-        tokenURI: pending.tokenURI,
-        yoinkedBy: yoinkerData.username,
-      },
-    } as const;
-  } catch (error) {
-    // 12) On failure: do not modify workflow state
-    return { status: 500, body: { success: false, error: (error as Error).message } } as const;
-  } finally {
-    // 13) Release locks
-    await releaseLock(lockKey);
-    await releaseLock(globalLockKey);
-  }
+			// Notify departing passenger about their ticket NFT
+			await sendChooChooNotification(
+				"ticketMinted",
+				departingPassengerData.currentHolder.username,
+				actualTokenId,
+				departingPassengerData.currentHolder.fid,
+			);
+
+			// Notify yoinker that ChooChoo has arrived
+			await sendChooChooNotification(
+				"chooChooArrived",
+				yoinkerData.username,
+				yoinkerData.fid,
+			);
+		} catch (err) {
+			console.warn("[orchestrateYoink] Failed to send notifications:", err);
+		}
+
+		// 12) Set workflow to NOT_CASTED
+		try {
+			await fetch(`${APP_URL}/api/workflow-state`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					state: "NOT_CASTED",
+					winnerSelectionStart: null,
+					currentCastHash: null,
+				}),
+			});
+		} catch {}
+
+		return {
+			status: 200,
+			body: {
+				success: true,
+				tokenId: actualTokenId,
+				txHash,
+				tokenURI: pending.tokenURI,
+				yoinkedBy: yoinkerData.username,
+			},
+		} as const;
+	} catch (error) {
+		// 12) On failure: do not modify workflow state
+		return {
+			status: 500,
+			body: { success: false, error: (error as Error).message },
+		} as const;
+	} finally {
+		// 13) Release locks
+		await releaseLock(lockKey);
+		await releaseLock(globalLockKey);
+	}
 }
