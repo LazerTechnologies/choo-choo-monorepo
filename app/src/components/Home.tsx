@@ -69,13 +69,16 @@ export default function Home({ title = "Choo Choo on Base" }: HomeProps) {
 		const fetchPauseState = async () => {
 			try {
 				setIsLoadingPauseState(true);
-				const response = await fetch("/api/admin/app-pause/proxy", {
-					credentials: "include",
+				const response = await fetch("/api/admin/app-pause", {
+					cache: "no-store",
 				});
 				if (response.ok) {
 					const data = await response.json();
-					setIsPaused(data.isPaused);
+					setIsPaused(Boolean(data?.isPaused));
+					return;
 				}
+				console.warn("[Home] Failed to fetch pause state:", response.status);
+				setIsPaused(false);
 			} catch (error) {
 				console.error("Failed to fetch pause state:", error);
 				// Default to not paused on error
