@@ -39,7 +39,9 @@ export async function retryWithBackoff<T>(
 			});
 
 			if (attempt < maxAttempts) {
-				const delayMs = 2 ** (attempt - 1) * 1000;
+				const baseDelayMs = Math.min(2 ** (attempt - 1) * 1000, 30000); // cap at 30s
+				const jitter = Math.random() * 0.3 * baseDelayMs; // ±30% jitter
+				const delayMs = baseDelayMs + jitter;
 
 				retryLog.info(toRetryLogCode("backoff", "scheduled"), {
 					operationName,

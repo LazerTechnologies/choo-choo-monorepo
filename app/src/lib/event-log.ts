@@ -72,6 +72,7 @@ export type OrchestratorEvent =
 	| "promotion_store_success"
 	| "promotion_success"
 	| "promotion_failed"
+	| "abandon_failed"
 	| "completed"
 	| "failed"
 	| "contract_submitted"
@@ -90,7 +91,12 @@ export function toOrchestratorLogCode(
 	return `${operation}.${event}` as OrchestratorLogCode;
 }
 
-type StagingCategory = "lifecycle" | "promotion" | "validation" | "listing";
+type StagingCategory =
+	| "lifecycle"
+	| "promotion"
+	| "validation"
+	| "listing"
+	| "health_check";
 type StagingEvent =
 	| "exists"
 	| "created"
@@ -98,7 +104,10 @@ type StagingEvent =
 	| "abandoned"
 	| "success"
 	| "failed"
-	| "parse_failed";
+	| "parse_failed"
+	| "conflict"
+	| "conflict_exhausted"
+	| "update_failed";
 export type StagingLogCode = `${StagingCategory}.${StagingEvent}`;
 
 type RedisAction = "set" | "get" | "del" | "publish" | "lock";

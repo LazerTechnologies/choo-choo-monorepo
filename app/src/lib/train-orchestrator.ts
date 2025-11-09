@@ -123,9 +123,29 @@ interface ExecuteTrainMovementOptions {
 	departingPassenger: ParticipantSnapshot;
 	sourceCastHash?: string;
 	totalEligibleReactors?: number;
+	stagingAlreadyExists?: boolean;
 }
 
 const STAGING_TIMEOUT_MS = 10 * 60 * 1000;
+
+/**
+ * Cleans up the pending NFT cache entry for a given token ID.
+ * This is a non-critical operation that logs warnings on failure.
+ */
+async function cleanupPendingNFT(tokenId: number): Promise<void> {
+	try {
+		await redis.del(REDIS_KEYS.pendingNFT(tokenId));
+		redisLog.info("del.success", {
+			key: REDIS_KEYS.pendingNFT(tokenId),
+			context: "pending-nft",
+		});
+	} catch (cleanupError) {
+		redisLog.warn("del.failed", {
+			key: REDIS_KEYS.pendingNFT(tokenId),
+			error: cleanupError,
+		});
+	}
+}
 
 export async function executeTrainMovement(
 	options: ExecuteTrainMovementOptions,
@@ -142,6 +162,7 @@ export async function executeTrainMovement(
 		departingPassenger,
 		sourceCastHash,
 		totalEligibleReactors,
+		stagingAlreadyExists = false,
 	} = options;
 
 	orchestratorLog.info(toOrchestratorLogCode(operation, "start"), {
@@ -172,6 +193,7 @@ export async function executeTrainMovement(
 					toOrchestratorLogCode(operation, "promotion_failed"),
 					{ tokenId: initialTokenId, error },
 				);
+				await cleanupPendingNFT(initialTokenId);
 				return {
 					success: false,
 					tokenId: initialTokenId,
@@ -184,6 +206,7 @@ export async function executeTrainMovement(
 				};
 			}
 
+			await cleanupPendingNFT(initialTokenId);
 			return {
 				success: true,
 				tokenId: existingStaging.tokenId ?? initialTokenId,
@@ -207,21 +230,24 @@ export async function executeTrainMovement(
 	}
 
 	try {
-		await createStaging(initialTokenId, {
-			orchestrator: operation,
-			newHolder,
-			departingPassenger,
-			sourceCastHash,
-			totalEligibleReactors,
-		});
+		// Only create staging if it wasn't already created by the caller
+		if (!stagingAlreadyExists) {
+			await createStaging(initialTokenId, {
+				orchestrator: operation,
+				newHolder,
+				departingPassenger,
+				sourceCastHash,
+				totalEligibleReactors,
+			});
 
-		await updateStaging(initialTokenId, {
-			status: "pinata_uploaded",
-			imageHash: preparedNFT.imageHash,
-			metadataHash: preparedNFT.metadataHash,
-			tokenURI: preparedNFT.tokenURI,
-			attributes: preparedNFT.attributes,
-		});
+			await updateStaging(initialTokenId, {
+				status: "pinata_uploaded",
+				imageHash: preparedNFT.imageHash,
+				metadataHash: preparedNFT.metadataHash,
+				tokenURI: preparedNFT.tokenURI,
+				attributes: preparedNFT.attributes,
+			});
+		}
 
 		let mintedTokenId = initialTokenId;
 		let txHash: string;
@@ -249,18 +275,7 @@ export async function executeTrainMovement(
 				initialTokenId,
 				error instanceof Error ? error.message : "Contract execution failed",
 			);
-			try {
-				await redis.del(REDIS_KEYS.pendingNFT(initialTokenId));
-				redisLog.info("del.success", {
-					key: REDIS_KEYS.pendingNFT(initialTokenId),
-					context: "pending-nft",
-				});
-			} catch (cleanupError) {
-				redisLog.warn("del.failed", {
-					key: REDIS_KEYS.pendingNFT(initialTokenId),
-					error: cleanupError,
-				});
-			}
+			await cleanupPendingNFT(initialTokenId);
 
 			return {
 				success: false,
@@ -296,8 +311,18 @@ export async function executeTrainMovement(
 					{
 						tokenId: mintedTokenId,
 						error,
+						msg: "Metadata setting failed, marking for retry",
 					},
 				);
+
+				// Pragmatic approach: Mark for retry but allow promotion
+				// The mint succeeded on-chain, so we acknowledge success
+				// but flag that metadata needs to be set later
+				await updateStaging(initialTokenId, {
+					status: "metadata_set",
+					needsMetadataRetry: true,
+					lastError: `Metadata setting failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+				});
 			}
 		}
 
@@ -329,18 +354,7 @@ export async function executeTrainMovement(
 			};
 		}
 
-		try {
-			await redis.del(REDIS_KEYS.pendingNFT(mintedTokenId));
-			redisLog.info("del.success", {
-				key: REDIS_KEYS.pendingNFT(mintedTokenId),
-				context: "pending-nft",
-			});
-		} catch (cleanupError) {
-			redisLog.warn("del.failed", {
-				key: REDIS_KEYS.pendingNFT(mintedTokenId),
-				error: cleanupError,
-			});
-		}
+		await cleanupPendingNFT(mintedTokenId);
 
 		try {
 			await verifyNextIdAdvanced(
@@ -355,6 +369,44 @@ export async function executeTrainMovement(
 			});
 		}
 
+		// Check if metadata needs retry and queue it
+		const finalStaging = await getStaging(initialTokenId);
+		if (finalStaging?.needsMetadataRetry) {
+			orchestratorLog.warn(
+				toOrchestratorLogCode(operation, "post_commit_warning"),
+				{
+					tokenId: mintedTokenId,
+					issue: "metadata_needs_retry",
+					msg: "Metadata setting failed, queued for retry",
+				},
+			);
+
+			try {
+				await redis.lpush(
+					"metadata-retry-queue",
+					JSON.stringify({
+						tokenId: mintedTokenId,
+						tokenURI: preparedNFT.tokenURI,
+						imageHash: preparedNFT.imageHash,
+						operation,
+						timestamp: new Date().toISOString(),
+						attempt: 1,
+					}),
+				);
+				redisLog.info("set.success", {
+					key: "metadata-retry-queue",
+					tokenId: mintedTokenId,
+					context: "metadata-retry",
+				});
+			} catch (queueError) {
+				redisLog.error("set.failed", {
+					key: "metadata-retry-queue",
+					tokenId: mintedTokenId,
+					error: queueError,
+				});
+			}
+		}
+
 		orchestratorLog.info(toOrchestratorLogCode(operation, "completed"), {
 			tokenId: mintedTokenId,
 			txHash,
@@ -367,6 +419,17 @@ export async function executeTrainMovement(
 			tokenURI: preparedNFT.tokenURI,
 		};
 	} catch (error) {
+		try {
+			await abandonStaging(
+				initialTokenId,
+				error instanceof Error ? error.message : "Unexpected error",
+			);
+		} catch (abandonError) {
+			orchestratorLog.warn(toOrchestratorLogCode(operation, "abandon_failed"), {
+				tokenId: initialTokenId,
+				error: abandonError,
+			});
+		}
 		orchestratorLog.error(toOrchestratorLogCode(operation, "failed"), {
 			tokenId: initialTokenId,
 			error,
@@ -529,6 +592,27 @@ export async function orchestrateManualSend(
 		if (!departingPassengerAddress)
 			throw new Error("Departing passenger missing address");
 
+		// Create staging BEFORE Pinata upload to ensure complete tracking
+		await createStaging(nextTokenId, {
+			orchestrator: "manual-send",
+			newHolder: {
+				fid: user.fid,
+				username: user.username,
+				displayName: user.display_name,
+				pfpUrl: user.pfp_url,
+				address: targetAddress,
+			},
+			departingPassenger: {
+				fid: departingPassengerData.currentHolder.fid,
+				username: departingPassengerData.currentHolder.username,
+				displayName: departingPassengerData.currentHolder.displayName,
+				pfpUrl: departingPassengerData.currentHolder.pfpUrl,
+				address: departingPassengerAddress,
+			},
+			sourceCastHash: undefined,
+			totalEligibleReactors: 1,
+		});
+
 		const pending = await getOrSetPendingGeneration(nextTokenId, async () => {
 			const genRes = await fetch(`${APP_URL}/api/internal/generate-nft`, {
 				method: "POST",
@@ -552,6 +636,15 @@ export async function orchestrateManualSend(
 			};
 		});
 
+		// Update staging with Pinata data
+		await updateStaging(nextTokenId, {
+			status: "pinata_uploaded",
+			imageHash: pending.imageHash,
+			metadataHash: pending.metadataHash,
+			tokenURI: pending.tokenURI,
+			attributes: pending.attributes,
+		});
+
 		const preparedNFTData: PreparedNFTData = {
 			imageHash: pending.imageHash,
 			metadataHash: pending.metadataHash,
@@ -564,6 +657,7 @@ export async function orchestrateManualSend(
 			tokenId: nextTokenId,
 			preparedNFT: preparedNFTData,
 			contractService,
+			stagingAlreadyExists: true,
 			newHolder: {
 				fid: user.fid,
 				username: user.username,
@@ -902,6 +996,27 @@ export async function orchestrateRandomSend(castHash: string) {
 		if (!departingPassengerAddress)
 			throw new Error("Departing passenger missing address");
 
+		// Create staging BEFORE Pinata upload to ensure complete tracking
+		await createStaging(nextTokenId, {
+			orchestrator: "random-send",
+			newHolder: {
+				fid: winnerData.winner.fid,
+				username: winnerData.winner.username,
+				displayName: winnerData.winner.displayName,
+				pfpUrl: winnerData.winner.pfpUrl,
+				address: winnerData.winner.address,
+			},
+			departingPassenger: {
+				fid: departingPassengerData.currentHolder.fid,
+				username: departingPassengerData.currentHolder.username,
+				displayName: departingPassengerData.currentHolder.displayName,
+				pfpUrl: departingPassengerData.currentHolder.pfpUrl,
+				address: departingPassengerAddress,
+			},
+			sourceCastHash: castHash,
+			totalEligibleReactors: winnerData.totalEligibleReactors,
+		});
+
 		const pending = await getOrSetPendingGeneration(nextTokenId, async () => {
 			const genRes = await fetch(`${APP_URL}/api/internal/generate-nft`, {
 				method: "POST",
@@ -925,6 +1040,15 @@ export async function orchestrateRandomSend(castHash: string) {
 			};
 		});
 
+		// Update staging with Pinata data
+		await updateStaging(nextTokenId, {
+			status: "pinata_uploaded",
+			imageHash: pending.imageHash,
+			metadataHash: pending.metadataHash,
+			tokenURI: pending.tokenURI,
+			attributes: pending.attributes,
+		});
+
 		const preparedNFTData: PreparedNFTData = {
 			imageHash: pending.imageHash,
 			metadataHash: pending.metadataHash,
@@ -937,6 +1061,7 @@ export async function orchestrateRandomSend(castHash: string) {
 			tokenId: nextTokenId,
 			preparedNFT: preparedNFTData,
 			contractService,
+			stagingAlreadyExists: true,
 			newHolder: {
 				fid: winnerData.winner.fid,
 				username: winnerData.winner.username,
@@ -1265,6 +1390,26 @@ export async function orchestrateYoink(userFid: number, targetAddress: string) {
 		if (!departingPassengerAddress)
 			throw new Error("Departing passenger missing address");
 
+		// Create staging BEFORE Pinata upload to ensure complete tracking
+		await createStaging(nextTokenId, {
+			orchestrator: "yoink",
+			newHolder: {
+				fid: yoinkerData.fid,
+				username: yoinkerData.username,
+				displayName: yoinkerData.displayName,
+				pfpUrl: yoinkerData.pfpUrl,
+				address: targetAddress,
+			},
+			departingPassenger: {
+				fid: departingPassengerData.currentHolder.fid,
+				username: departingPassengerData.currentHolder.username,
+				displayName: departingPassengerData.currentHolder.displayName,
+				pfpUrl: departingPassengerData.currentHolder.pfpUrl,
+				address: departingPassengerAddress,
+			},
+			totalEligibleReactors: 1,
+		});
+
 		const pending = await getOrSetPendingGeneration(nextTokenId, async () => {
 			const genRes = await fetch(`${APP_URL}/api/internal/generate-nft`, {
 				method: "POST",
@@ -1288,6 +1433,15 @@ export async function orchestrateYoink(userFid: number, targetAddress: string) {
 			};
 		});
 
+		// Update staging with Pinata data
+		await updateStaging(nextTokenId, {
+			status: "pinata_uploaded",
+			imageHash: pending.imageHash,
+			metadataHash: pending.metadataHash,
+			tokenURI: pending.tokenURI,
+			attributes: pending.attributes,
+		});
+
 		const preparedNFTData: PreparedNFTData = {
 			imageHash: pending.imageHash,
 			metadataHash: pending.metadataHash,
@@ -1300,6 +1454,7 @@ export async function orchestrateYoink(userFid: number, targetAddress: string) {
 			tokenId: nextTokenId,
 			preparedNFT: preparedNFTData,
 			contractService,
+			stagingAlreadyExists: true,
 			newHolder: {
 				fid: yoinkerData.fid,
 				username: yoinkerData.username,
