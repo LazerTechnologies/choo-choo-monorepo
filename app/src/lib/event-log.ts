@@ -97,6 +97,7 @@ type StagingEvent =
 	| "updated"
 	| "abandoned"
 	| "success"
+	| "failed"
 	| "parse_failed";
 export type StagingLogCode = `${StagingCategory}.${StagingEvent}`;
 

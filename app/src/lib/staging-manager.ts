@@ -123,7 +123,7 @@ export async function getStaging(
 
 export async function updateStaging(
 	tokenId: number,
-	updates: Partial<Omit<StagingMovement, "tokenId" | "createdAt">>,
+	updates: Partial<Omit<StagingMovement, "createdAt">>,
 ): Promise<StagingMovement | null> {
 	const key = getStagingKey(tokenId);
 	const current = await getStaging(tokenId);
@@ -229,8 +229,10 @@ export async function promoteStaging(tokenId: number): Promise<void> {
 
 	assertPromotable(staging);
 
+	const mintedTokenId = staging.tokenId ?? tokenId;
+
 	const tokenData: TokenData = {
-		tokenId,
+		tokenId: mintedTokenId,
 		imageHash: staging.imageHash,
 		metadataHash: staging.metadataHash,
 		tokenURI: staging.tokenURI,
@@ -252,16 +254,16 @@ export async function promoteStaging(tokenId: number): Promise<void> {
 	orchestratorLog.info(
 		toOrchestratorLogCode(staging.orchestrator, "promotion_store_success"),
 		{
-			tokenId,
+			tokenId: mintedTokenId,
 			result,
 		},
 	);
 
 	try {
-		await storeLastMovedTimestamp(tokenId, staging.txHash);
+		await storeLastMovedTimestamp(mintedTokenId, staging.txHash);
 	} catch (error) {
 		redisLog.warn("set.failed", {
-			tokenId,
+			tokenId: mintedTokenId,
 			error,
 			context: "last-moved-timestamp",
 		});
@@ -282,7 +284,7 @@ export async function promoteStaging(tokenId: number): Promise<void> {
 	await redis.del(getStagingKey(tokenId));
 
 	stagingLog.info("promotion.success", {
-		tokenId,
+		tokenId: mintedTokenId,
 	});
 }
 
