@@ -77,7 +77,8 @@ export type OrchestratorEvent =
 	| "contract_submitted"
 	| "contract_confirmed"
 	| "metadata_set"
-	| "recovered";
+	| "recovered"
+	| "post_commit_warning";
 
 export type OrchestratorLogCode =
 	`${OrchestratorOperation}.${OrchestratorEvent}`;
