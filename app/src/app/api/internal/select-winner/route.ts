@@ -217,7 +217,7 @@ async function fetchReplies(castHash: string): Promise<
  * POST /api/internal/select-winner
  * Internal endpoint for selecting a winner from Farcaster cast replies
  */
-export async function POST(request: Request) {
+async function handlePost(request: Request) {
 	try {
 		const authHeader = request.headers.get("x-internal-secret");
 		if (!INTERNAL_SECRET || authHeader !== INTERNAL_SECRET) {
@@ -332,3 +332,5 @@ export async function POST(request: Request) {
 		);
 	}
 }
+
+export const POST = handlePost;

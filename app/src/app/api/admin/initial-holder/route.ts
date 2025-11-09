@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
-import { z } from 'zod';
 import { isAddress } from 'viem';
-import { redis } from '@/lib/kv';
+import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth/require-admin';
-
-import type { CurrentHolderData } from '@/types/nft';
-import type { NeynarBulkUsersResponse } from '@/types/neynar';
-import { CHOOCHOO_CAST_TEMPLATES, APP_URL } from '@/lib/constants';
+import { APP_URL, CHOOCHOO_CAST_TEMPLATES } from '@/lib/constants';
+import { redis } from '@/lib/kv';
 import { DEFAULT_WORKFLOW_DATA } from '@/lib/workflow-types';
+import type { NeynarBulkUsersResponse } from '@/types/neynar';
+import type { CurrentHolderData } from '@/types/nft';
 
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;

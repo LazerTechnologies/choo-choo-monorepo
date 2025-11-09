@@ -112,7 +112,7 @@ async function fetchUserByFid(fid: number): Promise<{
  * @param request - The HTTP request object with body containing { targetFid: number }.
  * @returns 200 with { success: true, winner, tokenId, txHash, tokenURI } on success, or 400/500 with error message.
  */
-export async function POST(request: Request) {
+async function handlePost(request: Request) {
 	try {
 		// 0. Admin auth
 		const auth = await requireAdmin(request);
@@ -262,3 +262,5 @@ export async function POST(request: Request) {
 		);
 	}
 }
+
+export const POST = handlePost;
