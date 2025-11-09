@@ -236,7 +236,17 @@ export async function executeTrainMovement(
 			msg: "Staging timed out, abandoning and restarting",
 		});
 		await abandonStaging(initialTokenId, "Staging timed out - restarting");
-	} else if (existingStaging.status !== "pinata_uploaded") {
+		await cleanupPendingNFT(initialTokenId);
+		return {
+			success: false,
+			tokenId: initialTokenId,
+			txHash: "",
+			tokenURI: "",
+			error: "Staging timed out, please retry the operation",
+		};
+	}
+
+	if (existingStaging.status !== "pinata_uploaded") {
 		// Staging exists but isn't in the expected state
 		return {
 			success: false,
@@ -382,20 +392,20 @@ export async function executeTrainMovement(
 
 			try {
 				const metadataRetryKey = `metadata-retry:${mintedTokenId}`;
-				const retryData = JSON.stringify({
-					tokenId: mintedTokenId,
-					tokenURI: preparedNFT.tokenURI,
-					imageHash: preparedNFT.imageHash,
-					operation,
-					firstFailedAt: new Date().toISOString(),
-					lastUpdatedAt: new Date().toISOString(),
-				});
 
 				// Check if already queued to avoid duplicates
 				const exists = await redis.exists(metadataRetryKey);
 
 				if (exists === 0) {
-					// Not queued yet - add it
+					// Not queued yet - add it with new timestamps
+					const retryData = JSON.stringify({
+						tokenId: mintedTokenId,
+						tokenURI: preparedNFT.tokenURI,
+						imageHash: preparedNFT.imageHash,
+						operation,
+						firstFailedAt: new Date().toISOString(),
+						lastUpdatedAt: new Date().toISOString(),
+					});
 					await redis.set(metadataRetryKey, retryData, "EX", 7 * 24 * 60 * 60);
 					await redis.sadd("metadata-retry-set", mintedTokenId.toString());
 					redisLog.info("set.success", {
@@ -405,7 +415,17 @@ export async function executeTrainMovement(
 						msg: "Added to retry queue",
 					});
 				} else {
-					// Already queued - just update timestamp
+					// Already queued - preserve firstFailedAt, update lastUpdatedAt
+					const existingData = await redis.get(metadataRetryKey);
+					const existing = existingData ? JSON.parse(existingData) : {};
+					const retryData = JSON.stringify({
+						tokenId: mintedTokenId,
+						tokenURI: preparedNFT.tokenURI,
+						imageHash: preparedNFT.imageHash,
+						operation,
+						firstFailedAt: existing.firstFailedAt || new Date().toISOString(),
+						lastUpdatedAt: new Date().toISOString(),
+					});
 					await redis.set(metadataRetryKey, retryData, "EX", 7 * 24 * 60 * 60);
 					redisLog.info("set.success", {
 						key: metadataRetryKey,
