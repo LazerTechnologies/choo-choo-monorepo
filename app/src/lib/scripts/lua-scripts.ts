@@ -1,5 +1,30 @@
 /**
- * Lua script to create and swap a value in Redis with a TTL
+ * Lua script for atomic compare-and-swap with TTL (optimistic locking)
+ *
+ * Purpose: Implements optimistic concurrency control for updating existing keys.
+ * This is used by updateStaging() to prevent lost updates from concurrent modifications.
+ *
+ * IMPORTANT: This script is designed for UPDATE operations on EXISTING keys only.
+ * It is NOT intended for creating new keys. The caller MUST verify the key exists
+ * before calling this script.
+ *
+ * Usage pattern:
+ * 1. Read current value from Redis
+ * 2. If key doesn't exist, return early (don't call this script)
+ * 3. Modify the value
+ * 4. Call this script with the original value as 'expected'
+ * 5. If script returns 1, update succeeded
+ * 6. If script returns 0, value was modified concurrently - retry from step 1
+ *
+ * Parameters:
+ * - KEYS[1]: Redis key to update
+ * - ARGV[1]: Expected current value (what we read earlier)
+ * - ARGV[2]: New value to set
+ * - ARGV[3]: TTL in seconds
+ *
+ * Returns:
+ * - 1 if update succeeded (current value matched expected)
+ * - 0 if update failed (concurrent modification detected)
  */
 export const CREATE_AND_SWAP_SCRIPT = `
 			local key = KEYS[1]
@@ -18,6 +43,36 @@ export const CREATE_AND_SWAP_SCRIPT = `
 
 /**
  * Lua script to promote a staging entry to permanent storage
+ *
+ * This script atomically:
+ * 1. Validates staging entry exists
+ * 2. Writes token data (with idempotency check)
+ * 3. Updates last moved timestamp
+ * 4. Updates current holder
+ * 5. Updates token ID tracker (monotonically)
+ * 6. Deletes staging entry
+ *
+ * All operations succeed or fail together (atomic).
+ *
+ * Parameters:
+ * - KEYS[1]: token key (e.g., "token42")
+ * - KEYS[2]: last-moved-timestamp key
+ * - KEYS[3]: current-holder key
+ * - KEYS[4]: staging key (e.g., "staging:42")
+ * - KEYS[5]: current-token-id key
+ * - ARGV[1]: token data (JSON string)
+ * - ARGV[2]: last moved data (JSON string)
+ * - ARGV[3]: current holder data (JSON string)
+ * - ARGV[4]: token ID (numeric string)
+ *
+ * Returns:
+ * - 'created' if token was newly created
+ * - 'exists' if token already existed (idempotent)
+ * - {err: 'staging_not_found'} if staging doesn't exist
+ * - {err: 'token_data_mismatch'} if existing token has different data
+ * - {err: 'invalid_token_id'} if token ID is not a valid number
+ * - {err: 'invalid_token_data_json'} if token data is malformed JSON
+ * - {err: 'invalid_tracker_json'} if tracker data is malformed JSON
  */
 export const ATOMIC_PROMOTION_SCRIPT = `
 		local token_key = KEYS[1]
@@ -30,6 +85,11 @@ export const ATOMIC_PROMOTION_SCRIPT = `
 		local last_moved_data = ARGV[2]
 		local current_holder_data = ARGV[3]
 		local token_id = tonumber(ARGV[4])
+
+		-- Validate token_id conversion
+		if not token_id then
+			return {err = 'invalid_token_id'}
+		end
 
 		-- Check if staging entry exists
 		local staging_exists = redis.call('EXISTS', staging_key)
@@ -59,19 +119,31 @@ export const ATOMIC_PROMOTION_SCRIPT = `
 		redis.call('SET', current_holder_key, current_holder_data)
 
 		-- Update current token ID tracker (monotonically increasing)
+		-- Decode token_data once with error handling
+		local ok_token, decoded_token_data = pcall(cjson.decode, token_data)
+		if not ok_token then
+			return {err = 'invalid_token_data_json'}
+		end
+
 		local current_tracker = redis.call('GET', current_token_id_key)
 		if current_tracker then
-			local tracker = cjson.decode(current_tracker)
+			-- Decode existing tracker with error handling
+			local ok_tracker, tracker = pcall(cjson.decode, current_tracker)
+			if not ok_tracker then
+				return {err = 'invalid_tracker_json'}
+			end
+
+			-- Update tracker if new token ID is higher (monotonic)
 			if token_id > tracker.currentTokenId then
 				tracker.currentTokenId = token_id
-				tracker.timestamp = cjson.decode(token_data).timestamp
+				tracker.timestamp = decoded_token_data.timestamp
 				redis.call('SET', current_token_id_key, cjson.encode(tracker))
 			end
 		else
-			-- Initialize tracker
+			-- Initialize tracker with new token
 			local new_tracker = {
 				currentTokenId = token_id,
-				timestamp = cjson.decode(token_data).timestamp
+				timestamp = decoded_token_data.timestamp
 			}
 			redis.call('SET', current_token_id_key, cjson.encode(new_tracker))
 		end

@@ -142,12 +142,9 @@ export async function updateStaging(
 
 		const currentData = JSON.stringify(current);
 
-		// Use Lua script for atomic compare-and-swap
-		const script = CREATE_AND_SWAP_SCRIPT;
-
 		try {
 			const result = await redis.eval(
-				script,
+				CREATE_AND_SWAP_SCRIPT,
 				1,
 				key,
 				currentData,
@@ -320,16 +317,11 @@ export async function promoteStaging(tokenId: number): Promise<void> {
 		timestamp: new Date().toISOString(),
 		transactionHash: staging.txHash,
 	};
-
-	// Atomic promotion using Lua script
-	// All operations succeed or fail together
-	const promotionScript = ATOMIC_PROMOTION_SCRIPT;
-
 	try {
 		const { REDIS_KEYS } = await import("@/lib/redis-token-utils");
 
 		const result = (await redis.eval(
-			promotionScript,
+			ATOMIC_PROMOTION_SCRIPT,
 			5,
 			REDIS_KEYS.token(mintedTokenId),
 			REDIS_KEYS.lastMovedTimestamp,
