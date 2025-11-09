@@ -5,21 +5,32 @@
  * This is used by updateStaging() to prevent lost updates from concurrent modifications.
  *
  * IMPORTANT: This script is designed for UPDATE operations on EXISTING keys only.
- * It is NOT intended for creating new keys. The caller MUST verify the key exists
- * before calling this script.
+ * The caller MUST verify the key exists before calling this script (see updateStaging).
+ *
+ * Why this works for updates only:
+ * - updateStaging() calls getStaging() first (line 133 in staging-manager.ts)
+ * - If key doesn't exist, getStaging() returns null
+ * - updateStaging() immediately returns null (line 134), never calling this script
+ * - Therefore, this script is ONLY called when the key exists
+ *
+ * The script itself doesn't enforce this constraint because:
+ * 1. Redis GET on non-existent key returns false (Lua boolean)
+ * 2. ARGV[1] (expected) is always a JSON string from existing data
+ * 3. false (from GET) will never equal a JSON string (from ARGV[1])
+ * 4. So the comparison fails and returns 0, preventing accidental creation
  *
  * Usage pattern:
- * 1. Read current value from Redis
- * 2. If key doesn't exist, return early (don't call this script)
+ * 1. Read current value from Redis (getStaging)
+ * 2. If key doesn't exist, return null (don't call this script)
  * 3. Modify the value
- * 4. Call this script with the original value as 'expected'
+ * 4. Call this script with the original JSON string as 'expected'
  * 5. If script returns 1, update succeeded
  * 6. If script returns 0, value was modified concurrently - retry from step 1
  *
  * Parameters:
  * - KEYS[1]: Redis key to update
- * - ARGV[1]: Expected current value (what we read earlier)
- * - ARGV[2]: New value to set
+ * - ARGV[1]: Expected current value (JSON string from getStaging)
+ * - ARGV[2]: New value to set (JSON string)
  * - ARGV[3]: TTL in seconds
  *
  * Returns:
@@ -73,6 +84,7 @@ export const CREATE_AND_SWAP_SCRIPT = `
  * - {err: 'invalid_token_id'} if token ID is not a valid number
  * - {err: 'invalid_token_data_json'} if token data is malformed JSON
  * - {err: 'invalid_tracker_json'} if tracker data is malformed JSON
+ * - {err: 'missing_timestamp'} if token data lacks required timestamp field
  */
 export const ATOMIC_PROMOTION_SCRIPT = `
 		local token_key = KEYS[1]
@@ -118,14 +130,19 @@ export const ATOMIC_PROMOTION_SCRIPT = `
 		-- Update current holder
 		redis.call('SET', current_holder_key, current_holder_data)
 
-		-- Update current token ID tracker (monotonically increasing)
-		-- Decode token_data once with error handling
-		local ok_token, decoded_token_data = pcall(cjson.decode, token_data)
-		if not ok_token then
-			return {err = 'invalid_token_data_json'}
-		end
+	-- Update current token ID tracker (monotonically increasing)
+	-- Decode token_data once with error handling
+	local ok_token, decoded_token_data = pcall(cjson.decode, token_data)
+	if not ok_token then
+		return {err = 'invalid_token_data_json'}
+	end
 
-		local current_tracker = redis.call('GET', current_token_id_key)
+	-- Validate required timestamp field exists
+	if not decoded_token_data.timestamp then
+		return {err = 'missing_timestamp'}
+	end
+
+	local current_tracker = redis.call('GET', current_token_id_key)
 		if current_tracker then
 			-- Decode existing tracker with error handling
 			local ok_tracker, tracker = pcall(cjson.decode, current_tracker)
