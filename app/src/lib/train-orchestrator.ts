@@ -123,7 +123,6 @@ interface ExecuteTrainMovementOptions {
 	departingPassenger: ParticipantSnapshot;
 	sourceCastHash?: string;
 	totalEligibleReactors?: number;
-	stagingAlreadyExists?: boolean;
 }
 
 const STAGING_TIMEOUT_MS = 10 * 60 * 1000;
@@ -147,6 +146,18 @@ async function cleanupPendingNFT(tokenId: number): Promise<void> {
 	}
 }
 
+/**
+ * Execute a train movement with staging-based state management.
+ *
+ * IMPORTANT: Callers MUST create staging and update with Pinata data BEFORE calling this function.
+ * This ensures complete tracking from the start and prevents orphaned Pinata uploads.
+ *
+ * Expected caller flow:
+ * 1. await createStaging(tokenId, { orchestrator, newHolder, departingPassenger, ... })
+ * 2. await getOrSetPendingGeneration(tokenId, ...) // Pinata upload
+ * 3. await updateStaging(tokenId, { status: "pinata_uploaded", imageHash, ... })
+ * 4. await executeTrainMovement({ tokenId, preparedNFT, ... })
+ */
 export async function executeTrainMovement(
 	options: ExecuteTrainMovementOptions,
 ): Promise<TrainMovementResult> {
@@ -160,9 +171,6 @@ export async function executeTrainMovement(
 		needsMetadataOnchain = false,
 		newHolder,
 		departingPassenger,
-		sourceCastHash,
-		totalEligibleReactors,
-		stagingAlreadyExists = false,
 	} = options;
 
 	orchestratorLog.info(toOrchestratorLogCode(operation, "start"), {
@@ -171,84 +179,75 @@ export async function executeTrainMovement(
 		departingPassenger: departingPassenger.username,
 	});
 
+	// Staging MUST already exist (created by caller before Pinata upload)
 	const existingStaging = await getStaging(initialTokenId);
-	if (existingStaging) {
-		if (existingStaging.status === "completed") {
-			orchestratorLog.info(
-				toOrchestratorLogCode(operation, "staging_updated"),
-				{
-					tokenId: initialTokenId,
-					status: existingStaging.status,
-				},
+	if (!existingStaging) {
+		throw new Error(
+			`Staging entry must exist before calling executeTrainMovement. Token ID: ${initialTokenId}`,
+		);
+	}
+
+	// Handle idempotent retry of completed staging
+	if (existingStaging.status === "completed") {
+		orchestratorLog.info(toOrchestratorLogCode(operation, "staging_updated"), {
+			tokenId: initialTokenId,
+			status: existingStaging.status,
+		});
+
+		try {
+			await retryWithBackoff(
+				() => promoteStaging(initialTokenId),
+				`promote-staging-${initialTokenId}`,
+				5,
 			);
-
-			try {
-				await retryWithBackoff(
-					() => promoteStaging(initialTokenId),
-					`promote-staging-${initialTokenId}`,
-					5,
-				);
-			} catch (error) {
-				orchestratorLog.error(
-					toOrchestratorLogCode(operation, "promotion_failed"),
-					{ tokenId: initialTokenId, error },
-				);
-				await cleanupPendingNFT(initialTokenId);
-				return {
-					success: false,
-					tokenId: initialTokenId,
-					txHash: "",
-					tokenURI: "",
-					error:
-						error instanceof Error
-							? error.message
-							: "Failed to promote completed staging entry",
-				};
-			}
-
+		} catch (error) {
+			orchestratorLog.error(
+				toOrchestratorLogCode(operation, "promotion_failed"),
+				{ tokenId: initialTokenId, error },
+			);
 			await cleanupPendingNFT(initialTokenId);
-			return {
-				success: true,
-				tokenId: existingStaging.tokenId ?? initialTokenId,
-				txHash: existingStaging.txHash ?? "",
-				tokenURI: existingStaging.tokenURI ?? preparedNFT.tokenURI,
-			};
-		}
-
-		const stuck = isStagingStuck(existingStaging, STAGING_TIMEOUT_MS);
-		if (!stuck) {
 			return {
 				success: false,
 				tokenId: initialTokenId,
 				txHash: "",
 				tokenURI: "",
-				error: "Train movement already in progress",
+				error:
+					error instanceof Error
+						? error.message
+						: "Failed to promote completed staging entry",
 			};
 		}
 
+		await cleanupPendingNFT(initialTokenId);
+		return {
+			success: true,
+			tokenId: existingStaging.tokenId ?? initialTokenId,
+			txHash: existingStaging.txHash ?? "",
+			tokenURI: existingStaging.tokenURI ?? preparedNFT.tokenURI,
+		};
+	}
+
+	// Check if staging is stuck (older than 10 minutes and not completed)
+	const stuck = isStagingStuck(existingStaging, STAGING_TIMEOUT_MS);
+	if (stuck) {
+		orchestratorLog.warn(toOrchestratorLogCode(operation, "staging_updated"), {
+			tokenId: initialTokenId,
+			status: existingStaging.status,
+			msg: "Staging timed out, abandoning and restarting",
+		});
 		await abandonStaging(initialTokenId, "Staging timed out - restarting");
+	} else if (existingStaging.status !== "pinata_uploaded") {
+		// Staging exists but isn't in the expected state
+		return {
+			success: false,
+			tokenId: initialTokenId,
+			txHash: "",
+			tokenURI: "",
+			error: `Train movement already in progress (status: ${existingStaging.status})`,
+		};
 	}
 
 	try {
-		// Only create staging if it wasn't already created by the caller
-		if (!stagingAlreadyExists) {
-			await createStaging(initialTokenId, {
-				orchestrator: operation,
-				newHolder,
-				departingPassenger,
-				sourceCastHash,
-				totalEligibleReactors,
-			});
-
-			await updateStaging(initialTokenId, {
-				status: "pinata_uploaded",
-				imageHash: preparedNFT.imageHash,
-				metadataHash: preparedNFT.metadataHash,
-				tokenURI: preparedNFT.tokenURI,
-				attributes: preparedNFT.attributes,
-			});
-		}
-
 		let mintedTokenId = initialTokenId;
 		let txHash: string;
 		let blockNumber: number | undefined;
@@ -369,7 +368,7 @@ export async function executeTrainMovement(
 			});
 		}
 
-		// Check if metadata needs retry and queue it
+		// Check if metadata needs retry and queue it (using set for deduplication)
 		const finalStaging = await getStaging(initialTokenId);
 		if (finalStaging?.needsMetadataRetry) {
 			orchestratorLog.warn(
@@ -382,25 +381,42 @@ export async function executeTrainMovement(
 			);
 
 			try {
-				await redis.lpush(
-					"metadata-retry-queue",
-					JSON.stringify({
-						tokenId: mintedTokenId,
-						tokenURI: preparedNFT.tokenURI,
-						imageHash: preparedNFT.imageHash,
-						operation,
-						timestamp: new Date().toISOString(),
-						attempt: 1,
-					}),
-				);
-				redisLog.info("set.success", {
-					key: "metadata-retry-queue",
+				const metadataRetryKey = `metadata-retry:${mintedTokenId}`;
+				const retryData = JSON.stringify({
 					tokenId: mintedTokenId,
-					context: "metadata-retry",
+					tokenURI: preparedNFT.tokenURI,
+					imageHash: preparedNFT.imageHash,
+					operation,
+					firstFailedAt: new Date().toISOString(),
+					lastUpdatedAt: new Date().toISOString(),
 				});
+
+				// Check if already queued to avoid duplicates
+				const exists = await redis.exists(metadataRetryKey);
+
+				if (exists === 0) {
+					// Not queued yet - add it
+					await redis.set(metadataRetryKey, retryData, "EX", 7 * 24 * 60 * 60);
+					await redis.sadd("metadata-retry-set", mintedTokenId.toString());
+					redisLog.info("set.success", {
+						key: metadataRetryKey,
+						tokenId: mintedTokenId,
+						context: "metadata-retry",
+						msg: "Added to retry queue",
+					});
+				} else {
+					// Already queued - just update timestamp
+					await redis.set(metadataRetryKey, retryData, "EX", 7 * 24 * 60 * 60);
+					redisLog.info("set.success", {
+						key: metadataRetryKey,
+						tokenId: mintedTokenId,
+						context: "metadata-retry",
+						msg: "Already queued, updated timestamp",
+					});
+				}
 			} catch (queueError) {
 				redisLog.error("set.failed", {
-					key: "metadata-retry-queue",
+					key: `metadata-retry:${mintedTokenId}`,
 					tokenId: mintedTokenId,
 					error: queueError,
 				});
@@ -657,7 +673,6 @@ export async function orchestrateManualSend(
 			tokenId: nextTokenId,
 			preparedNFT: preparedNFTData,
 			contractService,
-			stagingAlreadyExists: true,
 			newHolder: {
 				fid: user.fid,
 				username: user.username,
@@ -1061,7 +1076,6 @@ export async function orchestrateRandomSend(castHash: string) {
 			tokenId: nextTokenId,
 			preparedNFT: preparedNFTData,
 			contractService,
-			stagingAlreadyExists: true,
 			newHolder: {
 				fid: winnerData.winner.fid,
 				username: winnerData.winner.username,
@@ -1454,7 +1468,6 @@ export async function orchestrateYoink(userFid: number, targetAddress: string) {
 			tokenId: nextTokenId,
 			preparedNFT: preparedNFTData,
 			contractService,
-			stagingAlreadyExists: true,
 			newHolder: {
 				fid: yoinkerData.fid,
 				username: yoinkerData.username,
