@@ -45,16 +45,20 @@ export async function POST(request: Request) {
 	const auth = await requireAdmin(request);
 	if (!auth.ok) return auth.response;
 
+	let tokenId: number | undefined;
+
 	try {
 		const body = await request.json();
-		const tokenId = Number(body?.tokenId);
+		const rawTokenId = Number(body?.tokenId);
 
-		if (!Number.isInteger(tokenId) || tokenId <= 0) {
+		if (!Number.isInteger(rawTokenId) || rawTokenId <= 0) {
 			return NextResponse.json(
 				{ success: false, error: "tokenId must be a positive integer" },
 				{ status: 400 },
 			);
 		}
+
+		tokenId = rawTokenId;
 
 		await promoteStaging(tokenId);
 		stagingLog.info("promotion.success", {
@@ -67,6 +71,7 @@ export async function POST(request: Request) {
 		stagingLog.error("promotion.failed", {
 			error,
 			msg: "Failed to promote staging entry via admin endpoint",
+			tokenId,
 		});
 		return NextResponse.json(
 			{

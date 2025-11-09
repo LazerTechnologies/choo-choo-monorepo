@@ -21,13 +21,16 @@ export async function GET() {
 				orchestrator: entry.orchestrator,
 				createdAt: entry.createdAt,
 				ageMinutes: Math.round(
-					(Date.now() - new Date(entry.createdAt).getTime()) / 60000,
+					Math.max(
+						0,
+						(Date.now() - new Date(entry.createdAt).getTime()) / 60000,
+					),
 				),
 				lastError: entry.lastError,
 			})),
 		});
 	} catch (error) {
-		stagingLog.error("listing.parse_failed", {
+		stagingLog.error("health_check.failed", {
 			error,
 			msg: "Staging health check failed",
 		});
