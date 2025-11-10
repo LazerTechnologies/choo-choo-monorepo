@@ -35,6 +35,26 @@ curl -H "x-admin-secret: $ADMIN_SECRET" \
      https://choochoo.pro/api/admin/recover-staging
 ```
 
+### Repair Corrupted Token Data
+
+```bash
+# Detect corrupted tokens (returns status for each)
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-admin-secret: $ADMIN_SECRET" \
+  -H "x-admin-fid: $YOUR_FID" \
+  -d '{"tokenIds": [672, 673, 674, 675], "action": "detect"}' \
+  https://choochoo.pro/api/admin/repair-corrupted-tokens
+
+# Delete corrupted tokens (clears bad data from Redis)
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -H "x-admin-secret: $ADMIN_SECRET" \
+  -H "x-admin-fid: $YOUR_FID" \
+  -d '{"tokenIds": [672, 673, 674, 675], "action": "delete"}' \
+  https://choochoo.pro/api/admin/repair-corrupted-tokens
+```
+
 ---
 
 ## 📊 Monitoring
@@ -99,6 +119,20 @@ BASE_RPC_URL=<your-rpc-url>
 **Fix**: Abandon staging, retry operation
 **Prevention**: Use multiple RPC providers with failover
 
+### "Failed to parse token data"
+
+**Symptom**: `SyntaxError: Expected property name or '}'` for specific tokens
+**Cause**: Corrupted JSON in Redis from failed operations
+**Fix**: Use repair endpoint to detect and delete corrupted entries
+**Prevention**: Fixed - staging entries now expire quickly on failure
+
+### "Negative duration detected"
+
+**Symptom**: Journey shows negative duration for a token
+**Cause**: Timestamp ordering issue in Redis
+**Fix**: Non-critical - journey endpoint handles gracefully
+**Prevention**: Timestamps are now validated during storage
+
 ---
 
 ## 🛠️ Admin Endpoints Reference
@@ -108,6 +142,7 @@ BASE_RPC_URL=<your-rpc-url>
 | `/api/admin/send-train` | POST | Admin send train to specific FID |
 | `/api/admin/abandon-staging` | POST | Manually abandon stuck staging |
 | `/api/admin/cleanup-failed-staging` | DELETE | Delete all failed staging entries |
+| `/api/admin/repair-corrupted-tokens` | POST | Detect/delete corrupted token data |
 | `/api/admin/recover-staging` | GET | List all staging entries |
 | `/api/admin/recover-staging` | POST | Manually promote staging |
 | `/api/health/staging` | GET | Check staging health (public) |

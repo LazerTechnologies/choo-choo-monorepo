@@ -83,8 +83,8 @@ export async function GET() {
 
       const durationMs = holderEndTime.getTime() - holderStartTime.getTime();
 
-      // Log negative durations for debugging (should be rare now with corrected logic)
-      if (durationMs < 0) {
+      // Log negative durations only in development (reduce log volume in production)
+      if (durationMs < 0 && process.env.NODE_ENV === 'development') {
         console.warn(
           `[journey] Negative duration detected for token ${token.tokenId}: ${durationMs}ms`,
           {
@@ -149,12 +149,15 @@ function formatDuration(ms: number): string {
 
   if (days > 0) {
     return `${days}d ${hours % 24}h`;
-  }if (hours > 0) {
+  }
+  if (hours > 0) {
     return `${hours}h ${minutes % 60}m`;
-  }if (minutes > 0) {
+  }
+  if (minutes > 0) {
     return `${minutes}m ${seconds % 60}s`;
-  }if (seconds > 0) {
+  }
+  if (seconds > 0) {
     return `${seconds}s`;
   }
-    return 'just now';
+  return 'just now';
 }

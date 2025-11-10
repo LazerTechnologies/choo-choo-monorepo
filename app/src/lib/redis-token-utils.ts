@@ -1,5 +1,5 @@
 import { redis } from '@/lib/kv';
-import type { TokenData, CurrentTokenTracker, LastMovedTimestamp, PendingNFT } from '@/types/nft';
+import type { CurrentTokenTracker, LastMovedTimestamp, PendingNFT, TokenData } from '@/types/nft';
 
 interface RedisWithSetOptions {
   set: (key: string, value: string, ...args: (string | number)[]) => Promise<string | null>;
@@ -200,7 +200,13 @@ export async function getTokenData(tokenId: number): Promise<TokenData | null> {
   try {
     return JSON.parse(data) as TokenData;
   } catch (error) {
-    console.error(`Failed to parse token data for token ${tokenId}:`, error);
+    // Only log parse errors in development to reduce log volume
+    if (process.env.NODE_ENV === 'development') {
+      console.error(`Failed to parse token data for token ${tokenId}:`, error);
+    } else {
+      // In production, only log once per unique token to prevent spam
+      console.warn(`[redis-token-utils] Corrupted data for token ${tokenId} (use repair endpoint)`);
+    }
     return null;
   }
 }
@@ -265,7 +271,7 @@ export async function tokenDataExists(tokenId: number): Promise<boolean> {
  * Store the last moved timestamp after a train movement
  */
 export async function storeLastMovedTimestamp(
-  tokenId: number,
+  _tokenId: number,
   transactionHash: string,
   timestamp: string = new Date().toISOString(),
 ): Promise<void> {
