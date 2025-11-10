@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { scheduler } from '@/lib/scheduler';
 
 // Mock fetch globally
@@ -11,7 +11,7 @@ const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 describe('Yoink Notification System', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Set up environment variables for tests
     process.env.INTERNAL_SECRET = 'test-secret';
     process.env.NEXT_PUBLIC_URL = 'http://localhost:3000';
@@ -25,7 +25,7 @@ describe('Yoink Notification System', () => {
   describe('Scheduler', () => {
     it('should initialize successfully', () => {
       scheduler.initialize();
-      
+
       const status = scheduler.getStatus();
       expect(status).toHaveProperty('yoink-availability-check');
       expect(status['yoink-availability-check'].isRunning).toBe(true);
@@ -34,13 +34,13 @@ describe('Yoink Notification System', () => {
     it('should not initialize twice', () => {
       scheduler.initialize();
       scheduler.initialize();
-      
+
       expect(consoleSpy).toHaveBeenCalledWith('[Scheduler] Already initialized, skipping...');
     });
 
     it('should track job status', () => {
       scheduler.initialize();
-      
+
       const status = scheduler.getStatus();
       expect(status['yoink-availability-check']).toEqual({
         lastRun: null,
@@ -52,7 +52,7 @@ describe('Yoink Notification System', () => {
     it('should shutdown cleanly', () => {
       scheduler.initialize();
       scheduler.shutdown();
-      
+
       const status = scheduler.getStatus();
       expect(Object.keys(status)).toHaveLength(0);
     });
@@ -61,27 +61,27 @@ describe('Yoink Notification System', () => {
   describe('Yoink Availability Check', () => {
     it('should handle successful yoink availability check', async () => {
       // Mock successful API responses
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: true,
-          json: () => Promise.resolve({
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
             success: true,
             yoinkAvailable: true,
             notificationSent: true,
             currentHolder: 'testuser',
           }),
-        });
+      });
 
       const response = await fetch('http://localhost:3000/api/check-yoink-availability', {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer test-secret',
+          Authorization: 'Bearer test-secret',
           'Content-Type': 'application/json',
         },
       });
 
       const result = await response.json();
-      
+
       expect(response.ok).toBe(true);
       expect(result.success).toBe(true);
       expect(result.yoinkAvailable).toBe(true);
@@ -98,7 +98,7 @@ describe('Yoink Notification System', () => {
       const response = await fetch('http://localhost:3000/api/check-yoink-availability', {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer wrong-secret',
+          Authorization: 'Bearer wrong-secret',
           'Content-Type': 'application/json',
         },
       });
@@ -110,24 +110,25 @@ describe('Yoink Notification System', () => {
     it('should handle yoink not available', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          success: true,
-          yoinkAvailable: false,
-          reason: 'Yoink is still on cooldown',
-          notificationSent: false,
-        }),
+        json: () =>
+          Promise.resolve({
+            success: true,
+            yoinkAvailable: false,
+            reason: 'Yoink is still on cooldown',
+            notificationSent: false,
+          }),
       });
 
       const response = await fetch('http://localhost:3000/api/check-yoink-availability', {
         method: 'POST',
         headers: {
-          'Authorization': 'Bearer test-secret',
+          Authorization: 'Bearer test-secret',
           'Content-Type': 'application/json',
         },
       });
 
       const result = await response.json();
-      
+
       expect(result.yoinkAvailable).toBe(false);
       expect(result.reason).toBe('Yoink is still on cooldown');
       expect(result.notificationSent).toBe(false);
@@ -138,13 +139,13 @@ describe('Yoink Notification System', () => {
     it('should have yoinkAvailable notification template', async () => {
       // Dynamic import to avoid hoisting issues with mocks
       const { ChooChooNotifications } = await import('@/lib/notifications');
-      
+
       const notification = ChooChooNotifications.yoinkAvailable('testuser');
-      
+
       expect(notification).toEqual({
         title: '⏰ YOINK Time!',
         body: 'The yoink timer has expired! ChooChoo can now be yoinked from @testuser. First come, first served!',
-        targetUrl: 'http://localhost:3000/yoink',
+        targetUrl: 'http://localhost:3000?tab=yoink',
         targetFids: [],
       });
     });
