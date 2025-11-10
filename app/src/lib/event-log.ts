@@ -12,6 +12,13 @@ const baseLogger = pino({
   base: {
     env: process.env.NODE_ENV,
   },
+  // Reduce log output in production to prevent rate limiting
+  ...(process.env.NODE_ENV === 'production' && {
+    redact: {
+      paths: ['hostname', 'pid'],
+      remove: true,
+    },
+  }),
 });
 
 export const logger = baseLogger;

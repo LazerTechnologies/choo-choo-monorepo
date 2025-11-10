@@ -23,6 +23,7 @@ import {
   uploadImageToPinata,
   uploadMetadataToPinata,
 } from 'generator';
+import Redis from 'ioredis';
 import type { Address } from 'viem';
 import { createChooChooMetadata } from '../src/lib/nft-metadata-utils';
 import { ContractService } from '../src/lib/services/contract';
@@ -49,8 +50,14 @@ const CONFIG = {
 
   PRIVATE_KEY: process.env.PRIVATE_KEY as `0x${string}`,
 
+  // Redis
+  REDIS_URL: process.env.REDIS_URL || process.env.REDIS_PRIVATE_URL,
+  AUTO_WRITE_REDIS: process.env.AUTO_WRITE_REDIS === 'true', // Set to 'true' to auto-write to Redis
+  REDIS_OVERWRITE: process.env.REDIS_OVERWRITE !== 'false', // Set to 'false' to skip existing keys (default: true)
+
   // Repair targets
-  TARGET_TOKEN_IDS: [673],
+  START_TOKEN_ID: Number(process.env.START_TOKEN_ID) || 672,
+  END_TOKEN_ID: Number(process.env.END_TOKEN_ID) || 675,
   BACKFILL_DATA_FILE: 'backfill-data.json',
 };
 
@@ -126,6 +133,7 @@ type RepairResult = {
     generateNFT: boolean;
     setTicketData: boolean;
     prepareRedisData: boolean;
+    writeRedis: boolean;
   };
   data?: {
     holderAddress: string;
@@ -142,6 +150,7 @@ type RepairResult = {
     attributes: Array<{ trait_type: string; value: string | number }>;
   };
   redisCommand?: string;
+  redisWritten?: boolean;
   error?: string;
 };
 
@@ -236,16 +245,58 @@ async function setTicketDataOnChain(
   }
 }
 
-function generateRedisCommand(tokenData: TokenData): string {
+function generateRedisCommand(tokenData: TokenData, overwrite = true): string {
   const redisKey = REDIS_KEYS.token(tokenData.tokenId);
   const jsonValue = JSON.stringify(tokenData, null, 2);
+
+  if (overwrite) {
+    return [`cat <<'EOF' | redis-cli -x SET ${redisKey}`, jsonValue, 'EOF'].join('\n');
+  }
+
   return [`cat <<'EOF' | redis-cli -x SET ${redisKey} NX`, jsonValue, 'EOF'].join('\n');
+}
+
+async function writeTokenToRedis(
+  redis: Redis,
+  tokenData: TokenData,
+  overwrite = true,
+): Promise<{ success: boolean; existed: boolean; error?: string }> {
+  try {
+    const redisKey = REDIS_KEYS.token(tokenData.tokenId);
+    const jsonValue = JSON.stringify(tokenData);
+
+    if (overwrite) {
+      // Overwrite existing data
+      await redis.set(redisKey, jsonValue);
+      console.log(`[repair] ✅ Wrote token ${tokenData.tokenId} to Redis (overwrite)`);
+      return { success: true, existed: false };
+    }
+
+    // Use NX flag to only set if key doesn't exist
+    const result = await redis.set(redisKey, jsonValue, 'NX');
+
+    if (result === 'OK') {
+      console.log(`[repair] ✅ Wrote token ${tokenData.tokenId} to Redis`);
+      return { success: true, existed: false };
+    }
+
+    console.log(`[repair] ℹ️  Token ${tokenData.tokenId} already exists in Redis (skipped)`);
+    return { success: true, existed: true };
+  } catch (error) {
+    console.error(`[repair] ❌ Failed to write token ${tokenData.tokenId} to Redis:`, error);
+    return {
+      success: false,
+      existed: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 // ========== MAIN REPAIR FUNCTION ==========
 async function repairToken(
   contractService: ContractService,
   token: BackfillToken,
+  redis?: Redis,
 ): Promise<RepairResult> {
   console.log(`\n========== Repairing Token #${token.tokenId} ==========`);
 
@@ -256,6 +307,7 @@ async function repairToken(
       generateNFT: false,
       setTicketData: false,
       prepareRedisData: false,
+      writeRedis: false,
     },
   };
 
@@ -289,38 +341,89 @@ async function repairToken(
       console.log(`[repair] Minted at: ${token.onChain.mintedAtIso}`);
     }
 
-    // Step 1: Generate NFT (image + metadata)
-    console.log(`[repair] Step 1: Generating NFT...`);
     const passengerUsername = neynarUser.username;
-    const nftData = await generateAndUploadNFT(token.tokenId, passengerUsername);
 
-    if (!nftData.success || !nftData.imageHash || !nftData.metadataHash) {
-      result.error = `Failed to generate NFT: ${nftData.error}`;
-      return result;
+    // Helper to extract IPFS hash from URL
+    const extractIpfsHash = (url: string | null): string | null => {
+      if (!url) return null;
+      const match = url.match(/ipfs\/([a-zA-Z0-9]+)/);
+      return match ? match[1] : null;
+    };
+
+    // Check if Pinata data already exists and extract hashes
+    const existingImageHash = extractIpfsHash(token.pinata.imageUrl);
+    const existingMetadataHash = extractIpfsHash(token.pinata.metadataUrl);
+    const hasPinataData =
+      token.pinata.metadata &&
+      existingImageHash &&
+      existingMetadataHash &&
+      token.pinata.metadataStatus === 'OK' &&
+      token.pinata.imageStatus === 'OK';
+
+    let imageHash: string;
+    let metadataHash: string;
+    let tokenURI: string;
+    let attributes: Array<{ trait_type: string; value: string | number }>;
+
+    if (hasPinataData && existingImageHash && existingMetadataHash) {
+      // Reuse existing Pinata data
+      console.log(`[repair] Step 1: Using existing Pinata data (skipping generation)...`);
+      imageHash = existingImageHash;
+      metadataHash = existingMetadataHash;
+      tokenURI = `ipfs://${metadataHash}`;
+      attributes = token.pinata.metadata?.attributes ?? [];
+
+      console.log(`[repair] ✅ Existing Pinata data:`);
+      console.log(`[repair]    Image: ipfs://${imageHash}`);
+      console.log(`[repair]    Metadata: ${tokenURI}`);
+
+      result.steps.generateNFT = true; // Mark as complete (reused)
+    } else {
+      // Generate new NFT (image + metadata)
+      console.log(`[repair] Step 1: Generating NFT (no valid Pinata data found)...`);
+      const nftData = await generateAndUploadNFT(token.tokenId, passengerUsername);
+
+      if (!nftData.success || !nftData.imageHash || !nftData.metadataHash) {
+        result.error = `Failed to generate NFT: ${nftData.error}`;
+        return result;
+      }
+
+      imageHash = nftData.imageHash;
+      metadataHash = nftData.metadataHash;
+      tokenURI = nftData.tokenURI;
+      attributes = nftData.metadata.attributes ?? [];
+
+      result.steps.generateNFT = true;
+      console.log(`[repair] ✅ Generated NFT:`);
+      console.log(`[repair]    Image: ipfs://${imageHash}`);
+      console.log(`[repair]    Metadata: ${tokenURI}`);
     }
 
-    result.steps.generateNFT = true;
-    console.log(`[repair] ✅ Generated NFT:`);
-    console.log(`[repair]    Image: ipfs://${nftData.imageHash}`);
-    console.log(`[repair]    Metadata: ${nftData.tokenURI}`);
+    // Check if on-chain data already matches
+    const onChainMatches =
+      token.onChain.tokenURI === tokenURI && token.onChain.image === `ipfs://${imageHash}`;
 
-    const attributes = nftData.metadata.attributes ?? [];
+    if (onChainMatches) {
+      console.log(`[repair] Step 2: On-chain data already correct (skipping setTicketData)...`);
+      console.log(`[repair] ✅ On-chain metadata already matches`);
+      result.steps.setTicketData = true; // Mark as complete (already correct)
+    } else {
+      // Set ticket data on-chain
+      console.log(`[repair] Step 2: Setting ticket data on-chain...`);
+      const setDataResult = await setTicketDataOnChain(
+        contractService,
+        token.tokenId,
+        tokenURI,
+        imageHash,
+      );
 
-    // Step 2: Set ticket data on-chain
-    console.log(`[repair] Step 2: Setting ticket data on-chain...`);
-    const setDataResult = await setTicketDataOnChain(
-      contractService,
-      token.tokenId,
-      nftData.tokenURI,
-      nftData.imageHash,
-    );
+      if (!setDataResult.success) {
+        result.error = `Failed to set ticket data on-chain: ${setDataResult.error}`;
+        return result;
+      }
 
-    if (!setDataResult.success) {
-      result.error = `Failed to set ticket data on-chain: ${setDataResult.error}`;
-      return result;
+      result.steps.setTicketData = true;
     }
-
-    result.steps.setTicketData = true;
 
     // Step 3: Prepare Redis data (generate command for manual execution)
     console.log(`[repair] Step 3: Preparing Redis data...`);
@@ -333,9 +436,9 @@ async function repairToken(
 
     const tokenData: TokenData = {
       tokenId: token.tokenId,
-      imageHash: nftData.imageHash,
-      metadataHash: nftData.metadataHash,
-      tokenURI: nftData.tokenURI as `ipfs://${string}`,
+      imageHash,
+      metadataHash,
+      tokenURI: tokenURI as `ipfs://${string}`,
       holderAddress: holderAddress.toLowerCase(),
       holderUsername: passengerUsername,
       holderFid: neynarUser.fid,
@@ -348,9 +451,23 @@ async function repairToken(
       sourceType: 'repair-script',
     };
 
-    const redisCommand = generateRedisCommand(tokenData);
+    const redisCommand = generateRedisCommand(tokenData, CONFIG.REDIS_OVERWRITE);
     result.steps.prepareRedisData = true;
     console.log(`[repair] ✅ Redis command generated`);
+
+    // Step 4: Write to Redis if enabled
+    if (redis) {
+      console.log(`[repair] Step 4: Writing to Redis...`);
+      const writeResult = await writeTokenToRedis(redis, tokenData, CONFIG.REDIS_OVERWRITE);
+
+      if (writeResult.success) {
+        result.steps.writeRedis = true;
+        result.redisWritten = !writeResult.existed;
+      } else {
+        console.warn(`[repair] ⚠️  Failed to write to Redis: ${writeResult.error}`);
+        // Don't fail the entire repair if Redis write fails
+      }
+    }
 
     // Success!
     result.success = true;
@@ -360,9 +477,9 @@ async function repairToken(
       holderFid: neynarUser.fid,
       holderDisplayName: neynarUser.display_name ?? passengerUsername,
       holderPfpUrl: neynarUser.pfp_url ?? undefined,
-      imageHash: nftData.imageHash,
-      metadataHash: nftData.metadataHash,
-      tokenURI: nftData.tokenURI,
+      imageHash,
+      metadataHash,
+      tokenURI,
       transactionHash,
       timestamp,
       blockNumber,
@@ -396,20 +513,61 @@ async function runRepair() {
 
   // Log configuration
   console.log(`Network: ${CONFIG.USE_MAINNET ? 'Base Mainnet' : 'Base Sepolia'}`);
+  console.log(`Token range: ${CONFIG.START_TOKEN_ID} - ${CONFIG.END_TOKEN_ID}`);
+  console.log(`Auto-write to Redis: ${CONFIG.AUTO_WRITE_REDIS ? 'ENABLED' : 'DISABLED'}`);
+  if (CONFIG.AUTO_WRITE_REDIS) {
+    console.log(
+      `Redis overwrite mode: ${CONFIG.REDIS_OVERWRITE ? 'ENABLED (will replace existing)' : 'DISABLED (skip existing)'}`,
+    );
+  }
+
   const backfillData = loadBackfillData();
   const tokensById = new Map<number, BackfillToken>(
     backfillData.tokens.map((token) => [token.tokenId, token]),
   );
-  const tokensToRepair = CONFIG.TARGET_TOKEN_IDS.map((tokenId) => {
+
+  // Generate array of token IDs from range
+  const tokenIdsToRepair: number[] = [];
+  for (let id = CONFIG.START_TOKEN_ID; id <= CONFIG.END_TOKEN_ID; id++) {
+    tokenIdsToRepair.push(id);
+  }
+
+  const tokensToRepair = tokenIdsToRepair.map((tokenId) => {
     const token = tokensById.get(tokenId);
     if (!token) {
       throw new Error(
-        `Token #${tokenId} not found in ${CONFIG.BACKFILL_DATA_FILE}. Re-run the backfill script.`,
+        `Token #${tokenId} not found in ${CONFIG.BACKFILL_DATA_FILE}. Re-run the backfill script with range ${CONFIG.START_TOKEN_ID}-${CONFIG.END_TOKEN_ID}.`,
       );
     }
     return token;
   });
   console.log(`Tokens to repair: ${tokensToRepair.map((token) => token.tokenId).join(', ')}\n`);
+
+  // Initialize Redis if auto-write is enabled
+  let redis: Redis | undefined;
+  if (CONFIG.AUTO_WRITE_REDIS) {
+    if (!CONFIG.REDIS_URL) {
+      console.error('❌ AUTO_WRITE_REDIS is enabled but REDIS_URL is not set');
+      process.exitCode = 1;
+      return;
+    }
+
+    console.log(`Connecting to Redis: ${CONFIG.REDIS_URL.replace(/:[^:@]+@/, ':****@')}`);
+    redis = new Redis(CONFIG.REDIS_URL, {
+      maxRetriesPerRequest: 3,
+      connectTimeout: 10000,
+    });
+
+    try {
+      await redis.ping();
+      console.log('✅ Redis connection successful\n');
+    } catch (error) {
+      console.error('❌ Failed to connect to Redis:', error);
+      process.exitCode = 1;
+      await redis.quit();
+      return;
+    }
+  }
 
   // Initialize contract service with private key
   const contractService = new ContractService({
@@ -421,21 +579,31 @@ async function runRepair() {
 
   const results: RepairResult[] = [];
 
-  // Repair each token
-  for (let index = 0; index < tokensToRepair.length; index++) {
-    const token = tokensToRepair[index];
+  try {
+    // Repair each token
+    for (let index = 0; index < tokensToRepair.length; index++) {
+      const token = tokensToRepair[index];
 
-    if (token.issues.length > 0) {
-      console.log(`[repair] Known issues for token #${token.tokenId}: ${token.issues.join('; ')}`);
+      if (token.issues.length > 0) {
+        console.log(
+          `[repair] Known issues for token #${token.tokenId}: ${token.issues.join('; ')}`,
+        );
+      }
+
+      const result = await repairToken(contractService, token, redis);
+      results.push(result);
+
+      // Add delay between tokens to avoid rate limits
+      if (index < tokensToRepair.length - 1) {
+        console.log('\n⏳ Waiting 2 seconds before next token...');
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
     }
-
-    const result = await repairToken(contractService, token);
-    results.push(result);
-
-    // Add delay between tokens to avoid rate limits
-    if (index < tokensToRepair.length - 1) {
-      console.log('\n⏳ Waiting 2 seconds before next token...');
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+  } finally {
+    // Clean up Redis connection
+    if (redis) {
+      await redis.quit();
+      console.log('\n✅ Redis connection closed');
     }
   }
 
@@ -446,10 +614,18 @@ async function runRepair() {
 
   const successful = results.filter((r) => r.success).length;
   const failed = results.filter((r) => !r.success).length;
+  const redisWritten = results.filter((r) => r.redisWritten).length;
+  const redisSkipped = results.filter((r) => r.steps.writeRedis && !r.redisWritten).length;
 
   console.log(`Total tokens: ${results.length}`);
   console.log(`✅ Successful: ${successful}`);
-  console.log(`❌ Failed: ${failed}\n`);
+  console.log(`❌ Failed: ${failed}`);
+
+  if (CONFIG.AUTO_WRITE_REDIS) {
+    console.log(`📝 Redis written: ${redisWritten}`);
+    console.log(`⏭️  Redis skipped (already exists): ${redisSkipped}`);
+  }
+  console.log();
 
   if (failed > 0) {
     console.log('Failed tokens:');
@@ -465,30 +641,37 @@ async function runRepair() {
   writeFileSync(reportPath, JSON.stringify(results, null, 2), 'utf-8');
   console.log(`\n📄 Detailed report written to: ${reportPath}`);
 
-  // Write Redis commands to file for manual execution
-  const redisCommandsPath = join(__dirname, 'redis-commands.sh');
-  const successfulResults = results.filter((r) => r.success && r.redisCommand);
+  // Write Redis commands to file for manual execution (if not auto-written)
+  if (!CONFIG.AUTO_WRITE_REDIS) {
+    const redisCommandsPath = join(__dirname, 'redis-commands.sh');
+    const successfulResults = results.filter((r) => r.success && r.redisCommand);
 
-  if (successfulResults.length > 0) {
-    const commandsContent = [
-      '#!/bin/bash',
-      '# Redis commands for token repair',
-      `# Generated: ${new Date().toISOString()}`,
-      '# Run this script to add the repaired tokens to Redis',
-      '',
-      "# Note: These commands use NX flag (only set if key doesn't exist)",
-      '# This prevents overwriting existing data',
-      '',
-      ...successfulResults.map((r) => r.redisCommand).filter((cmd): cmd is string => !!cmd),
-      '',
-      "echo 'Redis commands executed successfully!'",
-    ].join('\n');
+    if (successfulResults.length > 0) {
+      const overwriteNote = CONFIG.REDIS_OVERWRITE
+        ? '# Note: These commands will OVERWRITE existing keys'
+        : "# Note: These commands use NX flag (only set if key doesn't exist)";
 
-    writeFileSync(redisCommandsPath, commandsContent, 'utf-8');
-    console.log(`\n📝 Redis commands written to: ${redisCommandsPath}`);
-    console.log(`   Review the file and run it manually to update Redis.`);
+      const commandsContent = [
+        '#!/bin/bash',
+        '# Redis commands for token repair',
+        `# Generated: ${new Date().toISOString()}`,
+        '# Run this script to add the repaired tokens to Redis',
+        '',
+        overwriteNote,
+        '',
+        ...successfulResults.map((r) => r.redisCommand).filter((cmd): cmd is string => !!cmd),
+        '',
+        "echo 'Redis commands executed successfully!'",
+      ].join('\n');
+
+      writeFileSync(redisCommandsPath, commandsContent, 'utf-8');
+      console.log(`\n📝 Redis commands written to: ${redisCommandsPath}`);
+      console.log(`   Review the file and run it manually to update Redis.`);
+    } else {
+      console.log(`\n⚠️  No successful repairs to write Redis commands for.`);
+    }
   } else {
-    console.log(`\n⚠️  No successful repairs to write Redis commands for.`);
+    console.log(`\n✅ Redis data was written automatically (AUTO_WRITE_REDIS=true)`);
   }
 
   // Exit with error code if any repairs failed

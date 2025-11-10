@@ -186,6 +186,23 @@ export async function abandonStaging(tokenId: number, reason: string): Promise<v
       tokenId,
       reason,
     });
+
+    // Set a short TTL on failed staging entries (60 seconds) to avoid cluttering Redis
+    // Failed entries are no longer actionable and should expire quickly
+    try {
+      const key = getStagingKey(tokenId);
+      await redis.expire(key, 60); // 60 seconds
+      stagingLog.info('lifecycle.abandoned', {
+        tokenId,
+        msg: 'Set short TTL on failed staging entry (60s)',
+      });
+    } catch (error) {
+      stagingLog.warn('lifecycle.abandoned', {
+        tokenId,
+        error,
+        msg: 'Failed to set short TTL on abandoned staging (non-critical)',
+      });
+    }
   }
 }
 
@@ -402,5 +419,7 @@ export async function listStagingEntries(): Promise<StagingMovement[]> {
 
 export function isStagingStuck(staging: StagingMovement, thresholdMs: number): boolean {
   const age = Date.now() - new Date(staging.createdAt).getTime();
-  return age > thresholdMs && staging.status !== 'completed';
+  // Only consider entries "stuck" if they're old AND not in a terminal state
+  // 'completed' and 'failed' are terminal states that shouldn't be considered stuck
+  return age > thresholdMs && staging.status !== 'completed' && staging.status !== 'failed';
 }
