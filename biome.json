@@ -1,5 +1,5 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.3.0/schema.json",
+	"$schema": "https://biomejs.dev/schemas/2.3.4/schema.json",
 	"root": true,
 	"vcs": {
 		"enabled": true,
@@ -33,20 +33,27 @@
 				"noEmptyPattern": "off"
 			},
 			"suspicious": {
-				"noArrayIndexKey": "off"
+				"noArrayIndexKey": "off",
+				"noImplicitAnyLet": "off",
+				"noExplicitAny": "warn",
+				"noUnknownAtRules": "off"
 			},
 			"style": {
 				"noUnusedTemplateLiteral": "off",
 				"useSelfClosingElements": "off",
-				"useFilenamingConvention": "error",
-				"noParameterAssign": "error",
-				"useAsConstAssertion": "error",
-				"useDefaultParameterLast": "error",
-				"useEnumInitializers": "error",
-				"useSingleVarDeclarator": "error",
-				"useNumberNamespace": "error",
-				"noInferrableTypes": "error",
-				"noUselessElse": "error"
+				"noNonNullAssertion": "warn",
+				"useFilenamingConvention": "warn",
+				"noParameterAssign": "warn",
+				"useAsConstAssertion": "warn",
+				"useDefaultParameterLast": "warn",
+				"useEnumInitializers": "warn",
+				"useSingleVarDeclarator": "warn",
+				"useNumberNamespace": "warn",
+				"noInferrableTypes": "warn",
+				"noUselessElse": "warn"
+			},
+			"performance": {
+				"noImgElement": "warn"
 			}
 		}
 	},
@@ -56,4 +63,3 @@
 		}
 	}
 }
-

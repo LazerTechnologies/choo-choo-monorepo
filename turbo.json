@@ -1,65 +1,55 @@
 {
-  "$schema": "https://turbo.build/schema.json",
-  "tasks": {
-    "build": {
-      "dependsOn": ["^build"],
-      "outputs": [
-        ".next/**",
-        "!.next/cache/**",
-        "out/**",
-        "cache/**",
-        "dist/**"
-      ]
-    },
-    "build:production": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
-    },
-    "test": {
-      "dependsOn": ["^build"],
-      "outputs": []
-    },
-    "lint": {},
-    "dev": {
-      "cache": false,
-      "persistent": true
-    },
-    "anvil": {
-      "cache": false,
-      "persistent": true
-    },
-    "clean": {
-      "cache": false
-    },
-    "extract-abi": {
-      "dependsOn": ["contracts#build"],
-      "outputs": ["app/abi/**"],
-      "inputs": ["contracts/out/**"]
-    },
-    "format": {
-      "cache": false,
-      "persistent": false
-    },
-    "format:fix": {
-      "cache": false,
-      "persistent": false
-    },
-    "tsc": {
-      "outputs": []
-    },
-    "verify:sepolia": {
-      "cache": false,
-      "persistent": false,
-      "passThroughEnv": [
-        "SEPOLIA_TRAIN_ADDRESS",
-        "BASE_SEPOLIA_RPC_URL",
-        "BASESCAN_API_KEY"
-      ]
-    },
-    "generate:demo": {
-      "outputs": ["generator/out/**"],
-      "inputs": ["generator/layers/**", "generator/rarities.json"],
-      "dependsOn": ["generator#build"]
-    }
-  }
+	"$schema": "https://turbo.build/schema.json",
+	"tasks": {
+		"build": {
+			"dependsOn": ["^build"],
+			"outputs": [".next/**", "!.next/cache/**", "out/**", "cache/**", "dist/**"]
+		},
+		"build:production": {
+			"dependsOn": ["^build"],
+			"outputs": [".next/**", "!.next/cache/**", "dist/**"]
+		},
+		"test": {
+			"dependsOn": ["^build"],
+			"outputs": []
+		},
+		"lint": {},
+		"dev": {
+			"cache": false,
+			"persistent": true
+		},
+		"anvil": {
+			"cache": false,
+			"persistent": true
+		},
+		"clean": {
+			"cache": false
+		},
+		"extract-abi": {
+			"dependsOn": ["contracts#build"],
+			"outputs": ["app/abi/**"],
+			"inputs": ["contracts/out/**"]
+		},
+		"format": {
+			"cache": false,
+			"persistent": false
+		},
+		"format:fix": {
+			"cache": false,
+			"persistent": false
+		},
+		"tsc": {
+			"outputs": []
+		},
+		"verify:sepolia": {
+			"cache": false,
+			"persistent": false,
+			"passThroughEnv": ["SEPOLIA_TRAIN_ADDRESS", "BASE_SEPOLIA_RPC_URL", "BASESCAN_API_KEY"]
+		},
+		"generate:demo": {
+			"outputs": ["generator/out/**"],
+			"inputs": ["generator/layers/**", "generator/rarities.json"],
+			"dependsOn": ["generator#build"]
+		}
+	}
 }
