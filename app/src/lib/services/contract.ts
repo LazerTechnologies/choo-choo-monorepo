@@ -444,23 +444,43 @@ export class ContractService {
       console.log(`[ContractService] Transaction hash returned: ${hash}`);
 
       // Verify transaction was actually broadcast to the network
-      try {
-        const tx = await publicClient.getTransaction({ hash });
-        if (!tx) {
-          throw new Error(
-            `Transaction ${hash} was not found on the network. The transaction may have failed to broadcast or was rejected by the RPC. This could be due to gas issues, nonce problems, or network connectivity.`,
-          );
+      // CRITICAL: Retry multiple times with delays because RPC nodes can take 1-3 seconds to sync
+      let txFound = false;
+      const maxVerifyAttempts = 6; // 6 attempts = ~5 seconds total
+      for (let attempt = 1; attempt <= maxVerifyAttempts; attempt++) {
+        try {
+          const tx = await publicClient.getTransaction({ hash });
+          if (tx) {
+            txFound = true;
+            console.log(
+              `[ContractService] Transaction ${hash} confirmed on network (attempt ${attempt}/${maxVerifyAttempts})`,
+            );
+            break;
+          }
+        } catch (txCheckError) {
+          if (attempt < maxVerifyAttempts) {
+            // Wait with exponential backoff before retrying
+            const delayMs = 500 * attempt; // 500ms, 1s, 1.5s, 2s, 2.5s, 3s
+            console.log(
+              `[ContractService] Transaction ${hash} not found yet (attempt ${attempt}/${maxVerifyAttempts}), retrying in ${delayMs}ms...`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+          } else {
+            // Final attempt failed
+            console.error(
+              `[ContractService] Failed to verify transaction ${hash} exists on network after ${maxVerifyAttempts} attempts:`,
+              txCheckError,
+            );
+            throw new Error(
+              `Transaction ${hash} does not exist on the blockchain after ${maxVerifyAttempts} verification attempts (${maxVerifyAttempts * 0.5}s). The RPC may have returned a hash but failed to broadcast the transaction. Check RPC connectivity and try again.`,
+            );
+          }
         }
-        console.log(
-          `[ContractService] Transaction ${hash} confirmed on network, waiting for mining...`,
-        );
-      } catch (txCheckError) {
-        console.error(
-          `[ContractService] Failed to verify transaction ${hash} exists on network:`,
-          txCheckError,
-        );
+      }
+
+      if (!txFound) {
         throw new Error(
-          `Transaction ${hash} does not exist on the blockchain. The RPC may have returned a hash but failed to broadcast the transaction. Check RPC connectivity and try again.`,
+          `Transaction ${hash} was not found on the network after ${maxVerifyAttempts} attempts. The transaction may have failed to broadcast or the RPC is experiencing sync issues.`,
         );
       }
 
