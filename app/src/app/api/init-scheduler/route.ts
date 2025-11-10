@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { apiLog } from '@/lib/event-log';
 import { scheduler } from '@/lib/scheduler';
 
 /**
@@ -27,7 +28,10 @@ export async function POST(request: NextRequest) {
       message: 'Scheduler initialized successfully',
     });
   } catch (error) {
-    console.error('[init-scheduler] Error:', error);
+    apiLog.error('init-scheduler.failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      msg: 'Error',
+    });
     return NextResponse.json(
       {
         error: 'Failed to initialize scheduler',
@@ -53,7 +57,10 @@ export async function GET() {
       message: 'Scheduler is running',
     });
   } catch (error) {
-    console.error('[init-scheduler] Error:', error);
+    apiLog.error('init-scheduler.failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      msg: 'Error',
+    });
     return NextResponse.json(
       {
         error: 'Scheduler initialization failed',

@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import Redis from 'ioredis';
+import { redisConnectionLog } from '@/lib/event-log';
 
 // Initialize Redis client using private networking to avoid egress charges
 // Use REDIS_PRIVATE_URL for Railway private network, fallback to public for local dev
@@ -21,11 +22,18 @@ const redis = new Redis(
     retryStrategy: (times) => {
       // Limit retries to prevent log flooding
       if (times > 10) {
-        console.error(`[Redis] Max retries (10) exceeded, stopping retries`);
+        redisConnectionLog.error('connection.max_retries_exceeded', {
+          times,
+          msg: 'Max retries (10) exceeded, stopping retries',
+        });
         return null; // Stop retrying
       }
       const delay = Math.min(times * 50, 2000);
-      console.log(`[Redis] Retrying connection in ${delay}ms (attempt ${times})`);
+      redisConnectionLog.info('connection.retry', {
+        times,
+        delayMs: delay,
+        msg: `Retrying connection in ${delay}ms (attempt ${times})`,
+      });
       return delay;
     },
     // Connection timeout settings
@@ -36,23 +44,34 @@ const redis = new Redis(
 
 // Add error handling to prevent unhandled error events
 redis.on('error', (err) => {
-  console.warn('[Redis] Connection error:', err.message);
+  redisConnectionLog.warn('connection.error', {
+    error: err.message,
+    msg: 'Connection error',
+  });
 });
 
 redis.on('connect', () => {
-  console.log('[Redis] Connected successfully');
+  redisConnectionLog.info('connection.connect', {
+    msg: 'Connected successfully',
+  });
 });
 
 redis.on('ready', () => {
-  console.log('[Redis] Ready to accept commands');
+  redisConnectionLog.info('connection.ready', {
+    msg: 'Ready to accept commands',
+  });
 });
 
 redis.on('close', () => {
-  console.log('[Redis] Connection closed');
+  redisConnectionLog.info('connection.close', {
+    msg: 'Connection closed',
+  });
 });
 
 redis.on('reconnecting', () => {
-  console.log('[Redis] Attempting to reconnect...');
+  redisConnectionLog.info('connection.reconnecting', {
+    msg: 'Attempting to reconnect...',
+  });
 });
 
 // Dedicated pub/sub clients with error handling
@@ -61,15 +80,22 @@ export const redisSub = redis.duplicate();
 
 // Add error handling to pub/sub clients
 redisSub.on('error', (err) => {
-  console.warn('[Redis Sub] Connection error:', err.message);
+  redisConnectionLog.warn('connection.subscription_error', {
+    error: err.message,
+    msg: 'Subscription connection error',
+  });
 });
 
 redisSub.on('connect', () => {
-  console.log('[Redis Sub] Connected successfully');
+  redisConnectionLog.info('connection.subscription_connected', {
+    msg: 'Subscription connected successfully',
+  });
 });
 
 redisSub.on('ready', () => {
-  console.log('[Redis Sub] Ready to accept commands');
+  redisConnectionLog.info('connection.subscription_ready', {
+    msg: 'Subscription ready to accept commands',
+  });
 });
 export const CURRENT_HOLDER_CHANNEL = 'current-holder:updates';
 

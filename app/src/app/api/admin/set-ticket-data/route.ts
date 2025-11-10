@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth/require-admin';
+import { apiLog } from '@/lib/event-log';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
 
@@ -34,13 +35,19 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json();
     } catch (err) {
-      console.error('[admin-set-ticket-data] Invalid JSON in request body:', err);
+      apiLog.error('admin-set-ticket-data.parse_failed', {
+        error: err instanceof Error ? err.message : 'Unknown error',
+        msg: 'Invalid JSON in request body',
+      });
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
     const validation = adminSetTicketDataSchema.safeParse(body);
     if (!validation.success) {
-      console.error('[admin-set-ticket-data] Validation failed:', validation.error.format());
+      apiLog.warn('admin-set-ticket-data.validation_failed', {
+        errors: validation.error.format(),
+        msg: 'Validation failed',
+      });
       return NextResponse.json(
         { error: 'Invalid request data', details: validation.error.format() },
         { status: 400 },
@@ -49,9 +56,11 @@ export async function POST(request: NextRequest) {
 
     const { tokenId, tokenURI, image } = validation.data;
 
-    console.log(
-      `[admin-set-ticket-data] Admin FID ${auth.adminFid} setting ticket data for token ${tokenId}`,
-    );
+    apiLog.info('admin-set-ticket-data.request', {
+      adminFid: auth.adminFid,
+      tokenId,
+      msg: `Admin FID ${auth.adminFid} setting ticket data for token ${tokenId}`,
+    });
 
     // Call internal endpoint to execute the transaction
     try {
@@ -82,7 +91,10 @@ export async function POST(request: NextRequest) {
         throw new Error(internalData.error || 'Internal endpoint returned failure');
       }
 
-      console.log(`[admin-set-ticket-data] Successfully set ticket data for token ${tokenId}`);
+      apiLog.info('admin-set-ticket-data.success', {
+        tokenId,
+        msg: `Successfully set ticket data for token ${tokenId}`,
+      });
 
       const response: AdminSetTicketDataResponse = {
         success: true,
@@ -91,7 +103,11 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(response);
     } catch (internalError) {
-      console.error('[admin-set-ticket-data] Internal endpoint failed:', internalError);
+      apiLog.error('admin-set-ticket-data.failed', {
+        tokenId,
+        error: internalError instanceof Error ? internalError.message : 'Unknown error',
+        msg: 'Internal endpoint failed',
+      });
 
       let errorMessage = 'Failed to set ticket data';
       if (internalError instanceof Error) {
@@ -101,7 +117,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
   } catch (error) {
-    console.error('[admin-set-ticket-data] Unexpected error:', error);
+    apiLog.error('admin-set-ticket-data.failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      msg: 'Unexpected error',
+    });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

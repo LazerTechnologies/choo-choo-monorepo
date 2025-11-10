@@ -13,6 +13,7 @@ import {
 import { nonceManager, privateKeyToAccount } from 'viem/accounts';
 import { base, baseSepolia } from 'wagmi/chains';
 import ChooChooTrainAbiJson from '@/abi/ChooChooTrain.abi.json';
+import { contractLog } from '@/lib/event-log';
 
 // Type-safe ABI for ChooChoo Train contract
 const ChooChooTrainAbi = ChooChooTrainAbiJson as Abi;
@@ -118,9 +119,9 @@ export class ContractService {
       return await operation();
     } catch (error) {
       if (this.isNonceTooLowError(error)) {
-        console.warn(
-          '[ContractService] Nonce too low detected, resetting nonce manager and retrying.',
-        );
+        contractLog.warn('nonce-retry.warning', {
+          msg: 'Nonce too low detected, resetting nonce manager and retrying',
+        });
         this.resetNonceManager();
         return await operation();
       }
@@ -280,7 +281,10 @@ export class ContractService {
 
       const hash = await this.executeWithNonceRetry(() => contract.write.yoink([recipient]));
 
-      console.log(`[ContractService] Yoink transaction hash returned: ${hash}`);
+      contractLog.info('yoink.success', {
+        txHash: hash,
+        msg: `Yoink transaction hash returned: ${hash}`,
+      });
 
       // Verify transaction was actually broadcast to the network
       try {
@@ -290,21 +294,27 @@ export class ContractService {
             `Yoink transaction ${hash} was not found on the network. The transaction may have failed to broadcast.`,
           );
         }
-        console.log(
-          `[ContractService] Yoink transaction ${hash} confirmed on network, waiting for mining...`,
-        );
+        contractLog.info('yoink.success', {
+          txHash: hash,
+          msg: `Yoink transaction ${hash} confirmed on network, waiting for mining...`,
+        });
       } catch (txCheckError) {
-        console.error(
-          `[ContractService] Failed to verify yoink transaction ${hash} exists:`,
-          txCheckError,
-        );
+        contractLog.error('yoink.failed', {
+          txHash: hash,
+          error: txCheckError instanceof Error ? txCheckError.message : 'Unknown error',
+          msg: `Failed to verify yoink transaction ${hash} exists`,
+        });
         throw new Error(
           `Yoink transaction ${hash} does not exist on the blockchain. The RPC may have failed to broadcast. Check RPC connectivity and try again.`,
         );
       }
 
       // Wait for transaction to be mined and check status
-      console.log(`[ContractService] Waiting for yoink transaction ${hash} to be mined...`);
+      contractLog.info('tx-mined.info', {
+        txHash: hash,
+        operation: 'yoink',
+        msg: `Waiting for yoink transaction ${hash} to be mined...`,
+      });
       const receipt = await publicClient.waitForTransactionReceipt({
         hash,
         timeout: 60_000, // 60 seconds
@@ -312,15 +322,22 @@ export class ContractService {
 
       // Check if transaction reverted
       if (receipt.status === 'reverted') {
-        console.error(`[ContractService] Yoink transaction ${hash} reverted on-chain`);
+        contractLog.error('tx-reverted.failed', {
+          txHash: hash,
+          operation: 'yoink',
+          msg: `Yoink transaction ${hash} reverted on-chain`,
+        });
         throw new Error(
           `Yoink transaction reverted on-chain. The contract may have rejected the operation due to validation failures.`,
         );
       }
 
-      console.log(
-        `[ContractService] Yoink transaction ${hash} confirmed with status: ${receipt.status}`,
-      );
+      contractLog.info('tx-mined.success', {
+        txHash: hash,
+        status: receipt.status,
+        operation: 'yoink',
+        msg: `Yoink transaction ${hash} confirmed with status: ${receipt.status}`,
+      });
       return hash;
     } catch (error) {
       // Enhanced error handling for yoink-specific restrictions
@@ -401,7 +418,11 @@ export class ContractService {
 
       // Pre-flight: Estimate gas to catch issues before broadcasting
       try {
-        console.log(`[ContractService] Estimating gas for nextStop to ${recipient}...`);
+        contractLog.info('gas-estimate.attempt', {
+          operation: 'next-stop',
+          recipient,
+          msg: `Estimating gas for nextStop to ${recipient}...`,
+        });
         const gasEstimate = await publicClient.estimateContractGas({
           address: this.config.address,
           abi: ChooChooTrainAbi,
@@ -409,9 +430,17 @@ export class ContractService {
           args: [recipient, tokenURI],
           account,
         });
-        console.log(`[ContractService] Gas estimate: ${gasEstimate.toString()} units`);
+        contractLog.info('gas-estimate.success', {
+          operation: 'next-stop',
+          gasEstimate: gasEstimate.toString(),
+          msg: `Gas estimate: ${gasEstimate.toString()} units`,
+        });
       } catch (gasError) {
-        console.error(`[ContractService] Gas estimation failed for nextStop:`, gasError);
+        contractLog.error('gas-estimate.failed', {
+          operation: 'next-stop',
+          error: gasError instanceof Error ? gasError.message : 'Unknown error',
+          msg: 'Gas estimation failed for nextStop',
+        });
         // Try to extract useful error message from the gas estimation failure
         if (gasError instanceof Error) {
           if (gasError.message.includes('AlreadyRodeTrain')) {
@@ -441,7 +470,11 @@ export class ContractService {
         contract.write.nextStop([recipient, tokenURI]),
       );
 
-      console.log(`[ContractService] Transaction hash returned: ${hash}`);
+      contractLog.info('next-stop.success', {
+        txHash: hash,
+        recipient,
+        msg: `Transaction hash returned: ${hash}`,
+      });
 
       // Verify transaction was actually broadcast to the network
       // CRITICAL: Retry multiple times with delays because RPC nodes can take 1-3 seconds to sync
@@ -452,25 +485,35 @@ export class ContractService {
           const tx = await publicClient.getTransaction({ hash });
           if (tx) {
             txFound = true;
-            console.log(
-              `[ContractService] Transaction ${hash} confirmed on network (attempt ${attempt}/${maxVerifyAttempts})`,
-            );
+            contractLog.info('next-stop.success', {
+              txHash: hash,
+              attempt,
+              maxAttempts: maxVerifyAttempts,
+              msg: `Transaction ${hash} confirmed on network (attempt ${attempt}/${maxVerifyAttempts})`,
+            });
             break;
           }
         } catch (txCheckError) {
           if (attempt < maxVerifyAttempts) {
             // Wait with exponential backoff before retrying
             const delayMs = 500 * attempt; // 500ms, 1s, 1.5s, 2s, 2.5s, 3s
-            console.log(
-              `[ContractService] Transaction ${hash} not found yet (attempt ${attempt}/${maxVerifyAttempts}), retrying in ${delayMs}ms...`,
-            );
+            contractLog.info('next-stop.attempt', {
+              txHash: hash,
+              attempt,
+              maxAttempts: maxVerifyAttempts,
+              delayMs,
+              msg: `Transaction ${hash} not found yet (attempt ${attempt}/${maxVerifyAttempts}), retrying in ${delayMs}ms...`,
+            });
             await new Promise((resolve) => setTimeout(resolve, delayMs));
           } else {
             // Final attempt failed
-            console.error(
-              `[ContractService] Failed to verify transaction ${hash} exists on network after ${maxVerifyAttempts} attempts:`,
-              txCheckError,
-            );
+            contractLog.error('next-stop.failed', {
+              txHash: hash,
+              attempt,
+              maxAttempts: maxVerifyAttempts,
+              error: txCheckError instanceof Error ? txCheckError.message : 'Unknown error',
+              msg: `Failed to verify transaction ${hash} exists on network after ${maxVerifyAttempts} attempts`,
+            });
             throw new Error(
               `Transaction ${hash} does not exist on the blockchain after ${maxVerifyAttempts} verification attempts (${maxVerifyAttempts * 0.5}s). The RPC may have returned a hash but failed to broadcast the transaction. Check RPC connectivity and try again.`,
             );
@@ -485,7 +528,11 @@ export class ContractService {
       }
 
       // Wait for transaction to be mined and check status
-      console.log(`[ContractService] Waiting for transaction ${hash} to be mined...`);
+      contractLog.info('tx-mined.info', {
+        txHash: hash,
+        operation: 'next-stop',
+        msg: `Waiting for transaction ${hash} to be mined...`,
+      });
       const receipt = await publicClient.waitForTransactionReceipt({
         hash,
         timeout: 60_000, // 60 seconds
@@ -493,13 +540,22 @@ export class ContractService {
 
       // Check if transaction reverted
       if (receipt.status === 'reverted') {
-        console.error(`[ContractService] Transaction ${hash} reverted on-chain`);
+        contractLog.error('tx-reverted.failed', {
+          txHash: hash,
+          operation: 'next-stop',
+          msg: `Transaction ${hash} reverted on-chain`,
+        });
         throw new Error(
           `Transaction reverted on-chain. The contract may have rejected the operation due to validation failures (e.g., recipient already rode train, sending to current holder, etc.)`,
         );
       }
 
-      console.log(`[ContractService] Transaction ${hash} confirmed with status: ${receipt.status}`);
+      contractLog.info('tx-mined.success', {
+        txHash: hash,
+        status: receipt.status,
+        operation: 'next-stop',
+        msg: `Transaction ${hash} confirmed with status: ${receipt.status}`,
+      });
       return hash;
     } catch (error) {
       // Enhanced error handling for admin-only restrictions
@@ -564,7 +620,11 @@ export class ContractService {
       const hash = await this.executeWithNonceRetry(() =>
         contract.write.setMainTokenURI([tokenURI]),
       );
-      console.log(`[ContractService] setMainTokenURI transaction hash: ${hash}`);
+      contractLog.info('set-ticket-data.success', {
+        txHash: hash,
+        operation: 'set-main-token-uri',
+        msg: `setMainTokenURI transaction hash: ${hash}`,
+      });
       return hash;
     } catch (error) {
       // Enhanced error handling for setMainTokenURI-specific restrictions
@@ -629,7 +689,11 @@ export class ContractService {
       ]);
       return deposited >= required;
     } catch (error) {
-      console.error(`[ContractService] Failed to check deposit status for FID ${fid}:`, error);
+      contractLog.error('deposit-check.failed', {
+        fid,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        msg: `Failed to check deposit status for FID ${fid}`,
+      });
       return false;
     }
   }
@@ -669,9 +733,12 @@ export class ContractService {
                     to: Address;
                     tokenId: bigint;
                   };
-                  console.log(
-                    `[ContractService] Found TicketStamped token ID ${Number(args.tokenId)} in tx: ${txHash}`,
-                  );
+                  contractLog.info('read.success', {
+                    txHash,
+                    tokenId: Number(args.tokenId),
+                    event: 'TicketStamped',
+                    msg: `Found TicketStamped token ID ${Number(args.tokenId)} in tx: ${txHash}`,
+                  });
                   return Number(args.tokenId);
                 }
 
@@ -683,9 +750,12 @@ export class ContractService {
                     tokenId: bigint;
                   };
                   if (args.from === '0x0000000000000000000000000000000000000000') {
-                    console.log(
-                      `[ContractService] Found minted token ID ${Number(args.tokenId)} in tx: ${txHash}`,
-                    );
+                    contractLog.info('read.success', {
+                      txHash,
+                      tokenId: Number(args.tokenId),
+                      event: 'Transfer',
+                      msg: `Found minted token ID ${Number(args.tokenId)} in tx: ${txHash}`,
+                    });
                     return Number(args.tokenId);
                   }
                 }
@@ -703,14 +773,13 @@ export class ContractService {
         const finalReceipt = await publicClient.getTransactionReceipt({
           hash: txHash,
         });
-        console.error(
-          `[ContractService] Transaction ${txHash} receipt found but contains no mint events.`,
-          {
-            status: finalReceipt.status,
-            gasUsed: finalReceipt.gasUsed.toString(),
-            logs: finalReceipt.logs.length,
-          },
-        );
+        contractLog.error('read.failed', {
+          txHash,
+          status: finalReceipt.status,
+          gasUsed: finalReceipt.gasUsed.toString(),
+          logs: finalReceipt.logs.length,
+          msg: `Transaction ${txHash} receipt found but contains no mint events`,
+        });
 
         if (finalReceipt.status === 'reverted') {
           throw new Error(
@@ -718,17 +787,22 @@ export class ContractService {
           );
         }
       } catch (receiptError) {
-        console.error(
-          `[ContractService] Could not fetch receipt for detailed error:`,
-          receiptError,
-        );
+        contractLog.error('read.failed', {
+          txHash,
+          error: receiptError instanceof Error ? receiptError.message : 'Unknown error',
+          msg: 'Could not fetch receipt for detailed error',
+        });
       }
 
       throw new Error(
         'Transaction receipt did not include a recognizable mint event. The transaction may have reverted on-chain.',
       );
     } catch (error) {
-      console.error(`[ContractService] Failed to get minted token ID from tx ${txHash}:`, error);
+      contractLog.error('read.failed', {
+        txHash,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        msg: `Failed to get minted token ID from tx ${txHash}`,
+      });
       // Check if transaction exists at all
       try {
         const publicClient = this.createPublicClient();
@@ -739,7 +813,11 @@ export class ContractService {
           );
         }
       } catch (txCheckError) {
-        console.error(`[ContractService] Transaction check failed:`, txCheckError);
+        contractLog.error('read.failed', {
+          txHash,
+          error: txCheckError instanceof Error ? txCheckError.message : 'Unknown error',
+          msg: 'Transaction check failed',
+        });
       }
       throw new Error(
         error instanceof Error

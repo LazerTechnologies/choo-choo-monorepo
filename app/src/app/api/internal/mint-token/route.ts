@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
+import { type Address, isAddress } from 'viem';
 import { z } from 'zod';
-import { isAddress, type Address } from 'viem';
-import { getContractService } from '@/lib/services/contract';
+import { apiLog } from '@/lib/event-log';
 import { getTokenData, acquireLock, releaseLock } from '@/lib/redis-token-utils';
+import { getContractService } from '@/lib/services/contract';
 import type { TokenURI } from '@/types/nft';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
@@ -45,7 +46,10 @@ async function getRecipientAddress(userData: WinnerData): Promise<string> {
 
     return address;
   } catch (error) {
-    console.error('[mint-token] Failed to get user address:', error);
+    apiLog.error('mint-token.failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      msg: 'Failed to get user address',
+    });
     throw error;
   }
 }
@@ -127,7 +131,10 @@ export async function POST(request: Request) {
 
       body = parsed.data as MintTokenRequest;
     } catch (err) {
-      console.error('[internal/mint-token] Error parsing request body:', err);
+      apiLog.error('mint-token.parse_failed', {
+        error: err instanceof Error ? err.message : 'Unknown error',
+        msg: 'Error parsing request body',
+      });
       return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
     }
 
@@ -135,9 +142,9 @@ export async function POST(request: Request) {
 
     // The NFT ticket is always minted to the previous holder (departing passenger)
     if (!previousHolderData) {
-      console.error(
-        '[internal/mint-token] No previous holder data provided - NFT tickets are only minted to departing passengers',
-      );
+      apiLog.error('mint-token.validation_failed', {
+        msg: 'No previous holder data provided - NFT tickets are only minted to departing passengers',
+      });
       return NextResponse.json(
         {
           success: false,
@@ -166,14 +173,18 @@ export async function POST(request: Request) {
     let tokenId: number;
     try {
       tokenId = await contractService.getNextOnChainTicketId();
-      console.log(`[internal/mint-token] Authoritative token ID from contract: ${tokenId}`);
+      apiLog.info('mint-token.request', {
+        tokenId,
+        msg: `Authoritative token ID from contract: ${tokenId}`,
+      });
 
       // Check if this token already exists in Redis (idempotency protection)
       const existingToken = await getTokenData(tokenId);
       if (existingToken) {
-        console.log(
-          `[internal/mint-token] Token ${tokenId} already exists, returning existing data`,
-        );
+        apiLog.info('mint-token.token_exists', {
+          tokenId,
+          msg: `Token ${tokenId} already exists, returning existing data`,
+        });
         return NextResponse.json({
           success: true,
           txHash: existingToken.transactionHash,
@@ -182,7 +193,10 @@ export async function POST(request: Request) {
         });
       }
     } catch (err) {
-      console.error('[internal/mint-token] Failed to get next token ID from contract:', err);
+      apiLog.error('mint-token.failed', {
+        error: err instanceof Error ? err.message : 'Unknown error',
+        msg: 'Failed to get next token ID from contract',
+      });
       return NextResponse.json(
         {
           success: false,
@@ -192,9 +206,13 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log(
-      `[internal/mint-token] Minting token ${tokenId} for ${nftRecipientData.username} (${nftRecipient})`,
-    );
+    apiLog.info('mint-token.request', {
+      tokenId,
+      nftRecipient: nftRecipient,
+      nftRecipientUsername: nftRecipientData.username,
+      newHolderAddress: newHolderAddress,
+      msg: `Minting token ${tokenId} for ${nftRecipientData.username} (${nftRecipient})`,
+    });
 
     const fullTokenURI = (
       tokenURI.startsWith('ipfs://') ? tokenURI : `ipfs://${tokenURI}`
@@ -202,13 +220,24 @@ export async function POST(request: Request) {
 
     let txHash;
     try {
-      console.log(
-        `[internal/mint-token] Executing contract: NFT to ${nftRecipient}, ChooChoo to ${newHolderAddress}`,
-      );
+      apiLog.info('mint-token.contract_executed', {
+        tokenId,
+        nftRecipient,
+        newHolderAddress,
+        msg: `Executing contract: NFT to ${nftRecipient}, ChooChoo to ${newHolderAddress}`,
+      });
       txHash = await contractService.executeNextStop(newHolderAddress as Address, fullTokenURI);
-      console.log(`[internal/mint-token] Transaction executed: ${txHash}`);
+      apiLog.info('mint-token.contract_executed', {
+        tokenId,
+        txHash,
+        msg: `Transaction executed: ${txHash}`,
+      });
     } catch (err) {
-      console.error('[internal/mint-token] Failed to execute contract transaction:', err);
+      apiLog.error('mint-token.failed', {
+        tokenId,
+        error: err instanceof Error ? err.message : 'Unknown error',
+        msg: 'Failed to execute contract transaction',
+      });
       return NextResponse.json(
         {
           success: false,
@@ -236,18 +265,25 @@ export async function POST(request: Request) {
 
       const postNextId = await contractService.getNextOnChainTicketId();
       const updatedTotalTickets = await contractService.getTotalTickets();
-      console.log(
-        `[internal/mint-token] Minted token ID: ${actualTokenId} (total tickets now: ${updatedTotalTickets})`,
-      );
+      apiLog.info('mint-token.success', {
+        tokenId: actualTokenId,
+        totalTickets: updatedTotalTickets,
+        msg: `Minted token ID: ${actualTokenId} (total tickets now: ${updatedTotalTickets})`,
+      });
 
       // Verify with tolerance for eventual consistency
       if (postNextId <= actualTokenId) {
-        console.warn(
-          `[internal/mint-token] Contract nextTicketId verification: expected > ${actualTokenId}, got ${postNextId}`,
-        );
+        apiLog.warn('mint-token.verification_skipped', {
+          actualTokenId,
+          postNextId,
+          msg: `Contract nextTicketId verification: expected > ${actualTokenId}, got ${postNextId}`,
+        });
       }
     } catch (err) {
-      console.warn('[internal/mint-token] Post-mint verification skipped (non-critical):', err);
+      apiLog.warn('mint-token.verification_skipped', {
+        error: err instanceof Error ? err.message : 'Unknown error',
+        msg: 'Post-mint verification skipped (non-critical)',
+      });
     }
 
     // Pure mint endpoint - all state management handled by orchestrator
@@ -258,10 +294,17 @@ export async function POST(request: Request) {
       actualTokenId,
     };
 
-    console.log(`[internal/mint-token] Successfully minted token ${actualTokenId}`);
+    apiLog.info('mint-token.success', {
+      tokenId: actualTokenId,
+      txHash,
+      msg: `Successfully minted token ${actualTokenId}`,
+    });
     return NextResponse.json(response);
   } catch (error) {
-    console.error('[internal/mint-token] Error:', error);
+    apiLog.error('mint-token.failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      msg: 'Error',
+    });
     return NextResponse.json(
       {
         success: false,
@@ -275,7 +318,10 @@ export async function POST(request: Request) {
       try {
         await releaseLock(mintedLockKey);
       } catch (err) {
-        console.warn('[internal/mint-token] Failed to release mint lock:', err);
+        apiLog.warn('mint-token.failed', {
+          error: err instanceof Error ? err.message : 'Unknown error',
+          msg: 'Failed to release mint lock',
+        });
       }
     }
   }

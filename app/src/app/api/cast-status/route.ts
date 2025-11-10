@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { apiLog } from '@/lib/event-log';
 import { redis } from '@/lib/kv';
 import { WorkflowState } from '@/lib/workflow-types';
 
@@ -14,20 +15,34 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const fid = searchParams.get('fid');
 
-  console.log(`🔍 [cast-status] Checking cast status for FID: ${fid}`);
+  apiLog.info('cast-status.request', {
+    fid,
+    msg: `Checking cast status for FID: ${fid}`,
+  });
 
   if (!fid) {
-    console.error(`🚨 [cast-status] Missing FID parameter`);
+    apiLog.warn('cast-status.validation_failed', {
+      msg: 'Missing FID parameter',
+    });
     return NextResponse.json({ error: 'FID required' }, { status: 400 });
   }
 
   try {
     const workflowStateJson = await redis.get('workflowState');
-    console.log(`🔍 [cast-status] Retrieved workflow state from Redis:`, workflowStateJson);
+    apiLog.debug('cast-status.request', {
+      fid,
+      hasWorkflowState: !!workflowStateJson,
+      msg: 'Retrieved workflow state from Redis',
+    });
 
     if (workflowStateJson) {
       const workflowData = JSON.parse(workflowStateJson);
-      console.log(`🔍 [cast-status] Parsed workflow data:`, workflowData);
+      apiLog.debug('cast-status.request', {
+        fid,
+        state: workflowData.state,
+        currentCastHash: workflowData.currentCastHash,
+        msg: 'Parsed workflow data',
+      });
 
       // User has casted if they're in CASTED, CHANCE_ACTIVE, CHANCE_EXPIRED, or MANUAL_SEND states
       const hasCurrentUserCasted = [
@@ -37,27 +52,38 @@ export async function GET(request: Request) {
         WorkflowState.MANUAL_SEND,
       ].includes(workflowData.state as WorkflowState);
 
-      console.log(
-        `🔍 [cast-status] Current state: ${workflowData.state}, hasCurrentUserCasted: ${hasCurrentUserCasted}`,
-      );
-      console.log(`🔍 [cast-status] Current cast hash: ${workflowData.currentCastHash}`);
+      apiLog.debug('cast-status.request', {
+        fid,
+        state: workflowData.state,
+        hasCurrentUserCasted,
+        currentCastHash: workflowData.currentCastHash,
+        msg: `Current state: ${workflowData.state}, hasCurrentUserCasted: ${hasCurrentUserCasted}`,
+      });
 
       if (hasCurrentUserCasted && workflowData.currentCastHash) {
-        console.log(`✅ [cast-status] Returning positive cast status for FID ${fid}`);
+        apiLog.info('cast-status.cast_found', {
+          fid,
+          currentCastHash: workflowData.currentCastHash,
+          msg: `Returning positive cast status for FID ${fid}`,
+        });
         return NextResponse.json({
           hasCurrentUserCasted: true,
           currentCastHash: workflowData.currentCastHash,
         });
       }
     } else {
-      console.log(`ℹ️ [cast-status] No workflow state found in Redis - checking API fallback`);
+      apiLog.info('cast-status.cast_not_found', {
+        fid,
+        msg: 'No workflow state found in Redis - checking API fallback',
+      });
     }
 
     // Fallback: Check recent casts for @choochoo or embeds containing choochoo.pro
     if (process.env.NEYNAR_API_KEY) {
-      console.log(
-        `🔍 [cast-status] Checking fallback API for FID ${fid} - webhook detection failed`,
-      );
+      apiLog.info('cast-status.api_fallback', {
+        fid,
+        msg: `Checking fallback API for FID ${fid} - webhook detection failed`,
+      });
       try {
         const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
         const afterTime = fifteenMinutesAgo.toISOString().split('.')[0]; // Remove milliseconds for API
@@ -77,9 +103,12 @@ export async function GET(request: Request) {
           const casts = Array.isArray(data?.result?.casts)
             ? (data.result.casts as Array<Record<string, unknown>>)
             : [];
-          console.log(
-            `🔍 [cast-status] Checking ${casts.length} casts since ${fifteenMinutesAgo.toISOString()}`,
-          );
+          apiLog.debug('cast-status.api_fallback', {
+            fid,
+            castsCount: casts.length,
+            afterTime: fifteenMinutesAgo.toISOString(),
+            msg: `Checking ${casts.length} casts since ${fifteenMinutesAgo.toISOString()}`,
+          });
 
           for (const cast of casts) {
             const ts = (cast as { timestamp?: unknown }).timestamp;
@@ -90,21 +119,21 @@ export async function GET(request: Request) {
             const hash = (cast as { hash?: unknown }).hash;
             const hashStr = typeof hash === 'string' ? hash : 'unknown-hash';
             const preview = typeof rawText === 'string' ? rawText.substring(0, 50) : '';
-            console.log(
-              `🔍 [cast-status] Examining cast ${hashStr}: "${preview}..." (${castDate.toISOString()})`,
-            );
+            apiLog.debug('cast-status.api_fallback', {
+              fid,
+              castHash: hashStr,
+              preview,
+              castDate: castDate.toISOString(),
+              msg: `Examining cast ${hashStr}: "${preview}..." (${castDate.toISOString()})`,
+            });
 
             // Search already filtered for @choochoo and time, so any result is a match
             if (castDate > fifteenMinutesAgo) {
-              console.log(
-                `✅ [cast-status] Found recent @choochoo cast via API fallback: ${hashStr}`,
-              );
-              const author = (cast as { author?: unknown }).author as { fid?: unknown } | undefined;
-              const fidStr =
-                author && typeof author.fid === 'number' ? String(author.fid) : 'unknown';
-              console.log(
-                `✅ [cast-status] Cast details: FID=${fidStr}, text="${typeof rawText === 'string' ? rawText : ''}", timestamp=${typeof ts === 'string' || typeof ts === 'number' ? String(ts) : ''}`,
-              );
+              apiLog.info('cast-status.cast_found', {
+                fid,
+                castHash: hashStr,
+                msg: `Found recent @choochoo cast via API fallback: ${hashStr}`,
+              });
 
               const workflowData = {
                 state: WorkflowState.CASTED,
@@ -113,9 +142,12 @@ export async function GET(request: Request) {
               };
 
               await redis.set('workflowState', JSON.stringify(workflowData));
-              console.log(
-                `✅ [cast-status] Updated workflow state to CASTED with hash ${cast.hash}`,
-              );
+              apiLog.info('cast-status.workflow_updated', {
+                fid,
+                castHash: hashStr,
+                state: 'CASTED',
+                msg: `Updated workflow state to CASTED with hash ${hashStr}`,
+              });
 
               return NextResponse.json({
                 hasCurrentUserCasted: true,
@@ -123,37 +155,45 @@ export async function GET(request: Request) {
               });
             }
           }
-          console.log(
-            `🚨 [cast-status] No @choochoo casts found in last 15 minutes for FID ${fid}`,
-          );
+          apiLog.warn('cast-status.cast_not_found', {
+            fid,
+            msg: `No @choochoo casts found in last 15 minutes for FID ${fid}`,
+          });
         } else {
-          console.error(
-            `🚨 [cast-status] Neynar API error: ${response.status} ${response.statusText}`,
-          );
-          const errorText = await response.text();
-          console.error(`🚨 [cast-status] Neynar API error body:`, errorText);
+          apiLog.error('cast-status.failed', {
+            fid,
+            status: response.status,
+            statusText: response.statusText,
+            msg: `Neynar API error: ${response.status} ${response.statusText}`,
+          });
         }
       } catch (apiError) {
-        console.error('🚨 [cast-status] Error checking recent casts:', apiError);
-        console.error('🚨 [cast-status] API Error details:', {
-          message: apiError instanceof Error ? apiError.message : 'Unknown error',
-          stack: apiError instanceof Error ? apiError.stack : undefined,
+        apiLog.error('cast-status.failed', {
+          fid,
+          error: apiError instanceof Error ? apiError.message : 'Unknown error',
+          msg: 'Error checking recent casts',
         });
       }
     } else {
-      console.warn('⚠️ [cast-status] NEYNAR_API_KEY not configured - fallback detection disabled');
+      apiLog.warn('cast-status.failed', {
+        fid,
+        msg: 'NEYNAR_API_KEY not configured - fallback detection disabled',
+      });
     }
 
-    console.log(`🚨 [cast-status] No cast found for FID ${fid} - returning negative result`);
+    apiLog.info('cast-status.cast_not_found', {
+      fid,
+      msg: `No cast found for FID ${fid} - returning negative result`,
+    });
     return NextResponse.json({
       hasCurrentUserCasted: false,
       currentCastHash: null,
     });
   } catch (error) {
-    console.error('🚨 [cast-status] Error checking cast status:', error);
-    console.error('🚨 [cast-status] Error details:', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
+    apiLog.error('cast-status.failed', {
+      fid,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      msg: 'Error checking cast status',
     });
     return NextResponse.json({ error: 'Failed to check cast status' }, { status: 500 });
   }

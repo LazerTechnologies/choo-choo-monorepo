@@ -1,3 +1,4 @@
+import { type SchedulerLogCode, schedulerLog } from '@/lib/event-log';
 import { APP_URL } from './constants';
 
 /**
@@ -15,11 +16,15 @@ class Scheduler {
    */
   public initialize(): void {
     if (this.isInitialized) {
-      console.log('[Scheduler] Already initialized, skipping...');
+      schedulerLog.info('already_initialized' as SchedulerLogCode, {
+        msg: 'Already initialized, skipping...',
+      });
       return;
     }
 
-    console.log('[Scheduler] Initializing scheduled jobs...');
+    schedulerLog.info('initialized' as SchedulerLogCode, {
+      msg: 'Initializing scheduled jobs...',
+    });
 
     // Check yoink availability every 5 minutes
     this.scheduleJob('yoink-availability-check', 5 * 60 * 1000, async () => {
@@ -27,7 +32,9 @@ class Scheduler {
     });
 
     this.isInitialized = true;
-    console.log('[Scheduler] Scheduled jobs initialized successfully');
+    schedulerLog.info('initialized' as SchedulerLogCode, {
+      msg: 'Scheduled jobs initialized successfully',
+    });
   }
 
   /**
@@ -46,14 +53,25 @@ class Scheduler {
     // Schedule the job
     const interval = setInterval(async () => {
       try {
-        console.log(`[Scheduler] Running job: ${jobName}`);
+        schedulerLog.info('job_started' as SchedulerLogCode, {
+          jobName,
+          msg: `Running job: ${jobName}`,
+        });
         await jobFunction();
 
         // Update job status on success
         this.jobStatus.set(jobName, { lastRun: new Date(), lastError: null });
+        schedulerLog.info('job_completed' as SchedulerLogCode, {
+          jobName,
+          msg: `Job ${jobName} completed successfully`,
+        });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        console.error(`[Scheduler] Error in job ${jobName}:`, error);
+        schedulerLog.error('job_failed' as SchedulerLogCode, {
+          jobName,
+          error: errorMessage,
+          msg: `Error in job ${jobName}`,
+        });
 
         // Update job status on error
         this.jobStatus.set(jobName, { lastRun: new Date(), lastError: errorMessage });
@@ -61,7 +79,11 @@ class Scheduler {
     }, intervalMs);
 
     this.intervals.set(jobName, interval);
-    console.log(`[Scheduler] Scheduled job '${jobName}' to run every ${intervalMs / 1000} seconds`);
+    schedulerLog.info('job_scheduled' as SchedulerLogCode, {
+      jobName,
+      intervalSeconds: intervalMs / 1000,
+      msg: `Scheduled job '${jobName}' to run every ${intervalMs / 1000} seconds`,
+    });
   }
 
   /**
@@ -84,16 +106,26 @@ class Scheduler {
       const result = await response.json();
 
       if (result.notificationSent) {
-        console.log(
-          `[Scheduler] Yoink availability notification sent to all users. ChooChoo can be yoinked from: ${result.currentHolder})`,
-        );
+        schedulerLog.info('yoink_check_notification_sent' as SchedulerLogCode, {
+          currentHolder: result.currentHolder,
+          msg: 'Yoink availability notification sent to all users',
+        });
       } else if (result.yoinkAvailable) {
-        console.log(`[Scheduler] Yoink is available but notification already sent`);
+        schedulerLog.info('yoink_check_already_sent' as SchedulerLogCode, {
+          msg: 'Yoink is available but notification already sent',
+        });
       } else {
-        console.log(`[Scheduler] Yoink not available: ${result.reason}`);
+        schedulerLog.info('yoink_check_not_available' as SchedulerLogCode, {
+          reason: result.reason,
+          msg: `Yoink not available: ${result.reason}`,
+        });
       }
     } catch (error) {
-      console.error('[Scheduler] Failed to check yoink availability:', error);
+      schedulerLog.error('job_failed' as SchedulerLogCode, {
+        jobName: 'yoink-availability-check',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        msg: 'Failed to check yoink availability',
+      });
     }
   }
 
@@ -123,17 +155,24 @@ class Scheduler {
    * Stop all scheduled jobs
    */
   public shutdown(): void {
-    console.log('[Scheduler] Shutting down scheduled jobs...');
+    schedulerLog.info('shutdown' as SchedulerLogCode, {
+      msg: 'Shutting down scheduled jobs...',
+    });
 
     for (const [jobName, interval] of this.intervals) {
       clearInterval(interval);
-      console.log(`[Scheduler] Stopped job: ${jobName}`);
+      schedulerLog.info('job_stopped' as SchedulerLogCode, {
+        jobName,
+        msg: `Stopped job: ${jobName}`,
+      });
     }
 
     this.intervals.clear();
     this.jobStatus.clear();
     this.isInitialized = false;
-    console.log('[Scheduler] All scheduled jobs stopped');
+    schedulerLog.info('shutdown' as SchedulerLogCode, {
+      msg: 'All scheduled jobs stopped',
+    });
   }
 }
 

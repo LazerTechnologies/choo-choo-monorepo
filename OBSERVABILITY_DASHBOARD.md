@@ -200,11 +200,18 @@ redis.lock.skipped
 - `set-ticket-data`
 - `verify`
 - `read`
+- `gas-estimate`
+- `nonce-retry`
+- `tx-mined`
+- `tx-reverted`
+- `deposit-check`
 
 **Events:**
 - `attempt`
 - `success`
 - `failed`
+- `warning`
+- `info`
 
 **Full Log Code Patterns:**
 ```
@@ -227,6 +234,19 @@ contract.verify.failed
 contract.read.attempt
 contract.read.success
 contract.read.failed
+
+contract.gas-estimate.attempt
+contract.gas-estimate.success
+contract.gas-estimate.failed
+
+contract.nonce-retry.warning
+
+contract.tx-mined.info
+contract.tx-mined.success
+
+contract.tx-reverted.failed
+
+contract.deposit-check.failed
 ```
 
 ### Retry Logs (`retry.*`)
@@ -255,6 +275,132 @@ retry.backoff.success
 retry.backoff.failed
 retry.backoff.scheduled
 retry.backoff.exhausted
+```
+
+### API Logs (`api.*`)
+
+**Endpoints:**
+- `users-address`
+- `mint-token`
+- `set-ticket-data`
+- `admin-set-ticket-data`
+- `scheduler-status`
+- `init-scheduler`
+
+**Events:**
+- `request`
+- `neynar_call`
+- `neynar_response`
+- `success`
+- `failed`
+- `not_found`
+- `invalid_fid`
+- `missing_config`
+- `missing_fid`
+- `no_address`
+- `unauthorized`
+- `validation_failed`
+- `parse_failed`
+- `token_exists`
+- `contract_executed`
+- `verification_skipped`
+
+**Full Log Code Patterns:**
+```
+api.users-address.request
+api.users-address.neynar_call
+api.users-address.neynar_response
+api.users-address.success
+api.users-address.failed
+api.users-address.not_found
+api.users-address.invalid_fid
+api.users-address.missing_config
+api.users-address.missing_fid
+api.users-address.no_address
+
+api.mint-token.request
+api.mint-token.success
+api.mint-token.failed
+api.mint-token.parse_failed
+api.mint-token.validation_failed
+api.mint-token.token_exists
+api.mint-token.contract_executed
+api.mint-token.verification_skipped
+
+api.set-ticket-data.request
+api.set-ticket-data.success
+api.set-ticket-data.failed
+api.set-ticket-data.unauthorized
+api.set-ticket-data.parse_failed
+api.set-ticket-data.validation_failed
+
+api.admin-set-ticket-data.request
+api.admin-set-ticket-data.success
+api.admin-set-ticket-data.failed
+api.admin-set-ticket-data.parse_failed
+api.admin-set-ticket-data.validation_failed
+
+api.scheduler-status.failed
+
+api.init-scheduler.failed
+```
+
+### Redis Connection Logs (`redis.connection.*`)
+
+**Events:**
+- `connect`
+- `ready`
+- `error`
+- `close`
+- `reconnecting`
+- `retry`
+- `max_retries_exceeded`
+- `subscription_connected`
+- `subscription_ready`
+- `subscription_error`
+
+**Full Log Code Patterns:**
+```
+redis.connection.connect
+redis.connection.ready
+redis.connection.error
+redis.connection.close
+redis.connection.reconnecting
+redis.connection.retry
+redis.connection.max_retries_exceeded
+redis.connection.subscription_connected
+redis.connection.subscription_ready
+redis.connection.subscription_error
+```
+
+### Scheduler Logs (`scheduler.*`)
+
+**Events:**
+- `initialized`
+- `already_initialized`
+- `job_scheduled`
+- `job_started`
+- `job_completed`
+- `job_failed`
+- `shutdown`
+- `job_stopped`
+- `yoink_check_notification_sent`
+- `yoink_check_already_sent`
+- `yoink_check_not_available`
+
+**Full Log Code Patterns:**
+```
+scheduler.initialized
+scheduler.already_initialized
+scheduler.job_scheduled
+scheduler.job_started
+scheduler.job_completed
+scheduler.job_failed
+scheduler.shutdown
+scheduler.job_stopped
+scheduler.yoink_check_notification_sent
+scheduler.yoink_check_already_sent
+scheduler.yoink_check_not_available
 ```
 
 ## Console Log Patterns (API Routes)
@@ -396,6 +542,10 @@ Error updating workflow state
 
 ### Users/Address (`/api/users/address`)
 
+**Structured Logs (Preferred):**
+- Uses `api.users-address.*` log codes (see API Logs section above)
+
+**Legacy Console Log Patterns (Deprecated):**
 ```
 [users/address] Neynar API key is not configured
 [users/address] Request received for FID
@@ -622,6 +772,23 @@ workflow_state
 
 - Track HTTP status codes by endpoint
 - Monitor error rates per endpoint
+- Track `api.*.success` vs `api.*.failed` for structured API logs
+- Monitor `api.users-address.not_found` and `api.users-address.no_address` for user lookup issues
+- Track `api.users-address.missing_config` for configuration problems
+- Monitor `api.mint-token.*` for minting operation health
+- Track `api.set-ticket-data.*` and `api.admin-set-ticket-data.*` for metadata update operations
+
+### Redis Connection Health
+
+- Track `redis.connection.error` and `redis.connection.max_retries_exceeded` for connection issues
+- Monitor `redis.connection.subscription_error` for pub/sub problems
+- Track connection lifecycle: `connect`, `ready`, `close`, `reconnecting`
+
+### Scheduler Health
+
+- Track `scheduler.job_completed` vs `scheduler.job_failed` for job success rates
+- Monitor `scheduler.yoink_check_*` events for yoink availability checks
+- Track job scheduling and execution patterns
 
 ## Dashboard Queries (Example)
 

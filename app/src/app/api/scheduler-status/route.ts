@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server';
+import { apiLog } from '@/lib/event-log';
 import { scheduler } from '@/lib/scheduler';
 
 /**
@@ -26,7 +27,10 @@ export async function GET(request: NextRequest) {
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    console.error('[scheduler-status] Error:', error);
+    apiLog.error('scheduler-status.failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      msg: 'Error',
+    });
     return NextResponse.json(
       {
         error: 'Failed to get scheduler status',

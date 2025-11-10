@@ -1,4 +1,5 @@
 import type { NextRequest } from 'next/server';
+import { redisConnectionLog } from '@/lib/event-log';
 import { CURRENT_HOLDER_CHANNEL, redisSub } from '@/lib/kv';
 
 export const runtime = 'nodejs';
@@ -12,15 +13,22 @@ export async function GET(req: NextRequest) {
       const sub = redisSub.duplicate();
 
       sub.on('error', (err) => {
-        console.warn('[Redis Stream] Subscription error:', err.message);
+        redisConnectionLog.warn('connection.subscription_error', {
+          error: err.message,
+          msg: 'Stream subscription error',
+        });
       });
 
       sub.on('connect', () => {
-        console.log('[Redis Stream] Subscription connected');
+        redisConnectionLog.info('connection.subscription_connected', {
+          msg: 'Stream subscription connected',
+        });
       });
 
       sub.on('ready', () => {
-        console.log('[Redis Stream] Subscription ready');
+        redisConnectionLog.info('connection.subscription_ready', {
+          msg: 'Stream subscription ready',
+        });
       });
 
       await sub.subscribe(CURRENT_HOLDER_CHANNEL);

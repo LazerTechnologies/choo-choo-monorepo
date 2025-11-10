@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { apiLog } from '@/lib/event-log';
 import { getContractService } from '@/lib/services/contract';
 
 const INTERNAL_SECRET = process.env.INTERNAL_SECRET;
@@ -28,7 +29,9 @@ export async function POST(request: NextRequest) {
     // Verify internal secret
     const authHeader = request.headers.get('x-internal-secret');
     if (!authHeader || authHeader !== INTERNAL_SECRET) {
-      console.error('[internal/set-ticket-data] Unauthorized: Invalid or missing internal secret');
+      apiLog.warn('set-ticket-data.unauthorized', {
+        msg: 'Unauthorized: Invalid or missing internal secret',
+      });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -37,13 +40,19 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json();
     } catch (err) {
-      console.error('[internal/set-ticket-data] Invalid JSON in request body:', err);
+      apiLog.error('set-ticket-data.parse_failed', {
+        error: err instanceof Error ? err.message : 'Unknown error',
+        msg: 'Invalid JSON in request body',
+      });
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
     const validation = setTicketDataSchema.safeParse(body);
     if (!validation.success) {
-      console.error('[internal/set-ticket-data] Validation failed:', validation.error.format());
+      apiLog.warn('set-ticket-data.validation_failed', {
+        errors: validation.error.format(),
+        msg: 'Validation failed',
+      });
       return NextResponse.json(
         { error: 'Invalid request data', details: validation.error.format() },
         { status: 400 },
@@ -52,15 +61,20 @@ export async function POST(request: NextRequest) {
 
     const { tokenId, tokenURI, image } = validation.data;
 
-    console.log(`[internal/set-ticket-data] Setting ticket data for token ${tokenId}`);
+    apiLog.info('set-ticket-data.request', {
+      tokenId,
+      msg: `Setting ticket data for token ${tokenId}`,
+    });
 
     try {
       const contractService = getContractService();
       const hash = await contractService.setTicketData(tokenId, tokenURI, image);
 
-      console.log(
-        `[internal/set-ticket-data] Successfully set ticket data for token ${tokenId}, tx: ${hash}`,
-      );
+      apiLog.info('set-ticket-data.success', {
+        tokenId,
+        txHash: hash,
+        msg: `Successfully set ticket data for token ${tokenId}, tx: ${hash}`,
+      });
 
       const response: SetTicketDataResponse = {
         success: true,
@@ -69,7 +83,11 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(response);
     } catch (contractError) {
-      console.error('[internal/set-ticket-data] Contract interaction failed:', contractError);
+      apiLog.error('set-ticket-data.failed', {
+        tokenId,
+        error: contractError instanceof Error ? contractError.message : 'Unknown error',
+        msg: 'Contract interaction failed',
+      });
 
       let errorMessage = 'Failed to set ticket data on contract';
       if (contractError instanceof Error) {
@@ -87,7 +105,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: errorMessage }, { status: 500 });
     }
   } catch (error) {
-    console.error('[internal/set-ticket-data] Unexpected error:', error);
+    apiLog.error('set-ticket-data.failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      msg: 'Unexpected error',
+    });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
