@@ -105,7 +105,7 @@ export function UsernameInput({
         pfpUrl: user.pfp_url,
       });
     },
-    [onUserSelect]
+    [onUserSelect],
   );
 
   const handleKeyDown = useCallback(
@@ -135,7 +135,7 @@ export function UsernameInput({
           break;
       }
     },
-    [showDropdown, users, selectedIndex, handleUserSelect]
+    [showDropdown, users, selectedIndex, handleUserSelect],
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -178,7 +178,7 @@ export function UsernameInput({
           className={cn(
             'w-full pr-10 !text-black dark:!text-black',
             error && 'border-red-500',
-            loading && 'opacity-75'
+            loading && 'opacity-75',
           )}
         />
 
@@ -200,7 +200,7 @@ export function UsernameInput({
               key={user.fid}
               className={cn(
                 'flex items-center gap-3 p-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors',
-                selectedIndex === index && 'bg-gray-100 dark:bg-gray-700'
+                selectedIndex === index && 'bg-gray-100 dark:bg-gray-700',
               )}
               onClick={() => handleUserSelect(user)}
               onMouseEnter={() => setSelectedIndex(index)}

@@ -244,7 +244,7 @@ describe.skip('Workflow State Transitions', () => {
 
     // State persistence is verified by the hook fetching from /api/workflow-state
     expect(
-      screen.getByText('Send ChooChoo to a friend, or leave it to chance.')
+      screen.getByText('Send ChooChoo to a friend, or leave it to chance.'),
     ).toBeInTheDocument();
   });
 });

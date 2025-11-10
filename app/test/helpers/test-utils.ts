@@ -50,7 +50,7 @@ export function expectNotCalled<T extends (...args: any[]) => any>(mockFn: T) {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function waitForMockCall<T extends (...args: any[]) => any>(
   mockFn: T,
-  timeout: number = 1000
+  timeout = 1000,
 ) {
   await waitFor(() => expect(mockFn).toHaveBeenCalled(), { timeout });
 }
@@ -62,7 +62,7 @@ export async function waitForMockCall<T extends (...args: any[]) => any>(
 export async function waitForMockCallWith<T extends (...args: any[]) => any>(
   mockFn: T,
   expectedArgs: Parameters<T>,
-  timeout: number = 1000
+  timeout = 1000,
 ) {
   await waitFor(() => expect(mockFn).toHaveBeenCalledWith(...expectedArgs), { timeout });
 }
@@ -71,7 +71,7 @@ export async function waitForMockCallWith<T extends (...args: any[]) => any>(
  * Create a promise that resolves after a delay
  * Useful for simulating network delays in tests
  */
-export function createDelayedPromise<T>(value: T, delayMs: number = 100): Promise<T> {
+export function createDelayedPromise<T>(value: T, delayMs = 100): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(value), delayMs));
 }
 
@@ -79,7 +79,7 @@ export function createDelayedPromise<T>(value: T, delayMs: number = 100): Promis
  * Create a promise that rejects after a delay
  * Useful for simulating network errors in tests
  */
-export function createDelayedRejection(error: Error, delayMs: number = 100): Promise<never> {
+export function createDelayedRejection(error: Error, delayMs = 100): Promise<never> {
   return new Promise((_, reject) => setTimeout(() => reject(error), delayMs));
 }
 
@@ -127,7 +127,7 @@ export async function testConcurrentOperations<T>(
     successCount?: number;
     failureCount?: number;
     specificResults?: T[];
-  } = {}
+  } = {},
 ) {
   const results = await Promise.allSettled(operations.map((op) => op()));
 
@@ -160,7 +160,7 @@ export function createLockTestScenario(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   operation: () => Promise<any>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mockRedis: any
+  mockRedis: any,
 ) {
   return {
     async testLockAcquired() {
@@ -176,7 +176,7 @@ export function createLockTestScenario(
       expect(mockRedis.set).toHaveBeenCalledWith(
         lockKey,
         expect.any(String),
-        expect.objectContaining({ NX: true })
+        expect.objectContaining({ NX: true }),
       );
       expect(mockRedis.del).toHaveBeenCalledWith(lockKey);
       return result;
@@ -195,7 +195,7 @@ export function createLockTestScenario(
       expect(mockRedis.set).toHaveBeenCalledWith(
         lockKey,
         expect.any(String),
-        expect.objectContaining({ NX: true })
+        expect.objectContaining({ NX: true }),
       );
       expect(mockRedis.del).not.toHaveBeenCalledWith(lockKey);
       return result;
@@ -215,14 +215,14 @@ export function createWorkflowTestHelper(mockFetch: any) {
         expect.objectContaining({
           method: 'POST',
           body: expect.stringContaining(`"state":"${expectedState}"`),
-        })
+        }),
       );
     },
 
     expectWorkflowNotChanged() {
       expect(mockFetch).not.toHaveBeenCalledWith(
         expect.stringContaining('/api/workflow-state'),
-        expect.any(Object)
+        expect.any(Object),
       );
     },
   };
@@ -244,14 +244,14 @@ export function createCastTestHelper(mockFetch: any) {
         expect.objectContaining({
           method: 'POST',
           body: expectedBody,
-        })
+        }),
       );
     },
 
     expectNoCastsSent() {
       expect(mockFetch).not.toHaveBeenCalledWith(
         expect.stringContaining('/api/internal/send-cast'),
-        expect.any(Object)
+        expect.any(Object),
       );
     },
   };

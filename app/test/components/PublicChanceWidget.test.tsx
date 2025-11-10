@@ -49,7 +49,7 @@ describe.skip('PublicChanceWidget', () => {
 
     expect(screen.getByText('Chance Mode')).toBeInTheDocument();
     expect(
-      screen.getByText('Send ChooChoo to a random reactor from the below cast')
+      screen.getByText('Send ChooChoo to a random reactor from the below cast'),
     ).toBeInTheDocument();
     expect(screen.getByText(/Public sending will be enabled in:/)).toBeInTheDocument();
     expect(screen.getByText('Come back later...')).toBeInTheDocument();

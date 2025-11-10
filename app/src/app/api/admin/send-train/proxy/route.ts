@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   if (!ADMIN_SECRET) {
     return NextResponse.json(
       { error: 'Server misconfigured: ADMIN_SECRET missing' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 

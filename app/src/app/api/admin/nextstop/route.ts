@@ -34,7 +34,7 @@ export async function POST(request: Request) {
           error: 'Invalid request body',
           details: parsed.error.flatten(),
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -59,18 +59,18 @@ export async function POST(request: Request) {
     try {
       const updatedTotalTickets = await contractService.getTotalTickets();
       console.log(
-        `[test-admin-nextstop] Minted token ID: ${actualTokenId} (total tickets now: ${updatedTotalTickets})`
+        `[test-admin-nextstop] Minted token ID: ${actualTokenId} (total tickets now: ${updatedTotalTickets})`,
       );
 
       if (updatedTotalTickets !== tokenId) {
         console.warn(
-          `[test-admin-nextstop] Warning: Total tickets (${updatedTotalTickets}) doesn't match expected token ID (${tokenId})`
+          `[test-admin-nextstop] Warning: Total tickets (${updatedTotalTickets}) doesn't match expected token ID (${tokenId})`,
         );
       }
     } catch (err) {
       console.error(
         '[test-admin-nextstop] Failed to get updated total tickets (non-critical):',
-        err
+        err,
       );
     }
 
@@ -107,7 +107,7 @@ export async function POST(request: Request) {
       } catch (err) {
         console.warn(
           '[test-admin-nextstop] Failed to fetch metadata for image hash, using fallback:',
-          err
+          err,
         );
         imageHash = metadataHash;
       }
@@ -156,12 +156,12 @@ export async function POST(request: Request) {
 
       await storeTokenData(tokenData);
       console.log(
-        `[test-admin-nextstop] Stored comprehensive token data in Redis for token ${actualTokenId}`
+        `[test-admin-nextstop] Stored comprehensive token data in Redis for token ${actualTokenId}`,
       );
     } catch (err) {
       console.error(
         '[test-admin-nextstop] Failed to store comprehensive token data in Redis:',
-        err
+        err,
       );
       // Don't fail the request for Redis storage issues, just log the error
     }
@@ -191,7 +191,7 @@ export async function POST(request: Request) {
         error: errorMessage,
         timestamp: new Date().toISOString(),
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -6,11 +6,11 @@ import { join } from 'path';
 export async function GET() {
   try {
     const config = await getFarcasterMetadata();
-    
+
     console.log('Manifest generated with keys:', Object.keys(config));
     console.log('Frame section exists:', !!config.frame);
     console.log('WebhookUrl:', config.frame?.webhookUrl);
-    
+
     return NextResponse.json(config);
   } catch (error) {
     console.error('Error generating metadata:', error);

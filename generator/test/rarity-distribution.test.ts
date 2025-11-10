@@ -18,7 +18,7 @@ type RarityData = {
 
 const selectTrait = (
   layerName: string,
-  rarities: RarityData
+  rarities: RarityData,
 ): { originalName: string; formattedName: string } => {
   const traits = rarities[layerName];
   if (!traits) {
@@ -140,7 +140,7 @@ describe('Rarity Distribution Tests', () => {
       const expectedRarities = rarityData[layer];
       const totalExpectedWeight = Object.values(expectedRarities).reduce(
         (sum: number, weight: any) => sum + weight,
-        0
+        0,
       );
 
       let layerPassed = true;
@@ -162,7 +162,7 @@ describe('Rarity Distribution Tests', () => {
 
         const status = passed ? '✅' : '❌';
         console.log(
-          `  ${status} ${formattedTrait}: ${actualPercentage.toFixed(2)}% (expected: ${expectedPercentage.toFixed(2)}%, diff: ${difference.toFixed(2)}%)`
+          `  ${status} ${formattedTrait}: ${actualPercentage.toFixed(2)}% (expected: ${expectedPercentage.toFixed(2)}%, diff: ${difference.toFixed(2)}%)`,
         );
       }
 
@@ -186,7 +186,7 @@ describe('Rarity Distribution Tests', () => {
 
     const uniquePercentage = (combinations.size / SAMPLE_SIZE_UNIQUENESS) * 100;
     console.log(
-      `📈 Uniqueness: ${combinations.size}/${SAMPLE_SIZE_UNIQUENESS} unique combinations (${uniquePercentage.toFixed(1)}%)`
+      `📈 Uniqueness: ${combinations.size}/${SAMPLE_SIZE_UNIQUENESS} unique combinations (${uniquePercentage.toFixed(1)}%)`,
     );
 
     // With 14 layers and varying rarities, we should get high uniqueness
@@ -203,7 +203,7 @@ describe('Rarity Distribution Tests', () => {
       const layerRarities = rarityData[layer];
       const totalWeight = Object.values(layerRarities).reduce(
         (sum: number, weight: any) => sum + weight,
-        0
+        0,
       );
 
       console.log(`  ${layer}: ${totalWeight.toFixed(2)}%`);
@@ -212,7 +212,7 @@ describe('Rarity Distribution Tests', () => {
       // Note: Eyes layer currently sums to 94.75% - this should be fixed in rarities.json
       if (totalWeight < 90 || totalWeight > 110) {
         throw new Error(
-          `Layer "${layer}" has invalid total weight: ${totalWeight}% (should be close to 100%)`
+          `Layer "${layer}" has invalid total weight: ${totalWeight}% (should be close to 100%)`,
         );
       }
     }

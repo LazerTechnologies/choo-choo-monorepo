@@ -25,7 +25,7 @@ export function useFrameContext() {
 
       return frameData;
     },
-    [neynarAuthUser, context, currentUserFid]
+    [neynarAuthUser, context, currentUserFid],
   );
 
   return {

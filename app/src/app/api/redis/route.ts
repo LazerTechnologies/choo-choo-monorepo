@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { redis } from '@/lib/kv';
 
 export async function GET(req: NextRequest) {

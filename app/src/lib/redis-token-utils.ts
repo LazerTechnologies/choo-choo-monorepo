@@ -41,7 +41,7 @@ export async function releaseLock(key: string): Promise<void> {
 export async function getOrSetPendingGeneration(
   tokenId: number,
   producer: () => Promise<PendingNFT>,
-  ttlSeconds: number = 15 * 60
+  ttlSeconds: number = 15 * 60,
 ): Promise<PendingNFT> {
   const key = REDIS_KEYS.pendingNFT(tokenId);
   const genLockKey = `gen-lock:${tokenId}`;
@@ -97,7 +97,7 @@ export async function getOrSetPendingGeneration(
 
     // Timeout fallback: try to generate ourselves
     console.warn(
-      `[redis-token-utils] Generation timeout for token ${tokenId}, falling back to direct generation`
+      `[redis-token-utils] Generation timeout for token ${tokenId}, falling back to direct generation`,
     );
     const payload = await producer();
     try {
@@ -153,7 +153,7 @@ export async function storeTokenDataWriteOnce(tokenData: TokenData): Promise<'cr
  */
 export async function getNextTokenId(): Promise<number> {
   console.warn(
-    '[redis-token-utils] getNextTokenId() is deprecated. Use getContractService().getNextOnChainTicketId() instead'
+    '[redis-token-utils] getNextTokenId() is deprecated. Use getContractService().getNextOnChainTicketId() instead',
   );
 
   try {
@@ -162,7 +162,7 @@ export async function getNextTokenId(): Promise<number> {
     const nextTokenId = await contractService.getNextOnChainTicketId();
     console.log(
       '[redis-token-utils] Next token ID from contract (via deprecated function):',
-      nextTokenId
+      nextTokenId,
     );
     return nextTokenId;
   } catch (error) {
@@ -267,7 +267,7 @@ export async function tokenDataExists(tokenId: number): Promise<boolean> {
 export async function storeLastMovedTimestamp(
   tokenId: number,
   transactionHash: string,
-  timestamp: string = new Date().toISOString()
+  timestamp: string = new Date().toISOString(),
 ): Promise<void> {
   const lastMoved: LastMovedTimestamp = {
     timestamp,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Address, erc20Abi } from 'viem';
+import { type Address, erc20Abi } from 'viem';
 import { useAccount, usePublicClient, useWalletClient } from 'wagmi';
 import { useMarqueeToast } from '@/providers/MarqueeToastProvider';
 

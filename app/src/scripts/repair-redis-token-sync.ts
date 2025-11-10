@@ -30,7 +30,7 @@ interface RepairReport {
   errors: string[];
 }
 
-async function repairRedisTokenSync(isDryRun: boolean = false): Promise<RepairReport> {
+async function repairRedisTokenSync(isDryRun = false): Promise<RepairReport> {
   const report: RepairReport = {
     onChainTotalTickets: 0,
     redisCurrentTokenId: null,
@@ -113,7 +113,7 @@ async function repairRedisTokenSync(isDryRun: boolean = false): Promise<RepairRe
                 } catch (metadataError) {
                   console.warn(
                     `⚠️  Could not fetch metadata for token ${tokenId}, using fallback`,
-                    metadataError
+                    metadataError,
                   );
                 }
 
@@ -151,7 +151,7 @@ async function repairRedisTokenSync(isDryRun: boolean = false): Promise<RepairRe
             // Token data exists, check for inconsistencies
             if (redisTokenData.tokenId !== tokenId) {
               console.log(
-                `⚠️  Token ${tokenId} has incorrect tokenId in Redis: ${redisTokenData.tokenId}`
+                `⚠️  Token ${tokenId} has incorrect tokenId in Redis: ${redisTokenData.tokenId}`,
               );
               report.tokensWithIncorrectData.push(tokenId);
 

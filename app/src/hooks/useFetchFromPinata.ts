@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { NFTMetadata } from '@/types/nft';
+import type { NFTMetadata } from '@/types/nft';
 
 /**
  * React hook to fetch NFT metadata from Pinata/IPFS by CID or tokenURI.

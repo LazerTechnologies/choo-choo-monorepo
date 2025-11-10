@@ -47,7 +47,7 @@ export function mockRedisLockFailure(mockRedis: ReturnType<typeof createMockRedi
 export function mockPendingNFTCache(
   mockRedis: ReturnType<typeof createMockRedis>,
   tokenId: number,
-  data?: PendingNFT
+  data?: PendingNFT,
 ) {
   const pendingData = data || {
     imageHash: 'mock-image-hash',
@@ -84,7 +84,7 @@ export function createMockContract() {
 
 export function mockContractTokenIdSequence(
   mockContract: ReturnType<typeof createMockContract>,
-  startId: number
+  startId: number,
 ) {
   let currentId = startId;
   mockContract.getNextOnChainTicketId.mockImplementation(() => {
@@ -291,7 +291,7 @@ export function createMockOrchestrators() {
 
 // Workflow State Mock Helpers
 export function createMockWorkflowState(
-  state: WorkflowState = WorkflowState.NOT_CASTED
+  state: WorkflowState = WorkflowState.NOT_CASTED,
 ): WorkflowData {
   return {
     state,
@@ -301,7 +301,7 @@ export function createMockWorkflowState(
 }
 
 // User Mock Helpers
-export function createMockUser(fid: number = 123, username: string = 'testuser') {
+export function createMockUser(fid = 123, username = 'testuser') {
   return {
     fid,
     username,
@@ -319,7 +319,7 @@ export function MockProviders({ children }: { children: any }) {
 }
 
 // Token Data Mock Helpers
-export function createMockTokenData(tokenId: number = 1): TokenData {
+export function createMockTokenData(tokenId = 1): TokenData {
   return {
     tokenId,
     imageHash: 'mock-image-hash',
@@ -356,7 +356,7 @@ export function mockEnvironmentVariables() {
 }
 
 // Async Helper for Testing Concurrent Operations
-export function createConcurrentPromises<T>(fn: () => Promise<T>, count: number = 2): Promise<T>[] {
+export function createConcurrentPromises<T>(fn: () => Promise<T>, count = 2): Promise<T>[] {
   return Array.from({ length: count }, () => fn());
 }
 

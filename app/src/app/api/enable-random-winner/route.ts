@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { redis } from '@/lib/kv';
 import { CHOOCHOO_CAST_TEMPLATES, APP_URL } from '@/lib/constants';
 import type { NeynarBulkUsersResponse } from '@/types/neynar';
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
               accept: 'application/json',
               'x-api-key': NEYNAR_API_KEY,
             },
-          }
+          },
         );
 
         console.log('[enable-random-winner] Neynar API response status:', userResponse.status);
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
         } else {
           console.warn(
             '[enable-random-winner] Neynar API returned non-OK status:',
-            userResponse.status
+            userResponse.status,
           );
         }
       } else {
@@ -87,13 +87,13 @@ export async function POST(request: NextRequest) {
             text: castText,
             embeds: [{ url: APP_URL }],
           }),
-        }
+        },
       );
 
       if (castResponse.ok) {
         const castData = await castResponse.json();
         console.log(
-          `[enable-random-winner] Successfully sent random winner enabled cast: ${castData.cast?.hash}`
+          `[enable-random-winner] Successfully sent random winner enabled cast: ${castData.cast?.hash}`,
         );
 
         castHash = castData.cast?.hash || null;
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
         const castErrorData = await castResponse.json();
         console.warn(
           '[enable-random-winner] Failed to send random winner enabled cast (non-critical):',
-          castErrorData.error
+          castErrorData.error,
         );
 
         // Do not touch currentCastHash here; preserve any existing cast hash
@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
         } catch (e) {
           console.warn(
             '[enable-random-winner] Failed to read existing workflowState (error path):',
-            e
+            e,
           );
         }
 
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
     } catch (err) {
       console.warn(
         '[enable-random-winner] Failed to send random winner enabled cast (non-critical):',
-        err
+        err,
       );
     }
 

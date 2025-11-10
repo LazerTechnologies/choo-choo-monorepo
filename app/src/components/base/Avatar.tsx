@@ -5,7 +5,7 @@ import * as AvatarPrimitive from '@radix-ui/react-avatar';
 import * as React from 'react';
 
 import { cn } from '@/lib/utils';
-import { cva, VariantProps } from 'class-variance-authority';
+import { cva, type VariantProps } from 'class-variance-authority';
 
 const avatarVariants = cva('relative flex rounded-full overflow-hidden outline-2 outline-border', {
   variants: {
@@ -38,7 +38,7 @@ const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
       className={cn(avatarVariants({ size, borderThickness }), 'outline', className)}
       {...props}
     />
-  )
+  ),
 );
 Avatar.displayName = AvatarPrimitive.Root.displayName;
 
@@ -62,7 +62,7 @@ const AvatarFallback = React.forwardRef<
     ref={ref}
     className={cn(
       'flex h-full w-full items-center justify-center rounded-full bg-white dark:bg-secondaryBlack text-text dark:text-darkText font-base',
-      className
+      className,
     )}
     {...props}
   />

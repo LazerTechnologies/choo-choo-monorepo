@@ -9,7 +9,7 @@ const contractArtifactPath = path.join(
   'contracts',
   'out',
   `${CONTRACT_NAME}.sol`,
-  `${CONTRACT_NAME}.json`
+  `${CONTRACT_NAME}.json`,
 );
 
 const appAbiDir = path.join(__dirname, '..', 'app', 'src', 'abi');
@@ -20,18 +20,14 @@ async function extractAbi() {
   console.log(`Extracting ABI for ${CONTRACT_NAME}...`);
 
   if (!fs.existsSync(contractArtifactPath)) {
+    console.error(`Error: Contract artifact not found at ${contractArtifactPath}`);
     console.error(
-      `Error: Contract artifact not found at ${contractArtifactPath}`
-    );
-    console.error(
-      'Please ensure contracts are built (e.g., run `pnpm build`) before extracting ABI.'
+      'Please ensure contracts are built (e.g., run `pnpm build`) before extracting ABI.',
     );
     process.exit(1);
   }
 
-  const contractArtifact = JSON.parse(
-    fs.readFileSync(contractArtifactPath, 'utf8')
-  );
+  const contractArtifact = JSON.parse(fs.readFileSync(contractArtifactPath, 'utf8'));
 
   if (!fs.existsSync(appAbiDir)) {
     fs.mkdirSync(appAbiDir, { recursive: true });

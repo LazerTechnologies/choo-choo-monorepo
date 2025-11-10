@@ -1,6 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
-import { baseDir, imageDimensions, layerOrder, LayerName } from '../config';
+import { baseDir, imageDimensions, layerOrder, type LayerName } from '../config';
 
 type RarityData = {
   [layerName: string]: {
@@ -21,7 +21,7 @@ export type NftAttribute = {
  */
 const selectTrait = (
   layerName: LayerName,
-  rarities: RarityData
+  rarities: RarityData,
 ): { originalName: string; formattedName: string } => {
   const traits = rarities[layerName];
   if (!traits) {
@@ -79,7 +79,7 @@ export const composeImage = async (): Promise<{
       throw new Error(`rarities.json not found at ${rarityDataPath}`);
     }
     throw new Error(
-      `Failed to read rarities.json: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to read rarities.json: ${error instanceof Error ? error.message : 'Unknown error'}`,
     );
   }
 
@@ -107,7 +107,7 @@ export const composeImage = async (): Promise<{
     for (const [traitName, weight] of Object.entries(layerTraits)) {
       if (typeof weight !== 'number' || weight < 0) {
         throw new Error(
-          `Invalid weight for trait "${traitName}" in layer "${layer}": must be a non-negative number`
+          `Invalid weight for trait "${traitName}" in layer "${layer}": must be a non-negative number`,
         );
       }
     }
@@ -178,7 +178,7 @@ export const composeImage = async (): Promise<{
       throw new Error(
         `Failed to load image for layer "${layer}", trait "${formattedName}" at ${imagePath}: ${
           error instanceof Error ? error.message : 'Unknown error'
-        }`
+        }`,
       );
     }
   }
@@ -189,7 +189,7 @@ export const composeImage = async (): Promise<{
     return { imageBuffer, attributes };
   } catch (error) {
     throw new Error(
-      `Failed to composite final image: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to composite final image: ${error instanceof Error ? error.message : 'Unknown error'}`,
     );
   }
 };

@@ -65,7 +65,7 @@ export function useCurrentHolder() {
             setIsCurrentHolder(
               !!currentUserFid &&
                 !!data.currentHolder?.fid &&
-                currentUserFid === data.currentHolder.fid
+                currentUserFid === data.currentHolder.fid,
             );
           } catch {
             // Ignore; snapshot fetch failure handled by polling fallback

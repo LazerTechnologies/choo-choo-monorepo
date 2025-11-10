@@ -1,4 +1,4 @@
-import { retryLog, toRetryLogCode } from "./event-log";
+import { retryLog, toRetryLogCode } from './event-log';
 
 /**
  * Retry an operation with exponential backoff
@@ -8,58 +8,58 @@ import { retryLog, toRetryLogCode } from "./event-log";
  * @returns The result of the operation
  */
 export async function retryWithBackoff<T>(
-	operation: () => Promise<T>,
-	operationName: string,
-	maxAttempts: number = 3,
+  operation: () => Promise<T>,
+  operationName: string,
+  maxAttempts = 3,
 ): Promise<T> {
-	let lastError: Error = new Error(`All ${maxAttempts} retry attempts failed`);
+  let lastError: Error = new Error(`All ${maxAttempts} retry attempts failed`);
 
-	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-		try {
-			retryLog.info(toRetryLogCode("operation", "attempt"), {
-				operationName,
-				attempt,
-			});
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      retryLog.info(toRetryLogCode('operation', 'attempt'), {
+        operationName,
+        attempt,
+      });
 
-			const result = await operation();
+      const result = await operation();
 
-			retryLog.info(toRetryLogCode("operation", "success"), {
-				operationName,
-				attempt,
-			});
+      retryLog.info(toRetryLogCode('operation', 'success'), {
+        operationName,
+        attempt,
+      });
 
-			return result;
-		} catch (err) {
-			lastError = err as Error;
-			retryLog.warn(toRetryLogCode("operation", "failed"), {
-				operationName,
-				attempt,
-				error: err,
-				maxAttempts,
-			});
+      return result;
+    } catch (err) {
+      lastError = err as Error;
+      retryLog.warn(toRetryLogCode('operation', 'failed'), {
+        operationName,
+        attempt,
+        error: err,
+        maxAttempts,
+      });
 
-			if (attempt < maxAttempts) {
-				const baseDelayMs = Math.min(2 ** (attempt - 1) * 1000, 30000);
-				const jitter = Math.random() * 0.3 * baseDelayMs;
-				const delayMs = baseDelayMs + jitter;
+      if (attempt < maxAttempts) {
+        const baseDelayMs = Math.min(2 ** (attempt - 1) * 1000, 30000);
+        const jitter = Math.random() * 0.3 * baseDelayMs;
+        const delayMs = baseDelayMs + jitter;
 
-				retryLog.info(toRetryLogCode("backoff", "scheduled"), {
-					operationName,
-					attempt,
-					delayMs,
-					nextAttempt: attempt + 1,
-				});
+        retryLog.info(toRetryLogCode('backoff', 'scheduled'), {
+          operationName,
+          attempt,
+          delayMs,
+          nextAttempt: attempt + 1,
+        });
 
-				await new Promise((resolve) => setTimeout(resolve, delayMs));
-			}
-		}
-	}
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+  }
 
-	retryLog.error(toRetryLogCode("operation", "exhausted"), {
-		operationName,
-		maxAttempts,
-		error: lastError,
-	});
+  retryLog.error(toRetryLogCode('operation', 'exhausted'), {
+    operationName,
+    maxAttempts,
+    error: lastError,
+  });
 
-	throw lastError;
+  throw lastError;
 }

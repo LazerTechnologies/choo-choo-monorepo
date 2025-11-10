@@ -35,7 +35,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'FID parameter is required' }, { status: 400 });
   }
 
-  const fid = parseInt(fidParam.trim());
+  const fid = Number.parseInt(fidParam.trim());
   if (isNaN(fid) || fid <= 0) {
     console.error('[users/address] Invalid FID parameter:', fidParam);
     return NextResponse.json({ error: 'Invalid FID parameter' }, { status: 400 });
@@ -76,14 +76,14 @@ export async function GET(request: Request) {
 
     console.log(
       '[users/address] User verified addresses:',
-      JSON.stringify(verifiedAddresses, null, 2)
+      JSON.stringify(verifiedAddresses, null, 2),
     );
 
     if (!verifiedAddresses) {
       console.log('[users/address] User has no verified_addresses object');
       return NextResponse.json(
         { error: 'User has no verified Ethereum addresses' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -99,7 +99,7 @@ export async function GET(request: Request) {
       console.log('[users/address] ETH addresses array:', verifiedAddresses.eth_addresses);
       return NextResponse.json(
         { error: 'User has no verified Ethereum addresses' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -116,7 +116,7 @@ export async function GET(request: Request) {
     console.error('[users/address] Failed to fetch user address:', error);
     return NextResponse.json(
       { error: 'Failed to fetch user address. Please try again.' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

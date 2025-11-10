@@ -53,7 +53,7 @@ export async function POST(request: Request) {
         success: false,
         error: `Repair failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

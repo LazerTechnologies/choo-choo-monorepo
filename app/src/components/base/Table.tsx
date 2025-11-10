@@ -9,12 +9,12 @@ const Table = React.forwardRef<HTMLTableElement, React.HTMLAttributes<HTMLTableE
         ref={ref}
         className={cn(
           'w-full caption-bottom border-border dark:border-darkBorder text-sm',
-          className
+          className,
         )}
         {...props}
       />
     </div>
-  )
+  ),
 );
 Table.displayName = 'Table';
 
@@ -46,7 +46,7 @@ const TableFooter = React.forwardRef<
     ref={ref}
     className={cn(
       'border-t border-t-border bg-purple-500 font-base [&>tr]:last:border-b-0',
-      className
+      className,
     )}
     {...props}
   />
@@ -59,11 +59,11 @@ const TableRow = React.forwardRef<HTMLTableRowElement, React.HTMLAttributes<HTML
       ref={ref}
       className={cn(
         'border-b border-border dark:border-darkBorder text-text transition-colors bg-purple-500 font-base hover:bg-purple-400 hover:text-primary-foreground data-[state=selected]:bg-white dark:data-[state=selected]:bg-secondaryBlack data-[state=selected]:text-text dark:data-[state=selected]:text-darkText',
-        className
+        className,
       )}
       {...props}
     />
-  )
+  ),
 );
 TableRow.displayName = 'TableRow';
 
@@ -76,7 +76,7 @@ const TableHead = React.forwardRef<
     ref={ref}
     className={cn(
       'h-12 px-4 text-left align-middle font-heading text-primary-foreground [&:has([role=checkbox])]:pr-0',
-      className
+      className,
     )}
     {...props}
   />

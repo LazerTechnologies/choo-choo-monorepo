@@ -7,36 +7,34 @@ export async function GET() {
     'https://scarlet-quick-grouse-388.mypinata.cloud/ipfs/bafybeifqhbreqpgymacaw2l6q2ntjlbdz7s2ssl7yjantdprftorz23ltu';
 
   return new ImageResponse(
-    (
-      <div
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        position: 'relative',
+        overflow: 'hidden',
+        backgroundColor: '#7c3aed',
+      }}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={iconUrl}
+        alt="ChooChoo"
         style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
           width: '100%',
           height: '100%',
-          display: 'flex',
-          position: 'relative',
-          overflow: 'hidden',
-          backgroundColor: '#7c3aed',
+          objectFit: 'cover',
+          objectPosition: 'center',
         }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={iconUrl}
-          alt="ChooChoo"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            objectPosition: 'center',
-          }}
-        />
-      </div>
-    ),
+      />
+    </div>,
     {
       width: 1200,
       height: 800,
-    }
+    },
   );
 }

@@ -14,7 +14,7 @@ if (!contractAddress) {
 if (!/^0x[a-fA-F0-9]{40}$/.test(contractAddress)) {
   console.error('Error: Invalid contract address format');
   console.error(
-    'Contract address should be a valid Ethereum address (0x followed by 40 hex characters)'
+    'Contract address should be a valid Ethereum address (0x followed by 40 hex characters)',
   );
   process.exit(1);
 }
@@ -43,13 +43,10 @@ async function getNetworkChoice() {
 
     if (choice === '1' || choice === 'sepolia') {
       return 84532;
-    } else if (choice === '2' || choice === 'mainnet') {
+    }if (choice === '2' || choice === 'mainnet') {
       return 8453;
-    } else {
-      console.log(
-        'Invalid choice. Please enter 1 for Base Sepolia or 2 for Base Mainnet.'
-      );
     }
+      console.log('Invalid choice. Please enter 1 for Base Sepolia or 2 for Base Mainnet.');
   }
 }
 

@@ -3,7 +3,7 @@
 import { useCallback, useState, useEffect } from 'react';
 import { Button } from '@/components/base/Button';
 import { useMiniApp } from '@neynar/react';
-import { type ComposeCast } from '@farcaster/frame-sdk';
+import type { ComposeCast } from '@farcaster/frame-sdk';
 
 interface EmbedConfig {
   path?: string;
@@ -57,7 +57,7 @@ export function ShareButton({
         if (bestFriends) {
           // Replace @N with usernames, or remove if no matching friend
           finalText = finalText.replace(/@\d+/g, (match) => {
-            const friendIndex = parseInt(match.slice(1)) - 1;
+            const friendIndex = Number.parseInt(match.slice(1)) - 1;
             const friend = bestFriends[friendIndex];
             if (friend) {
               return `@${friend.username}`;
@@ -92,7 +92,7 @@ export function ShareButton({
             return url.toString();
           }
           return embed.url || '';
-        })
+        }),
       );
 
       // Open cast composer with all supported intents

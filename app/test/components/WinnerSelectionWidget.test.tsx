@@ -54,7 +54,7 @@ describe.skip('WinnerSelectionWidget', () => {
     renderWithProvider(<WinnerSelectionWidget />);
 
     expect(
-      screen.getByText('Send ChooChoo to a friend, or leave it to chance.')
+      screen.getByText('Send ChooChoo to a friend, or leave it to chance.'),
     ).toBeInTheDocument();
     expect(screen.getByText('Send')).toBeInTheDocument();
     expect(screen.getByText('Chance')).toBeInTheDocument();
@@ -82,7 +82,7 @@ describe.skip('WinnerSelectionWidget', () => {
 
     // Component renders but functionality should be limited to current holder
     expect(
-      screen.getByText('Send ChooChoo to a friend, or leave it to chance.')
+      screen.getByText('Send ChooChoo to a friend, or leave it to chance.'),
     ).toBeInTheDocument();
   });
 
@@ -100,7 +100,7 @@ describe.skip('WinnerSelectionWidget', () => {
     renderWithProvider(<WinnerSelectionWidget />);
 
     expect(
-      screen.getByText('Send ChooChoo to a friend, or leave it to chance.')
+      screen.getByText('Send ChooChoo to a friend, or leave it to chance.'),
     ).toBeInTheDocument();
   });
 
@@ -243,7 +243,7 @@ describe.skip('WinnerSelectionWidget', () => {
     // Should show confirmation dialog
     await waitFor(() => {
       expect(
-        screen.getByText('Once you confirm, you cannot manually send. Leave it up to chance?')
+        screen.getByText('Once you confirm, you cannot manually send. Leave it up to chance?'),
       ).toBeInTheDocument();
     });
   });

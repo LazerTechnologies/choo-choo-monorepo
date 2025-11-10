@@ -41,9 +41,7 @@ async function testNeynarAPI() {
   try {
     // Test: Bulk user fetch with single FID
     console.log('\n📋 Bulk User API with Single FID');
-    console.log(
-      `GET https://api.neynar.com/v2/farcaster/user/bulk?fids=${testFid}`
-    );
+    console.log(`GET https://api.neynar.com/v2/farcaster/user/bulk?fids=${testFid}`);
 
     const bulkResponse = await fetch(
       `https://api.neynar.com/v2/farcaster/user/bulk?fids=${testFid}`,
@@ -52,7 +50,7 @@ async function testNeynarAPI() {
           accept: 'application/json',
           'x-api-key': NEYNAR_API_KEY,
         },
-      }
+      },
     );
 
     console.log(`📊 Status: ${bulkResponse.status} ${bulkResponse.statusText}`);
@@ -76,18 +74,13 @@ async function testNeynarAPI() {
       console.log(`- Display Name: ${user.display_name}`);
       console.log(`- FID: ${user.fid}`);
       console.log(`- Custody Address: ${user.custody_address}`);
-      console.log(
-        `- Verifications: ${JSON.stringify(user.verifications || [])}`
-      );
-      console.log(
-        `- Verified Addresses: ${JSON.stringify(user.verified_addresses || {})}`
-      );
+      console.log(`- Verifications: ${JSON.stringify(user.verifications || [])}`);
+      console.log(`- Verified Addresses: ${JSON.stringify(user.verified_addresses || {})}`);
 
       // Analyze verified addresses structure
       if (user.verified_addresses) {
         console.log('\n🎯 Verified Addresses Breakdown:');
-        const { eth_addresses, sol_addresses, primary } =
-          user.verified_addresses;
+        const { eth_addresses, sol_addresses, primary } = user.verified_addresses;
         console.log(`- ETH Addresses: ${JSON.stringify(eth_addresses || [])}`);
         console.log(`- SOL Addresses: ${JSON.stringify(sol_addresses || [])}`);
         console.log(`- Primary: ${JSON.stringify(primary || {})}`);
@@ -104,13 +97,11 @@ async function testNeynarAPI() {
                 type: 'verification',
               },
               null,
-              2
-            )
+              2,
+            ),
           );
         } else {
-          console.log(
-            '\n❌ Our current API would return 404 (no ETH addresses)'
-          );
+          console.log('\n❌ Our current API would return 404 (no ETH addresses)');
           if (sol_addresses?.[0]) {
             console.log(`   But user has SOL address: ${sol_addresses[0]}`);
           }
@@ -122,9 +113,7 @@ async function testNeynarAPI() {
       if (legacyVerifications.length > 0) {
         console.log('\n📜 Legacy Verifications Array:');
         console.log(`- First verification: ${legacyVerifications[0]}`);
-        console.log(
-          `- All verifications: ${JSON.stringify(legacyVerifications)}`
-        );
+        console.log(`- All verifications: ${JSON.stringify(legacyVerifications)}`);
       }
     } else {
       console.log('\n❌ No users found in response');

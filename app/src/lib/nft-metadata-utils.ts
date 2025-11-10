@@ -32,7 +32,7 @@ export function createChooChooMetadata(
   imageIPFSHash: string,
   generatedAttributes: NFTAttribute[] = [],
   passengerUsername?: string,
-  additionalAttributes: NFTAttribute[] = []
+  additionalAttributes: NFTAttribute[] = [],
 ): NFTMetadata {
   const attributes: NFTAttribute[] = [
     // Generated visual attributes come first
@@ -59,7 +59,7 @@ export function createChooChooMetadata(
 export function createTestMetadata(
   tokenId: number,
   imageIPFSHash: string,
-  passengerUsername?: string
+  passengerUsername?: string,
 ): NFTMetadata {
   const testAttributes: NFTAttribute[] = [
     { trait_type: 'Source', value: 'Admin Test' },
@@ -88,7 +88,7 @@ export function validateMetadata(metadata: NFTMetadata): boolean {
  */
 export function getAttributeValue(
   metadata: NFTMetadata,
-  traitType: string
+  traitType: string,
 ): string | number | undefined {
   const attribute = metadata.attributes?.find((attr) => attr.trait_type === traitType);
   return attribute?.value;

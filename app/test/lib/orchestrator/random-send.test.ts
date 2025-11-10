@@ -188,7 +188,7 @@ describe('orchestrateRandomSend', () => {
             },
             totalEligibleReactors: 10,
           }),
-          { status: 200 }
+          { status: 200 },
         );
       }
       if (url.includes('/api/current-holder')) {
@@ -203,7 +203,7 @@ describe('orchestrateRandomSend', () => {
               address: '0xholder',
             },
           }),
-          { status: 200 }
+          { status: 200 },
         );
       }
       if (url.includes('/api/internal/generate-nft')) {
@@ -215,7 +215,7 @@ describe('orchestrateRandomSend', () => {
             metadataHash: 'meta',
             metadata: { attributes: [] },
           }),
-          { status: 200 }
+          { status: 200 },
         );
       }
       if (url.includes('/api/internal/mint-token')) {
@@ -227,7 +227,7 @@ describe('orchestrateRandomSend', () => {
           }),
           {
             status: 200,
-          }
+          },
         );
       }
       if (url.includes('/api/internal/send-cast') || url.includes('/api/workflow-state')) {
@@ -255,13 +255,13 @@ describe('orchestrateRandomSend', () => {
       expect.objectContaining({
         sourceCastHash: '0xcast',
         totalEligibleReactors: 10,
-      })
+      }),
     );
   });
 
   it('should handle winner selection failure', async () => {
     vi.mocked(global.fetch).mockImplementationOnce(
-      async () => new Response(JSON.stringify({ success: false }), { status: 200 })
+      async () => new Response(JSON.stringify({ success: false }), { status: 200 }),
     );
     const res = await orchestrateRandomSend('0xcast');
     expect(res.status).toBe(500);

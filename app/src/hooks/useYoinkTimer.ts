@@ -18,7 +18,7 @@ export function useYoinkTimer() {
           throw new Error('Failed to fetch yoink timer');
         }
         const data = await response.json();
-        
+
         if (data.yoinkTimerHours && typeof data.yoinkTimerHours === 'number') {
           setTimerHours(data.yoinkTimerHours);
         }

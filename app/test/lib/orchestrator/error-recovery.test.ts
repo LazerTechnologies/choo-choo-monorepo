@@ -44,7 +44,7 @@ describe('Error Recovery', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(
-      global.fetch as unknown as (input: RequestInfo | URL) => Promise<Response>
+      global.fetch as unknown as (input: RequestInfo | URL) => Promise<Response>,
     ).mockImplementation(async (input: RequestInfo | URL) => {
       const url = input.toString();
       if (url.includes('/api/internal/select-winner')) {
@@ -64,7 +64,7 @@ describe('Error Recovery', () => {
               address: '0xholder',
             },
           }),
-          { status: 200 }
+          { status: 200 },
         );
       }
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
@@ -78,7 +78,7 @@ describe('Error Recovery', () => {
   it('should reset workflow to CASTED on orchestrator failure and release locks', async () => {
     // Failure is induced by select-winner returning success: false
     vi.mocked(
-      global.fetch as unknown as (input: RequestInfo | URL) => Promise<Response>
+      global.fetch as unknown as (input: RequestInfo | URL) => Promise<Response>,
     ).mockImplementationOnce(async (input: RequestInfo | URL) => {
       // already set above for select-winner, keep
       const url = input.toString();

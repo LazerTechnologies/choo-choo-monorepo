@@ -1,4 +1,4 @@
-import { Metadata } from 'next';
+import type { Metadata } from 'next';
 import App from './app';
 import { APP_NAME, APP_DESCRIPTION, APP_OG_IMAGE_URL } from '@/lib/constants';
 import { getMiniAppEmbedMetadata } from '@/lib/utils';

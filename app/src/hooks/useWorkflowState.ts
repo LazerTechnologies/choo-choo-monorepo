@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
-import { WorkflowState, WorkflowData, DEFAULT_WORKFLOW_DATA } from '@/lib/workflow-types';
+import { type WorkflowState, type WorkflowData, DEFAULT_WORKFLOW_DATA } from '@/lib/workflow-types';
 
 export function useWorkflowState() {
   const [workflowData, setWorkflowData] = useState<WorkflowData>(DEFAULT_WORKFLOW_DATA);
@@ -41,7 +41,7 @@ export function useWorkflowState() {
         setWorkflowData((prev) => ({ ...prev, ...payload }));
         try {
           window.dispatchEvent(
-            new CustomEvent<Partial<WorkflowData>>('workflow-state-changed', { detail: payload })
+            new CustomEvent<Partial<WorkflowData>>('workflow-state-changed', { detail: payload }),
           );
         } catch {}
 
@@ -56,13 +56,13 @@ export function useWorkflowState() {
         setWorkflowData(previous);
         try {
           window.dispatchEvent(
-            new CustomEvent<Partial<WorkflowData>>('workflow-state-changed', { detail: previous })
+            new CustomEvent<Partial<WorkflowData>>('workflow-state-changed', { detail: previous }),
           );
         } catch {}
         return false;
       }
     },
-    []
+    [],
   );
 
   useEffect(() => {

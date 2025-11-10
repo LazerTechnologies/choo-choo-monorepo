@@ -55,7 +55,7 @@ async function killProcessOnPort(port) {
           .forEach((pid) => {
             if (pid) {
               try {
-                process.kill(parseInt(pid), 'SIGKILL');
+                process.kill(Number.parseInt(pid), 'SIGKILL');
               } catch (e) {
                 if (e.code !== 'ESRCH') throw e;
               }
@@ -80,7 +80,7 @@ async function startDev() {
             '2. Note the PID (Process ID) from the output\n' +
             '3. Run: taskkill /PID <PID> /F\n'
           : `On macOS/Linux, run:\nnpm run cleanup\n`) +
-        '\nThen try running this command again.'
+        '\nThen try running this command again.',
     );
     process.exit(1);
   }

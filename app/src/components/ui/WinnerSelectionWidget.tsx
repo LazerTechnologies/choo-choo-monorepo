@@ -19,7 +19,7 @@ import { useAccount } from 'wagmi';
 import { useEnsureCorrectNetwork } from '@/hooks/useEnsureCorrectNetwork';
 import { ConnectWalletDialog } from '@/components/ui/ConnectWalletDialog';
 import { useWorkflowState } from '@/hooks/useWorkflowState';
-import { Address } from 'viem';
+import type { Address } from 'viem';
 
 interface WinnerSelectionWidgetProps {
   onTokenMinted?: () => void;
@@ -143,7 +143,7 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
                 winnerSelectionStart: response.data.winnerSelectionStart,
                 currentCastHash: response.data.castHash,
               },
-            })
+            }),
           );
         } catch {}
 
@@ -188,7 +188,7 @@ export function WinnerSelectionWidget({ onTokenMinted }: WinnerSelectionWidgetPr
       window.dispatchEvent(
         new CustomEvent('workflow-state-changed', {
           detail: { state: WorkflowState.MANUAL_SEND },
-        })
+        }),
       );
     } catch {}
     await handleManualSend();

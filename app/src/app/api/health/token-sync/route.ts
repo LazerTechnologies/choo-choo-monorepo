@@ -38,7 +38,7 @@ export async function GET(): Promise<NextResponse<TokenSyncHealthCheck>> {
     // Check if Redis tracker matches on-chain data
     if (redisCurrentTokenId !== null && redisCurrentTokenId !== onChainTotalTickets) {
       warnings.push(
-        `Redis current token ID (${redisCurrentTokenId}) doesn't match on-chain total tickets (${onChainTotalTickets})`
+        `Redis current token ID (${redisCurrentTokenId}) doesn't match on-chain total tickets (${onChainTotalTickets})`,
       );
       healthy = false;
     }

@@ -4,7 +4,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 
 import * as React from 'react';
-import { cva, VariantProps } from 'class-variance-authority';
+import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@/lib/utils';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
@@ -27,7 +27,7 @@ const overlayVariants = cva(
     defaultVariants: {
       variant: 'default',
     },
-  }
+  },
 );
 
 type IDialogBackdropProps = React.HTMLAttributes<HTMLDivElement> &
@@ -44,7 +44,7 @@ const DialogBackdrop = React.forwardRef<HTMLDivElement, IDialogBackdropProps>(
         {...props}
       />
     );
-  }
+  },
 );
 DialogBackdrop.displayName = 'DialogBackdrop';
 
@@ -67,7 +67,7 @@ const dialogVariants = cva(
     defaultVariants: {
       size: 'auto',
     },
-  }
+  },
 );
 
 interface IDialogContentProps
@@ -80,7 +80,7 @@ interface IDialogContentProps
 
 const DialogContent = React.forwardRef<HTMLDivElement, IDialogContentProps>(function DialogContent(
   inputProps: IDialogContentProps,
-  forwardedRef
+  forwardedRef,
 ) {
   const { children, size = 'auto', className, overlay, title, description, ...props } = inputProps;
 
@@ -175,7 +175,7 @@ const dialogFooterVariants = cva(
     defaultVariants: {
       position: 'fixed',
     },
-  }
+  },
 );
 
 export type IDialogFooterProps = React.HTMLAttributes<HTMLDivElement> &

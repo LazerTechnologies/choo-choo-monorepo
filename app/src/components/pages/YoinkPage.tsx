@@ -17,7 +17,7 @@ import { useWalletClient } from 'wagmi';
 import { useEnsureCorrectNetwork } from '@/hooks/useEnsureCorrectNetwork';
 import { ConnectWalletDialog } from '@/components/ui/ConnectWalletDialog';
 import { useWorkflowState } from '@/hooks/useWorkflowState';
-import { Address } from 'viem';
+import type { Address } from 'viem';
 import { useRouter } from 'next/navigation';
 
 export function YoinkPage() {
@@ -75,7 +75,7 @@ export function YoinkPage() {
   const handleYoink = async () => {
     if (!address) {
       console.error(
-        'No verified Ethereum address found. Please verify an address in your Farcaster profile.'
+        'No verified Ethereum address found. Please verify an address in your Farcaster profile.',
       );
       return;
     }

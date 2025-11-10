@@ -127,7 +127,7 @@ describe('Concurrent Protection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(
-      global.fetch as unknown as (input: RequestInfo | URL) => Promise<Response>
+      global.fetch as unknown as (input: RequestInfo | URL) => Promise<Response>,
     ).mockImplementation(async (input: RequestInfo | URL) => {
       const url = input.toString();
       if (url.includes('/api/internal/select-winner')) {
@@ -143,7 +143,7 @@ describe('Concurrent Protection', () => {
             },
             totalEligibleReactors: 3,
           }),
-          { status: 200 }
+          { status: 200 },
         );
       }
       if (url.includes('/api/current-holder')) {
@@ -158,7 +158,7 @@ describe('Concurrent Protection', () => {
               address: '0xholder',
             },
           }),
-          { status: 200 }
+          { status: 200 },
         );
       }
       if (url.includes('/api/internal/generate-nft')) {
@@ -170,7 +170,7 @@ describe('Concurrent Protection', () => {
             metadataHash: 'meta',
             metadata: { attributes: [] },
           }),
-          { status: 200 }
+          { status: 200 },
         );
       }
       if (url.includes('/api/internal/mint-token')) {
@@ -212,7 +212,7 @@ describe('Concurrent Protection', () => {
     const { getContractService } = await import('@/lib/services/contract');
     const contractService = getContractService();
     vi.mocked(contractService.getNextOnChainTicketId).mockRejectedValueOnce(
-      new Error('Contract error')
+      new Error('Contract error'),
     );
 
     vi.mocked(acquireLock)
