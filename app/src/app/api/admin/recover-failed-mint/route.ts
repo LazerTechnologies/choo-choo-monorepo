@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/require-admin';
+import { apiLog } from '@/lib/event-log';
 import { redis } from '@/lib/kv';
 import { REDIS_KEYS } from '@/lib/redis-token-utils';
 import type { TokenData } from '@/types/nft';
@@ -121,9 +122,12 @@ export async function POST(request: Request) {
       }),
     );
 
-    console.log(
-      `[admin/recover-failed-mint] Successfully recovered token ${tokenId} state from on-chain data`,
-    );
+    apiLog.info('admin-recover-failed-mint.success', {
+      tokenId,
+      transactionHash,
+      holderFid,
+      msg: `Successfully recovered token ${tokenId} state from on-chain data`,
+    });
 
     return NextResponse.json({
       success: true,
@@ -131,7 +135,10 @@ export async function POST(request: Request) {
       tokenData,
     });
   } catch (error) {
-    console.error('[admin/recover-failed-mint] Error:', error);
+    apiLog.error('admin-recover-failed-mint.failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      msg: 'Error recovering failed mint',
+    });
     return NextResponse.json(
       {
         success: false,

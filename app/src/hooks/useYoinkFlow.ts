@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 export interface UseYoinkFlowResult {
   yoinkTrain: (targetAddress: string, userFid: number) => Promise<void>;
@@ -40,7 +40,14 @@ export function useYoinkFlow(): UseYoinkFlowResult {
       });
 
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+        const data = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          code?: string;
+          message?: string;
+        };
+        if (res.status === 403 && (data.code === 'USER_BANNED' || data.message)) {
+          throw new Error(data.message || 'Access denied');
+        }
         throw new Error(data.error || 'Failed to yoink train');
       }
 

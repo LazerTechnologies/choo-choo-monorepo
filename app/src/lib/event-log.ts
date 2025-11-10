@@ -147,7 +147,12 @@ type ApiEndpoint =
   | 'scheduler-status'
   | 'init-scheduler'
   | 'webhook'
-  | 'cast-status';
+  | 'cast-status'
+  | 'admin-recover-failed-mint'
+  | 'admin-repair-corrupted-tokens'
+  | 'journey'
+  | 'yoink'
+  | 'check-banned';
 type ApiEvent =
   | 'request'
   | 'neynar_call'
@@ -208,6 +213,10 @@ export function toSchedulerLogCode(event: SchedulerEvent): SchedulerLogCode {
   return `scheduler.${event}` as SchedulerLogCode;
 }
 
+type AuthCategory = 'banned-user' | 'admin' | 'frame-admin' | 'session-admin';
+type AuthEvent = 'check' | 'blocked' | 'allowed' | 'failed' | 'missing_fid';
+export type AuthLogCode = `${AuthCategory}.${AuthEvent}`;
+
 export const orchestratorLog = createDomainLogger<OrchestratorLogCode>('orchestrator');
 export const stagingLog = createDomainLogger<StagingLogCode>('staging');
 export const redisLog = createDomainLogger<RedisLogCode>('redis');
@@ -216,3 +225,4 @@ export const contractLog = createDomainLogger<ContractLogCode>('contract');
 export const retryLog = createDomainLogger<RetryLogCode>('retry');
 export const apiLog = createDomainLogger<ApiLogCode>('api');
 export const schedulerLog = createDomainLogger<SchedulerLogCode>('scheduler');
+export const authLog = createDomainLogger<AuthLogCode>('auth');

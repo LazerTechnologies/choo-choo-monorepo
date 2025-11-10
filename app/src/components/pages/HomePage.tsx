@@ -15,6 +15,7 @@ import { useSoundPlayer } from '@/hooks/useSoundPlayer';
 import { useYoinkCountdown } from '@/hooks/useYoinkCountdown';
 import { WorkflowState } from '@/lib/workflow-types';
 import { APP_URL } from '@/lib/constants';
+import { useBannedStatus } from '@/hooks/useBannedStatus';
 import { sdk } from '@farcaster/miniapp-sdk';
 import Image from 'next/image';
 import { ChevronsDown } from 'lucide-react';
@@ -29,6 +30,8 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
   const { context, setActiveTab } = useMiniApp();
   const { isCurrentHolder, loading: isHolderLoading } = useCurrentHolder();
   const { workflowData, loading: isWorkflowLoading, refetch: refreshWorkflow } = useWorkflowState();
+  const currentUserFid = context?.user?.fid;
+  const { isBanned: userIsBanned, isLoading: isBannedLoading } = useBannedStatus(currentUserFid);
   // disabled for now -- share button
   //const { address: userAddress, isLoading: isAddressLoading } = useCurrentUserAddress();
   const { playChooChoo } = useSoundPlayer();
@@ -276,11 +279,12 @@ export function HomePage({ timelineRefreshTrigger }: HomePageProps) {
               <Typography variant="body" className="!text-red-300 font-sans">
                 Error: {countdownState.error}
               </Typography>
-            ) : countdownState.isAvailable ? (
+            ) : countdownState.isAvailable && !userIsBanned && !isBannedLoading ? (
               <Button
                 onClick={() => setActiveTab('yoink')}
                 className="!text-white hover:!text-white !bg-purple-500 !border-2 !border-white px-4 py-2 text-sm"
                 style={{ backgroundColor: '#a855f7' }}
+                disabled={userIsBanned || isBannedLoading}
               >
                 <Typography variant="body" className="!text-white font-sans">
                   Yoink ChooChoo now!

@@ -19,6 +19,7 @@ import { ConnectWalletDialog } from '@/components/ui/ConnectWalletDialog';
 import { useWorkflowState } from '@/hooks/useWorkflowState';
 import type { Address } from 'viem';
 import { useRouter } from 'next/navigation';
+import { useBannedStatus } from '@/hooks/useBannedStatus';
 
 export function YoinkPage() {
   const { user: neynarUser } = useNeynarContext();
@@ -33,6 +34,7 @@ export function YoinkPage() {
 
   const currentUserFid = neynarUser?.fid || context?.user?.fid;
   const deposit = useDepositStatus(currentUserFid);
+  const { isBanned: userIsBanned, isLoading: isBannedLoading } = useBannedStatus(currentUserFid);
   const { data: walletClient } = useWalletClient();
   const walletConnected = !!walletClient;
   const { ensureCorrectNetwork, isSwitching } = useEnsureCorrectNetwork();
@@ -98,7 +100,9 @@ export function YoinkPage() {
     address &&
     !isLoading &&
     !deposit.isLoading &&
-    deposit.satisfied;
+    deposit.satisfied &&
+    !userIsBanned &&
+    !isBannedLoading;
 
   return (
     <div className="space-y-3 px-6 w-full max-w-md mx-auto">
@@ -142,6 +146,10 @@ export function YoinkPage() {
                   FID: {currentUserFid || 'Not found'}
                 </Typography>
               </div>
+            ) : userIsBanned ? (
+              <Typography variant="body" className="!text-red-300 font-sans">
+                ⚠️ Access restricted
+              </Typography>
             ) : (
               <Typography variant="body" className="!text-white font-sans">
                 {countdownState.isAvailable
@@ -212,29 +220,33 @@ export function YoinkPage() {
               depositHook.isApproving ||
               depositHook.isDepositing ||
               depositHook.isConfirming ||
-              isSwitching
+              isSwitching ||
+              userIsBanned ||
+              isBannedLoading
             }
             className="w-full mt-4 bg-purple-600 text-white border-white hover:bg-purple-700 disabled:opacity-50"
             variant="default"
           >
             <Typography variant="body" className="!text-white font-sans">
-              {isLoading
-                ? 'Yoinking...'
-                : !walletConnected
-                  ? 'Connect wallet'
-                  : deposit.isLoading
-                    ? 'Loading...'
-                    : !deposit.satisfied
-                      ? depositHook.isApproving
-                        ? 'Approving USDC...'
-                        : depositHook.isDepositing || depositHook.isConfirming
-                          ? 'Depositing...'
-                          : 'Deposit 1 USDC'
-                      : !address
-                        ? 'Ineligible'
-                        : canYoink
-                          ? 'Yoink ChooChoo!'
-                          : `${countdownState.shortFormat}`}
+              {userIsBanned
+                ? 'Access Restricted'
+                : isLoading
+                  ? 'Yoinking...'
+                  : !walletConnected
+                    ? 'Connect wallet'
+                    : deposit.isLoading
+                      ? 'Loading...'
+                      : !deposit.satisfied
+                        ? depositHook.isApproving
+                          ? 'Approving USDC...'
+                          : depositHook.isDepositing || depositHook.isConfirming
+                            ? 'Depositing...'
+                            : 'Deposit 1 USDC'
+                        : !address
+                          ? 'Ineligible'
+                          : canYoink
+                            ? 'Yoink ChooChoo!'
+                            : `${countdownState.shortFormat}`}
             </Typography>
           </Button>
 

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { apiLog } from '@/lib/event-log';
 import { getCurrentTokenId, getTokenDataRange } from '@/lib/redis-token-utils';
 import type { TokenData } from '@/types/nft';
 
@@ -85,16 +86,13 @@ export async function GET() {
 
       // Log negative durations only in development (reduce log volume in production)
       if (durationMs < 0 && process.env.NODE_ENV === 'development') {
-        console.warn(
-          `[journey] Negative duration detected for token ${token.tokenId}: ${durationMs}ms`,
-          {
-            tokenId: token.tokenId,
-            holderStartTime: holderStartTime.toISOString(),
-            holderEndTime: holderEndTime.toISOString(),
-            durationMs,
-            note: 'This should be rare with corrected timestamp logic',
-          },
-        );
+        apiLog.warn('journey.validation_failed', {
+          tokenId: token.tokenId,
+          holderStartTime: holderStartTime.toISOString(),
+          holderEndTime: holderEndTime.toISOString(),
+          durationMs,
+          msg: `Negative duration detected for token ${token.tokenId}: ${durationMs}ms`,
+        });
       }
 
       const duration = formatDuration(Math.max(0, durationMs)); // Ensure non-negative
@@ -120,7 +118,10 @@ export async function GET() {
       totalStops: journeyItems.length,
     });
   } catch (error) {
-    console.error('[journey] Failed to fetch journey data:', error);
+    apiLog.error('journey.failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      msg: 'Failed to fetch journey data',
+    });
     return NextResponse.json(
       {
         success: false,

@@ -18,6 +18,11 @@ export const USE_WALLET = process.env.NEXT_PUBLIC_USE_WALLET === 'true';
 export const ADMIN_FIDS = process.env.ADMIN_FIDS
   ? process.env.ADMIN_FIDS.split(',').map((fid) => Number.parseInt(fid.trim(), 10))
   : [377557, 2802, 243300];
+
+// Banned user FIDs - users in this list will be blocked from interacting with the app
+export const BANNED_USERS = process.env.BANNED_USERS
+  ? process.env.BANNED_USERS.split(',').map((fid) => Number.parseInt(fid.trim(), 10))
+  : [];
 export const CHOOCHOO_TRAIN_ADDRESS = (() => {
   const address = process.env.NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS;
   if (!address) {

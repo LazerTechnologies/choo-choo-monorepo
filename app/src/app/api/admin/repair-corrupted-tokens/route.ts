@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/auth/require-admin';
+import { apiLog } from '@/lib/event-log';
 import { redis } from '@/lib/kv';
 import { REDIS_KEYS } from '@/lib/redis-token-utils';
 
@@ -89,6 +90,15 @@ export async function POST(request: Request) {
       deleted: results.filter((r) => r.status === 'deleted').length,
     };
 
+    apiLog.info('admin-repair-corrupted-tokens.success', {
+      action,
+      summary,
+      msg:
+        action === 'delete'
+          ? `Deleted ${summary.deleted} corrupted token entries`
+          : `Found ${summary.corrupted} corrupted token entries`,
+    });
+
     return NextResponse.json({
       success: true,
       action,
@@ -100,7 +110,10 @@ export async function POST(request: Request) {
           : `Found ${summary.corrupted} corrupted token entries`,
     });
   } catch (error) {
-    console.error('[admin/repair-corrupted-tokens] Error:', error);
+    apiLog.error('admin-repair-corrupted-tokens.failed', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      msg: 'Error repairing corrupted tokens',
+    });
     return NextResponse.json(
       {
         success: false,
