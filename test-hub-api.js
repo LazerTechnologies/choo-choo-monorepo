@@ -38,9 +38,7 @@ async function testHubAPI(testFid) {
   try {
     // Test Hub API - Verifications
     console.log('\n📋 Hub API - Verifications');
-    console.log(
-      `GET https://hub-api.neynar.com/v1/verificationsByFid?fid=${testFid}`
-    );
+    console.log(`GET https://hub-api.neynar.com/v1/verificationsByFid?fid=${testFid}`);
 
     const verificationsResponse = await fetch(
       `https://hub-api.neynar.com/v1/verificationsByFid?fid=${testFid}`,
@@ -48,12 +46,10 @@ async function testHubAPI(testFid) {
         headers: {
           'x-api-key': NEYNAR_API_KEY,
         },
-      }
+      },
     );
 
-    console.log(
-      `📊 Status: ${verificationsResponse.status} ${verificationsResponse.statusText}`
-    );
+    console.log(`📊 Status: ${verificationsResponse.status} ${verificationsResponse.statusText}`);
 
     if (!verificationsResponse.ok) {
       const errorText = await verificationsResponse.text();
@@ -72,13 +68,10 @@ async function testHubAPI(testFid) {
     const ethAddresses = verifications
       .filter((msg) => {
         console.log(`  - Message type: ${msg?.data?.type}`);
-        console.log(
-          `  - Protocol: ${msg?.data?.verificationAddAddressBody?.protocol}`
-        );
+        console.log(`  - Protocol: ${msg?.data?.verificationAddAddressBody?.protocol}`);
         return (
           msg?.data?.type === 'MESSAGE_TYPE_VERIFICATION_ADD_ETH_ADDRESS' &&
-          msg?.data?.verificationAddAddressBody?.protocol ===
-            'PROTOCOL_ETHEREUM'
+          msg?.data?.verificationAddAddressBody?.protocol === 'PROTOCOL_ETHEREUM'
         );
       })
       .map((msg) => {
@@ -95,15 +88,12 @@ async function testHubAPI(testFid) {
     console.log('\n📋 Fallback - Regular API for custody address');
     console.log(`GET https://api.neynar.com/v2/farcaster/user?fid=${testFid}`);
 
-    const userResponse = await fetch(
-      `https://api.neynar.com/v2/farcaster/user?fid=${testFid}`,
-      {
-        headers: {
-          accept: 'application/json',
-          'x-api-key': NEYNAR_API_KEY,
-        },
-      }
-    );
+    const userResponse = await fetch(`https://api.neynar.com/v2/farcaster/user?fid=${testFid}`, {
+      headers: {
+        accept: 'application/json',
+        'x-api-key': NEYNAR_API_KEY,
+      },
+    });
 
     let custodyAddress = null;
     if (userResponse.ok) {
@@ -121,14 +111,14 @@ async function testHubAPI(testFid) {
     console.log('\n🎯 Our API would return:');
     if (ethAddresses.length > 0) {
       const result = {
-        fid: parseInt(testFid),
+        fid: Number.parseInt(testFid),
         address: ethAddresses[0],
         type: 'verification',
       };
       console.log(JSON.stringify(result, null, 2));
     } else if (custodyAddress) {
       const result = {
-        fid: parseInt(testFid),
+        fid: Number.parseInt(testFid),
         address: custodyAddress,
         type: 'custody',
       };

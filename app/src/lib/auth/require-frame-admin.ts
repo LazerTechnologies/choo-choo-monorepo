@@ -17,7 +17,9 @@ export type RequireFrameAdminResult = RequireFrameAdminOk | RequireFrameAdminErr
  * Mini-app admin guard for proxy routes
  * Validates admin FID from mini-app context (no frame signatures needed)
  */
-export async function requireFrameAdmin(request: Request): Promise<RequireFrameAdminResult & { body?: unknown }> {
+export async function requireFrameAdmin(
+  request: Request,
+): Promise<RequireFrameAdminResult & { body?: unknown }> {
   // Enforce JSON content type
   const contentType = request.headers.get('content-type') || '';
   if (!contentType.toLowerCase().includes('application/json')) {

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React from 'react';
-import { render, RenderResult } from '@testing-library/react';
+import { render, type RenderResult } from '@testing-library/react';
 import { vi } from 'vitest';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const marqueeToastFn = (global as any).__TEST_TOAST_FN__ || vi.fn();
@@ -13,7 +13,7 @@ global.React = React;
 // Render helper with provider
 export function renderWithProvider(
   ui: React.ReactElement,
-  options?: import('@testing-library/react').RenderOptions
+  options?: import('@testing-library/react').RenderOptions,
 ): RenderResult {
   const uiWithProviders = ui;
   return render(uiWithProviders, options);
@@ -31,17 +31,17 @@ vi.mock('axios');
 
 // Export mocked hooks
 export const mockUseCurrentHolder = vi.mocked(
-  await import('@/hooks/useCurrentHolder')
+  await import('@/hooks/useCurrentHolder'),
 ).useCurrentHolder;
 export const mockUseWorkflowState = vi.mocked(
-  await import('@/hooks/useWorkflowState')
+  await import('@/hooks/useWorkflowState'),
 ).useWorkflowState;
 export const mockUseDepositStatus = vi.mocked(
-  await import('@/hooks/useDepositStatus')
+  await import('@/hooks/useDepositStatus'),
 ).useDepositStatus;
 export const mockUseDepositUsdc = vi.mocked(await import('@/hooks/useDepositUsdc')).useDepositUsdc;
 export const mockUseEnsureCorrectNetwork = vi.mocked(
-  await import('@/hooks/useEnsureCorrectNetwork')
+  await import('@/hooks/useEnsureCorrectNetwork'),
 ).useEnsureCorrectNetwork;
 export const mockUseToast = vi.mocked(await import('@/hooks/useToast')).useToast;
 export const mockUseMiniApp = vi.mocked(await import('@neynar/react')).useMiniApp;

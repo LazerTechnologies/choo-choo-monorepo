@@ -192,7 +192,7 @@ describe.skip('CastingWidget', () => {
           winnerSelectionStart: null,
           currentCastHash: null,
         },
-      })
+      }),
     );
 
     expect(mockToast).toHaveBeenCalledWith({

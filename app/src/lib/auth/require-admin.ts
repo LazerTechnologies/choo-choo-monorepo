@@ -42,7 +42,7 @@ export async function requireAdmin(request: Request): Promise<RequireAdminResult
   const adminSecret = process.env.ADMIN_SECRET;
   const headerSecret = request.headers.get('x-admin-secret') || '';
   if (adminSecret && headerSecret && adminSecret === headerSecret) {
-    const headerFid = parseInt(request.headers.get('x-admin-fid') || '', 10);
+    const headerFid = Number.parseInt(request.headers.get('x-admin-fid') || '', 10);
     if (Number.isFinite(headerFid) && ADMIN_FIDS.includes(headerFid)) {
       return { ok: true, adminFid: headerFid };
     }

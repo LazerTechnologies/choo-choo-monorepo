@@ -99,10 +99,10 @@ export async function getFarcasterMetadata(): Promise<MiniAppManifest> {
     try {
       const envMetadata = JSON.parse(process.env.MINI_APP_METADATA);
       console.log('📝 Using accountAssociation from MINI_APP_METADATA with dynamic frame section');
-      
+
       return {
-        ...(envMetadata.accountAssociation && { 
-          accountAssociation: envMetadata.accountAssociation 
+        ...(envMetadata.accountAssociation && {
+          accountAssociation: envMetadata.accountAssociation,
         }),
         frame: frameSection,
       };
@@ -118,7 +118,7 @@ export async function getFarcasterMetadata(): Promise<MiniAppManifest> {
   const secretEnvVars = getSecretEnvVars();
   if (!secretEnvVars) {
     console.warn(
-      'No seed phrase or FID found in environment variables -- generating unsigned metadata'
+      'No seed phrase or FID found in environment variables -- generating unsigned metadata',
     );
     return { frame: frameSection };
   }
@@ -127,7 +127,7 @@ export async function getFarcasterMetadata(): Promise<MiniAppManifest> {
   const custodyAddress = account.address;
 
   const header = {
-    fid: parseInt(secretEnvVars.fid),
+    fid: Number.parseInt(secretEnvVars.fid),
     type: 'custody',
     key: custodyAddress,
   };

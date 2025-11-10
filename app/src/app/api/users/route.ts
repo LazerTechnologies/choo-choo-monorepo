@@ -37,7 +37,7 @@ export async function GET(request: Request) {
         error:
           'Neynar API key is not configured. Please add NEYNAR_API_KEY to your environment variables.',
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -47,7 +47,7 @@ export async function GET(request: Request) {
 
   try {
     const neynar = new NeynarAPIClient({ apiKey });
-    const fidsArray = fids.split(',').map((fid) => parseInt(fid.trim()));
+    const fidsArray = fids.split(',').map((fid) => Number.parseInt(fid.trim()));
 
     const { users } = await neynar.fetchBulkUsers({
       fids: fidsArray,
@@ -58,7 +58,7 @@ export async function GET(request: Request) {
     console.error('Failed to fetch users:', error);
     return NextResponse.json(
       { error: 'Failed to fetch users. Please check your Neynar API key and try again.' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

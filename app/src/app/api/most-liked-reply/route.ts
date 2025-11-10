@@ -43,7 +43,7 @@ export async function GET(request: Request) {
       {
         error: 'Make sure NEYNAR_API_KEY is set in your environment variables.',
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
@@ -54,7 +54,7 @@ export async function GET(request: Request) {
   try {
     // Fetch all replies with pagination
     let allReplies: NeynarCast[] = [];
-    let cursor: string | undefined = undefined;
+    let cursor: string | undefined ;
     do {
       const url = new URL(`${NEYNAR_API_BASE}/cast/replies`);
       url.searchParams.set('cast_hash', castId!);
@@ -82,7 +82,7 @@ export async function GET(request: Request) {
     async function asyncPool<T, R>(
       poolLimit: number,
       array: T[],
-      iteratorFn: (item: T) => Promise<R>
+      iteratorFn: (item: T) => Promise<R>,
     ): Promise<R[]> {
       const ret: R[] = [];
       const executing: Promise<void>[] = [];
@@ -104,7 +104,7 @@ export async function GET(request: Request) {
         `${NEYNAR_API_BASE}/cast/reactions?cast_hash=${reply.hash}`,
         {
           headers: { 'x-api-key': apiKey },
-        }
+        },
       );
       if (!reactionsRes.ok) {
         return { ...reply, reactionCount: 0 };
@@ -120,7 +120,7 @@ export async function GET(request: Request) {
     const mostReactedReply = repliesWithReactions.reduce((max, curr) => {
       if (curr.reactionCount > max.reactionCount) {
         return curr;
-      } else if (curr.reactionCount === max.reactionCount) {
+      }if (curr.reactionCount === max.reactionCount) {
         // prefer earlier timestamp for tie-breaker
         // @todo make sure it's not created_at
         return new Date(curr.timestamp) < new Date(max.timestamp) ? curr : max;
@@ -131,7 +131,7 @@ export async function GET(request: Request) {
     if (!mostReactedReply || mostReactedReply.reactionCount === 0) {
       return NextResponse.json(
         { error: 'No reacted replies found for this cast.' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -153,7 +153,7 @@ export async function GET(request: Request) {
     if (!primaryWallet || !isAddress(primaryWallet)) {
       return NextResponse.json(
         { error: 'User wallet address not found or invalid.' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -166,7 +166,7 @@ export async function GET(request: Request) {
     console.error('Failed to process most-liked-reply:', error);
     return NextResponse.json(
       { error: 'Failed to process most-liked-reply. Please try again later.' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

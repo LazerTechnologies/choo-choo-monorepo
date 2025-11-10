@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getContractService } from '@/lib/services/contract';
 
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       console.error('[internal/set-ticket-data] Validation failed:', validation.error.format());
       return NextResponse.json(
         { error: 'Invalid request data', details: validation.error.format() },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
       const hash = await contractService.setTicketData(tokenId, tokenURI, image);
 
       console.log(
-        `[internal/set-ticket-data] Successfully set ticket data for token ${tokenId}, tx: ${hash}`
+        `[internal/set-ticket-data] Successfully set ticket data for token ${tokenId}, tx: ${hash}`,
       );
 
       const response: SetTicketDataResponse = {

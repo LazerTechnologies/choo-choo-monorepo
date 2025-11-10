@@ -15,11 +15,11 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
       ref={ref}
       className={cn(
         'inline-block rounded-base shadow-light dark:shadow-dark border-2 border-border dark:border-darkBorder bg-main text-text transition-all hover:shadow-xs',
-        className
+        className,
       )}
       {...props}
     />
-  )
+  ),
 ) as React.ForwardRefExoticComponent<
   React.HTMLAttributes<HTMLDivElement> & React.RefAttributes<HTMLDivElement>
 > &
@@ -34,7 +34,7 @@ const CardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
       className={cn('flex flex-col justify-start space-y-1.5 p-6', className)}
       {...props}
     />
-  )
+  ),
 );
 CardHeader.displayName = 'CardHeader';
 
@@ -45,7 +45,7 @@ const CardTitle = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivE
       className={cn('text-xl leading-none font-heading tracking-tight mb-2', className)}
       {...props}
     />
-  )
+  ),
 );
 CardTitle.displayName = 'CardTitle';
 
@@ -60,7 +60,7 @@ CardDescription.displayName = 'CardDescription';
 const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div ref={ref} className={cn('p-6 pt-0', className)} {...props} />
-  )
+  ),
 );
 CardContent.displayName = 'CardContent';
 

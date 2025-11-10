@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { redis } from '@/lib/kv';
-import { WorkflowState, WorkflowData, DEFAULT_WORKFLOW_DATA } from '@/lib/workflow-types';
+import { WorkflowState, type WorkflowData, DEFAULT_WORKFLOW_DATA } from '@/lib/workflow-types';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -103,8 +103,8 @@ export async function POST(request: Request) {
     }
 
     // Determine whether the request explicitly included these fields
-    const bodyHasWinnerStart = Object.prototype.hasOwnProperty.call(body, 'winnerSelectionStart');
-    const bodyHasCastHash = Object.prototype.hasOwnProperty.call(body, 'currentCastHash');
+    const bodyHasWinnerStart = Object.hasOwn(body, 'winnerSelectionStart');
+    const bodyHasCastHash = Object.hasOwn(body, 'currentCastHash');
 
     const merged: WorkflowData = {
       state: validated.state,
@@ -130,12 +130,12 @@ export async function POST(request: Request) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
         { error: 'Invalid request data', details: error.errors },
-        { status: 400, headers: { 'Cache-Control': 'no-store' } }
+        { status: 400, headers: { 'Cache-Control': 'no-store' } },
       );
     }
     return NextResponse.json(
       { error: 'Failed to update workflow state' },
-      { status: 500, headers: { 'Cache-Control': 'no-store' } }
+      { status: 500, headers: { 'Cache-Control': 'no-store' } },
     );
   }
 }

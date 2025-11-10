@@ -52,7 +52,7 @@ export function calculateTimeRemaining(targetTimestamp: number): TimeRemaining {
  */
 export function formatTimeRemaining(
   timeRemaining: TimeRemaining,
-  format: 'short' | 'long' | 'clock' = 'short'
+  format: 'short' | 'long' | 'clock' = 'short',
 ): string {
   const { days, hours, minutes, seconds } = timeRemaining;
 

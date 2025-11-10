@@ -48,18 +48,18 @@ export async function POST(request: Request) {
     if (!tokenId || typeof tokenId !== 'number') {
       return NextResponse.json(
         { success: false, error: 'Missing or invalid tokenId' },
-        { status: 400 }
+        { status: 400 },
       );
     }
     if (!passengerUsername || typeof passengerUsername !== 'string') {
       return NextResponse.json(
         { success: false, error: 'Missing or invalid passengerUsername' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     console.log(
-      `[internal/generate-nft] Resolving NFT for token ${tokenId}, passenger: ${passengerUsername}`
+      `[internal/generate-nft] Resolving NFT for token ${tokenId}, passenger: ${passengerUsername}`,
     );
 
     // Use pending cache to dedupe generation per tokenId
@@ -74,7 +74,7 @@ export async function POST(request: Request) {
       } catch (err) {
         console.error('[internal/generate-nft] Failed to compose NFT image:', err);
         throw new Error(
-          `Failed to compose NFT image: ${err instanceof Error ? err.message : 'Unknown error'}`
+          `Failed to compose NFT image: ${err instanceof Error ? err.message : 'Unknown error'}`,
         );
       }
 
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
       } catch (err) {
         console.error('[internal/generate-nft] Failed to upload image to Pinata:', err);
         throw new Error(
-          `Failed to upload image to Pinata: ${err instanceof Error ? err.message : 'Unknown error'}`
+          `Failed to upload image to Pinata: ${err instanceof Error ? err.message : 'Unknown error'}`,
         );
       }
 
@@ -98,13 +98,13 @@ export async function POST(request: Request) {
           tokenId,
           imageHash,
           attributes,
-          passengerUsername
+          passengerUsername,
         );
         console.log('[internal/generate-nft] Uploaded metadata to Pinata:', metadataHash);
       } catch (err) {
         console.error('[internal/generate-nft] Failed to upload metadata to Pinata:', err);
         throw new Error(
-          `Failed to upload metadata to Pinata: ${err instanceof Error ? err.message : 'Unknown error'}`
+          `Failed to upload metadata to Pinata: ${err instanceof Error ? err.message : 'Unknown error'}`,
         );
       }
 
@@ -121,7 +121,7 @@ export async function POST(request: Request) {
       tokenId,
       pending.imageHash,
       pending.attributes,
-      passengerUsername
+      passengerUsername,
     );
 
     const response: GenerateNFTResponse = {
@@ -141,7 +141,7 @@ export async function POST(request: Request) {
         success: false,
         error: 'Failed to generate NFT',
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

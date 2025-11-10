@@ -26,7 +26,7 @@ export async function GET() {
     response.services.redis = 'disconnected';
     console.warn(
       'Redis health check failed:',
-      error instanceof Error ? error.message : 'Unknown error'
+      error instanceof Error ? error.message : 'Unknown error',
     );
   }
 
@@ -38,7 +38,7 @@ export async function GET() {
     response.services.scheduler = 'failed';
     console.warn(
       'Scheduler initialization failed:',
-      error instanceof Error ? error.message : 'Unknown error'
+      error instanceof Error ? error.message : 'Unknown error',
     );
   }
 

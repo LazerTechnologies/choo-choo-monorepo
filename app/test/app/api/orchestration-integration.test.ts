@@ -94,7 +94,7 @@ describe('API Route Integration', () => {
               address: '0x1234567890123456789012345678901234567890',
             },
           }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
         );
       }
       if (url.includes('api.neynar.com')) {
@@ -113,7 +113,7 @@ describe('API Route Integration', () => {
               },
             ],
           }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
         );
       }
       if (url.includes('/api/internal/send-cast')) {
@@ -134,7 +134,7 @@ describe('API Route Integration', () => {
   describe('/api/user-send-train', () => {
     it('should call orchestrateManualSend with correct parameters', async () => {
       vi.mocked(redis.get).mockResolvedValue(
-        JSON.stringify({ state: 'CASTED', winnerSelectionStart: null, currentCastHash: '0xabc' })
+        JSON.stringify({ state: 'CASTED', winnerSelectionStart: null, currentCastHash: '0xabc' }),
       );
       const contractMock = {
         hasDepositedEnough: vi.fn().mockResolvedValue(true),
@@ -163,7 +163,7 @@ describe('API Route Integration', () => {
 
     it('should handle 409 responses as in-progress', async () => {
       vi.mocked(redis.get).mockResolvedValue(
-        JSON.stringify({ state: 'CASTED', winnerSelectionStart: null, currentCastHash: '0xabc' })
+        JSON.stringify({ state: 'CASTED', winnerSelectionStart: null, currentCastHash: '0xabc' }),
       );
       const contractMock = {
         hasDepositedEnough: vi.fn().mockResolvedValue(true),
@@ -196,7 +196,7 @@ describe('API Route Integration', () => {
 
     it('should require user authentication', async () => {
       vi.mocked(global.fetch).mockResolvedValueOnce(
-        new Response(JSON.stringify({ hasCurrentHolder: false }), { status: 200 })
+        new Response(JSON.stringify({ hasCurrentHolder: false }), { status: 200 }),
       );
       const req = new Request('http://localhost/api/user-send-train', {
         method: 'POST',
@@ -208,7 +208,7 @@ describe('API Route Integration', () => {
 
     it('should handle deposit requirements (402)', async () => {
       vi.mocked(redis.get).mockResolvedValue(
-        JSON.stringify({ state: 'CASTED', winnerSelectionStart: null, currentCastHash: '0xabc' })
+        JSON.stringify({ state: 'CASTED', winnerSelectionStart: null, currentCastHash: '0xabc' }),
       );
       const contractMock = {
         hasDepositedEnough: vi.fn().mockResolvedValue(false),
@@ -277,7 +277,7 @@ describe('API Route Integration', () => {
 
         expect(json.success).toBe(true);
         expect(json.tokenId).toBe(2);
-      }
+      },
     );
 
     it.skip('should handle orchestrator 409 responses', { timeout: 10000 }, async () => {
@@ -327,7 +327,7 @@ describe('API Route Integration', () => {
   describe('/api/send-train', () => {
     it('should call orchestrateRandomSend with castHash from workflow state', async () => {
       vi.mocked(redis.get).mockResolvedValue(
-        JSON.stringify({ state: 'CHANCE_EXPIRED', currentCastHash: '0xcast' })
+        JSON.stringify({ state: 'CHANCE_EXPIRED', currentCastHash: '0xcast' }),
       );
       vi.mocked(orchestrateRandomSend).mockResolvedValue({
         status: 200,
@@ -354,7 +354,7 @@ describe('API Route Integration', () => {
 
     it('should handle missing castHash in workflow', async () => {
       vi.mocked(redis.get).mockResolvedValue(
-        JSON.stringify({ state: 'CHANCE_EXPIRED', currentCastHash: null })
+        JSON.stringify({ state: 'CHANCE_EXPIRED', currentCastHash: null }),
       );
       const res = await sendTrainPOST();
       expect(res.status).toBe(400);
@@ -362,7 +362,7 @@ describe('API Route Integration', () => {
 
     it('should handle orchestrator 409 responses', async () => {
       vi.mocked(redis.get).mockResolvedValue(
-        JSON.stringify({ state: 'CHANCE_EXPIRED', currentCastHash: '0xcast' })
+        JSON.stringify({ state: 'CHANCE_EXPIRED', currentCastHash: '0xcast' }),
       );
       vi.mocked(orchestrateRandomSend).mockResolvedValue({
         status: 409,
@@ -412,7 +412,7 @@ describe('API Route Integration', () => {
       const res = await yoinkPOST(req as any);
       expect(orchestrateYoink).toHaveBeenCalledWith(
         999,
-        '0x1234567890123456789012345678901234567890'
+        '0x1234567890123456789012345678901234567890',
       );
       expect(res.status).toBe(200);
     });

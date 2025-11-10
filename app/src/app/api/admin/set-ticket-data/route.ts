@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAdmin } from '@/lib/auth/require-admin';
 
@@ -43,14 +43,14 @@ export async function POST(request: NextRequest) {
       console.error('[admin-set-ticket-data] Validation failed:', validation.error.format());
       return NextResponse.json(
         { error: 'Invalid request data', details: validation.error.format() },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const { tokenId, tokenURI, image } = validation.data;
 
     console.log(
-      `[admin-set-ticket-data] Admin FID ${auth.adminFid} setting ticket data for token ${tokenId}`
+      `[admin-set-ticket-data] Admin FID ${auth.adminFid} setting ticket data for token ${tokenId}`,
     );
 
     // Call internal endpoint to execute the transaction
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
             tokenURI,
             image,
           }),
-        }
+        },
       );
 
       if (!internalResponse.ok) {

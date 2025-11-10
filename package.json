@@ -1,52 +1,52 @@
 {
-	"name": "onchain-train-monorepo",
-	"version": "1.0.0",
-	"private": true,
-	"description": "Choo Choo on Base contracts and Farcaster mini-app",
-	"scripts": {
-		"build": "turbo build",
-		"build:production": "pnpm --filter generator build && pnpm --filter app build",
-		"start": "pnpm --filter app start",
-		"dev": "turbo dev",
-		"test": "turbo test",
-		"lint": "turbo lint",
-		"format": "turbo format",
-		"format:check": "turbo format:check",
-		"clean": "turbo clean",
-		"tsc": "turbo run tsc",
-		"generate:demo": "pnpm --filter generator generate-test-nfts",
-		"app:dev": "pnpm --filter app dev",
-		"app:build": "pnpm --filter app build",
-		"contracts:anvil": "turbo anvil",
-		"contracts:extract-abi": "turbo run extract-abi",
-		"script:deploy": "bash scripts/deploy.sh"
-	},
-	"keywords": [
-		"farcaster",
-		"base",
-		"solidity",
-		"foundry"
-	],
-	"author": "Jon Bray <me@jonbray.dev>",
-	"license": "MIT",
-	"engines": {
-		"node": ">=20.0.0"
-	},
-	"packageManager": "pnpm@10.14.0",
-	"overrides": {
-		"chalk": "5.3.0",
-		"strip-ansi": "7.1.0",
-		"color-convert": "2.0.1",
-		"color-name": "1.1.4",
-		"is-core-module": "2.13.1",
-		"error-ex": "1.3.2",
-		"has-ansi": "5.0.1"
-	},
-	"devDependencies": {
-		"@biomejs/biome": "^2.3.4",
-		"turbo": "^2.5.5"
-	},
-	"dependencies": {
-		"@farcaster/frame-sdk": "^0.1.8"
-	}
+  "name": "onchain-train-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Choo Choo on Base contracts and Farcaster mini-app",
+  "scripts": {
+    "build": "turbo build",
+    "build:production": "pnpm --filter generator build && pnpm --filter app build",
+    "start": "pnpm --filter app start",
+    "dev": "turbo dev",
+    "test": "turbo test",
+    "lint": "turbo lint",
+    "format": "turbo format",
+    "format:check": "turbo format:check",
+    "clean": "turbo clean",
+    "tsc": "turbo run tsc",
+    "generate:demo": "pnpm --filter generator generate-test-nfts",
+    "app:dev": "pnpm --filter app dev",
+    "app:build": "pnpm --filter app build",
+    "contracts:anvil": "turbo anvil",
+    "contracts:extract-abi": "turbo run extract-abi",
+    "script:deploy": "bash scripts/deploy.sh"
+  },
+  "keywords": [
+    "farcaster",
+    "base",
+    "solidity",
+    "foundry"
+  ],
+  "author": "Jon Bray <me@jonbray.dev>",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "packageManager": "pnpm@10.14.0",
+  "overrides": {
+    "chalk": "5.3.0",
+    "strip-ansi": "7.1.0",
+    "color-convert": "2.0.1",
+    "color-name": "1.1.4",
+    "is-core-module": "2.13.1",
+    "error-ex": "1.3.2",
+    "has-ansi": "5.0.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.4",
+    "turbo": "^2.5.5"
+  },
+  "dependencies": {
+    "@farcaster/frame-sdk": "^0.1.8"
+  }
 }

@@ -26,7 +26,7 @@ export async function POST(request: Request) {
     } catch (err) {
       console.error(
         '[admin-generate] Failed to get next token ID from contract, using fallback:',
-        err
+        err,
       );
       testTokenId = 1; // Fallback to token 1
     }
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     } catch (err) {
       console.error('[admin-generate] Failed to compose NFT image:', err);
       throw new Error(
-        `Failed to compose NFT image: ${err instanceof Error ? err.message : 'Unknown error'}`
+        `Failed to compose NFT image: ${err instanceof Error ? err.message : 'Unknown error'}`,
       );
     }
 
@@ -52,13 +52,13 @@ export async function POST(request: Request) {
     try {
       imageHash = await uploadImageToPinata(
         imageBuffer,
-        `${collectionName}-Admin-${testTokenId}.png`
+        `${collectionName}-Admin-${testTokenId}.png`,
       );
       console.log('[admin-generate] Successfully uploaded image to Pinata:', imageHash);
     } catch (err) {
       console.error('[admin-generate] Failed to upload image to Pinata:', err);
       throw new Error(
-        `Failed to upload image to Pinata: ${err instanceof Error ? err.message : 'Unknown error'}`
+        `Failed to upload image to Pinata: ${err instanceof Error ? err.message : 'Unknown error'}`,
       );
     }
 
@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     } catch (err) {
       console.error('[admin-generate] Failed to upload metadata to Pinata:', err);
       throw new Error(
-        `Failed to upload metadata to Pinata: ${err instanceof Error ? err.message : 'Unknown error'}`
+        `Failed to upload metadata to Pinata: ${err instanceof Error ? err.message : 'Unknown error'}`,
       );
     }
 
@@ -118,7 +118,7 @@ export async function POST(request: Request) {
         error: 'Failed to generate NFT',
         details: error instanceof Error ? error.message : 'Unknown error',
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

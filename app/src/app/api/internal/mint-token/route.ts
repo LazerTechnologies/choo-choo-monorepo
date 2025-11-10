@@ -22,7 +22,7 @@ async function getRecipientAddress(userData: WinnerData): Promise<string> {
           accept: 'application/json',
           'x-api-key': NEYNAR_API_KEY,
         },
-      }
+      },
     );
 
     if (!response.ok) {
@@ -121,7 +121,7 @@ export async function POST(request: Request) {
             error: 'Invalid request body',
             details: parsed.error.flatten(),
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
     // The NFT ticket is always minted to the previous holder (departing passenger)
     if (!previousHolderData) {
       console.error(
-        '[internal/mint-token] No previous holder data provided - NFT tickets are only minted to departing passengers'
+        '[internal/mint-token] No previous holder data provided - NFT tickets are only minted to departing passengers',
       );
       return NextResponse.json(
         {
@@ -144,7 +144,7 @@ export async function POST(request: Request) {
           error:
             'Previous holder data is required - NFT tickets are only minted to departing passengers',
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -172,7 +172,7 @@ export async function POST(request: Request) {
       const existingToken = await getTokenData(tokenId);
       if (existingToken) {
         console.log(
-          `[internal/mint-token] Token ${tokenId} already exists, returning existing data`
+          `[internal/mint-token] Token ${tokenId} already exists, returning existing data`,
         );
         return NextResponse.json({
           success: true,
@@ -188,12 +188,12 @@ export async function POST(request: Request) {
           success: false,
           error: `Failed to get next token ID from contract: ${err instanceof Error ? err.message : 'Unknown error'}`,
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
     console.log(
-      `[internal/mint-token] Minting token ${tokenId} for ${nftRecipientData.username} (${nftRecipient})`
+      `[internal/mint-token] Minting token ${tokenId} for ${nftRecipientData.username} (${nftRecipient})`,
     );
 
     const fullTokenURI = (
@@ -203,7 +203,7 @@ export async function POST(request: Request) {
     let txHash;
     try {
       console.log(
-        `[internal/mint-token] Executing contract: NFT to ${nftRecipient}, ChooChoo to ${newHolderAddress}`
+        `[internal/mint-token] Executing contract: NFT to ${nftRecipient}, ChooChoo to ${newHolderAddress}`,
       );
       txHash = await contractService.executeNextStop(newHolderAddress as Address, fullTokenURI);
       console.log(`[internal/mint-token] Transaction executed: ${txHash}`);
@@ -214,7 +214,7 @@ export async function POST(request: Request) {
           success: false,
           error: `Failed to execute contract transaction: ${err instanceof Error ? err.message : 'Unknown error'}`,
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -237,13 +237,13 @@ export async function POST(request: Request) {
       const postNextId = await contractService.getNextOnChainTicketId();
       const updatedTotalTickets = await contractService.getTotalTickets();
       console.log(
-        `[internal/mint-token] Minted token ID: ${actualTokenId} (total tickets now: ${updatedTotalTickets})`
+        `[internal/mint-token] Minted token ID: ${actualTokenId} (total tickets now: ${updatedTotalTickets})`,
       );
 
       // Verify with tolerance for eventual consistency
       if (postNextId <= actualTokenId) {
         console.warn(
-          `[internal/mint-token] Contract nextTicketId verification: expected > ${actualTokenId}, got ${postNextId}`
+          `[internal/mint-token] Contract nextTicketId verification: expected > ${actualTokenId}, got ${postNextId}`,
         );
       }
     } catch (err) {
@@ -267,7 +267,7 @@ export async function POST(request: Request) {
         success: false,
         error: '😞 Failed to mint token',
       },
-      { status: 500 }
+      { status: 500 },
     );
   } finally {
     // Release mint lock if acquired

@@ -24,7 +24,7 @@ export function useSoundPlayer() {
       });
     } catch (error) {
       const createError = new Error(
-        `Failed to create audio: ${error instanceof Error ? error.message : 'Unknown error'}`
+        `Failed to create audio: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
       if (options.onError) {
         options.onError(createError);
@@ -38,7 +38,7 @@ export function useSoundPlayer() {
     (options: SoundPlayerOptions = {}) => {
       playSound('/sounds/choochoo.mp3', options);
     },
-    [playSound]
+    [playSound],
   );
 
   return {

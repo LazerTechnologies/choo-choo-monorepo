@@ -48,13 +48,13 @@ class Scheduler {
       try {
         console.log(`[Scheduler] Running job: ${jobName}`);
         await jobFunction();
-        
+
         // Update job status on success
         this.jobStatus.set(jobName, { lastRun: new Date(), lastError: null });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         console.error(`[Scheduler] Error in job ${jobName}:`, error);
-        
+
         // Update job status on error
         this.jobStatus.set(jobName, { lastRun: new Date(), lastError: errorMessage });
       }
@@ -72,7 +72,7 @@ class Scheduler {
       const response = await fetch(`${APP_URL}/api/check-yoink-availability`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.INTERNAL_SECRET}`,
+          Authorization: `Bearer ${process.env.INTERNAL_SECRET}`,
           'Content-Type': 'application/json',
         },
       });
@@ -82,9 +82,11 @@ class Scheduler {
       }
 
       const result = await response.json();
-      
+
       if (result.notificationSent) {
-        console.log(`[Scheduler] Yoink availability notification sent to all users. ChooChoo can be yoinked from: ${result.currentHolder})`);
+        console.log(
+          `[Scheduler] Yoink availability notification sent to all users. ChooChoo can be yoinked from: ${result.currentHolder})`,
+        );
       } else if (result.yoinkAvailable) {
         console.log(`[Scheduler] Yoink is available but notification already sent`);
       } else {
@@ -98,16 +100,22 @@ class Scheduler {
   /**
    * Get status of all scheduled jobs
    */
-  public getStatus(): Record<string, { lastRun: Date | null; lastError: string | null; isRunning: boolean }> {
-    const status: Record<string, { lastRun: Date | null; lastError: string | null; isRunning: boolean }> = {};
-    
+  public getStatus(): Record<
+    string,
+    { lastRun: Date | null; lastError: string | null; isRunning: boolean }
+  > {
+    const status: Record<
+      string,
+      { lastRun: Date | null; lastError: string | null; isRunning: boolean }
+    > = {};
+
     for (const [jobName, jobStatus] of this.jobStatus) {
       status[jobName] = {
         ...jobStatus,
         isRunning: this.intervals.has(jobName),
       };
     }
-    
+
     return status;
   }
 
@@ -116,12 +124,12 @@ class Scheduler {
    */
   public shutdown(): void {
     console.log('[Scheduler] Shutting down scheduled jobs...');
-    
+
     for (const [jobName, interval] of this.intervals) {
       clearInterval(interval);
       console.log(`[Scheduler] Stopped job: ${jobName}`);
     }
-    
+
     this.intervals.clear();
     this.jobStatus.clear();
     this.isInitialized = false;

@@ -77,19 +77,19 @@ export function validateLayerDirectories(): void {
     if (missingDirs.length > 0) {
       throw new Error(
         `Missing layer directories: ${missingDirs.join(', ')}. ` +
-          `Expected directories in ${layersDir} with format "N_layername": ${layerNames.join(', ')}`
+          `Expected directories in ${layersDir} with format "N_layername": ${layerNames.join(', ')}`,
       );
     }
 
     // Check for extra directories
     const extraDirs = existingLayerNames.filter(
-      (layer) => !(layerNames as readonly string[]).includes(layer)
+      (layer) => !(layerNames as readonly string[]).includes(layer),
     );
     if (extraDirs.length > 0) {
       throw new Error(
         `Unexpected layer directories found: ${extraDirs.join(', ')}. ` +
           `Only expected: ${layerNames.join(', ')}. ` +
-          'Either remove these directories or add them to layerOrder in config.ts'
+          'Either remove these directories or add them to layerOrder in config.ts',
       );
     }
 

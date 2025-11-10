@@ -15,7 +15,7 @@ const redis = new Redis(
     reconnectOnError: (err) => {
       // Reconnect on connection reset errors and readonly errors
       const reconnectErrors = ['READONLY', 'ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND'];
-      return reconnectErrors.some(errorType => err.message.includes(errorType));
+      return reconnectErrors.some((errorType) => err.message.includes(errorType));
     },
     // Retry strategy for failed connections
     retryStrategy: (times) => {
@@ -31,7 +31,7 @@ const redis = new Redis(
     // Connection timeout settings
     connectTimeout: 10000,
     commandTimeout: 5000,
-  }
+  },
 );
 
 // Add error handling to prevent unhandled error events

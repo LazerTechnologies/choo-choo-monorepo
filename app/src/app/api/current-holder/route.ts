@@ -26,7 +26,7 @@ export async function GET() {
       console.error('[current-holder] Failed to get current holder from Redis:', err);
       return NextResponse.json(
         { error: 'Failed to retrieve current holder information' },
-        { status: 500, headers: { 'Cache-Control': 'no-store' } }
+        { status: 500, headers: { 'Cache-Control': 'no-store' } },
       );
     }
 
@@ -38,7 +38,7 @@ export async function GET() {
           currentUserFid,
           currentHolder: null,
         },
-        { headers: { 'Cache-Control': 'no-store' } }
+        { headers: { 'Cache-Control': 'no-store' } },
       );
     }
 
@@ -61,13 +61,13 @@ export async function GET() {
           timestamp: currentHolderData.timestamp,
         },
       },
-      { headers: { 'Cache-Control': 'no-store' } }
+      { headers: { 'Cache-Control': 'no-store' } },
     );
   } catch (error) {
     console.error('[current-holder] Error:', error);
     return NextResponse.json(
       { error: 'Failed to check current holder status' },
-      { status: 500, headers: { 'Cache-Control': 'no-store' } }
+      { status: 500, headers: { 'Cache-Control': 'no-store' } },
     );
   }
 }

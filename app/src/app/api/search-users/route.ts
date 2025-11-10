@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { getNeynarClient } from '@/lib/neynar';
 
 /**
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Search query (q) parameter is required' }, { status: 400 });
   }
 
-  const limit = limitParam ? Math.min(parseInt(limitParam), 25) : 10;
+  const limit = limitParam ? Math.min(Number.parseInt(limitParam), 25) : 10;
 
   try {
     const client = getNeynarClient();
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     console.error('Failed to search users:', error);
     return NextResponse.json(
       { error: 'Failed to search users. Please try again.' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

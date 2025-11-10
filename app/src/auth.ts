@@ -1,4 +1,4 @@
-import { AuthOptions, getServerSession } from 'next-auth';
+import { type AuthOptions, getServerSession } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { createAppClient, viemConnector } from '@farcaster/auth-client';
 
@@ -90,7 +90,7 @@ export const authOptions: AuthOptions = {
   callbacks: {
     session: async ({ session, token }) => {
       if (session?.user) {
-        session.user.fid = parseInt(token.sub ?? '');
+        session.user.fid = Number.parseInt(token.sub ?? '');
       }
       return session;
     },

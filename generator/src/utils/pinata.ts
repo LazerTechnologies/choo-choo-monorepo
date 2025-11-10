@@ -1,7 +1,7 @@
 import PinataClient from '@pinata/sdk';
 import { Readable } from 'stream';
 import { collectionName, collectionDescription } from '../config';
-import { NftAttribute } from './compose';
+import type { NftAttribute } from './compose';
 
 const pinataJWT = process.env.PINATA_JWT;
 if (!pinataJWT) {
@@ -27,7 +27,7 @@ export const uploadImageToPinata = async (imageBuffer: Buffer, name: string): Pr
   const maxSizeInBytes = 50 * 1024 * 1024; // 50MB
   if (imageBuffer.length > maxSizeInBytes) {
     throw new Error(
-      `Image file size (${imageBuffer.length} bytes) exceeds maximum allowed size of ${maxSizeInBytes} bytes`
+      `Image file size (${imageBuffer.length} bytes) exceeds maximum allowed size of ${maxSizeInBytes} bytes`,
     );
   }
 
@@ -46,7 +46,7 @@ export const uploadImageToPinata = async (imageBuffer: Buffer, name: string): Pr
   const validNamePattern = /^[\w\s.-]+$/;
   if (!validNamePattern.test(name)) {
     throw new Error(
-      'name contains invalid characters. Only alphanumeric characters, spaces, dots, underscores, and hyphens are allowed'
+      'name contains invalid characters. Only alphanumeric characters, spaces, dots, underscores, and hyphens are allowed',
     );
   }
 
@@ -96,9 +96,7 @@ export const uploadImageToPinata = async (imageBuffer: Buffer, name: string): Pr
     }
 
     const err = new Error(
-      `Failed to upload image to Pinata: ${
-        error instanceof Error ? error.message : 'Unknown error'
-      }`
+      `Failed to upload image to Pinata: ${error instanceof Error ? error.message : 'Unknown error'}`,
     ) as Error & { cause: unknown };
     err.cause = error;
     throw err;
@@ -117,7 +115,7 @@ export const uploadMetadataToPinata = async (
   tokenId: number,
   imageCid: string,
   attributes: NftAttribute[],
-  passengerUsername?: string
+  passengerUsername?: string,
 ): Promise<string> => {
   try {
     // Create metadata with proper tokenId naming and Passenger trait
@@ -141,7 +139,7 @@ export const uploadMetadataToPinata = async (
   } catch (error) {
     console.error('Error uploading metadata to Pinata:', error);
     const err = new Error(
-      `Failed to upload metadata to Pinata: ${error instanceof Error ? error.message : 'Unknown error'}`
+      `Failed to upload metadata to Pinata: ${error instanceof Error ? error.message : 'Unknown error'}`,
     ) as Error & { cause: unknown };
     err.cause = error;
     throw err;

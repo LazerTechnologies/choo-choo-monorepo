@@ -182,7 +182,7 @@ describe('orchestrateManualSend', () => {
               address: '0xholder',
             },
           }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
         );
       }
       if (url.includes('api.neynar.com')) {
@@ -201,7 +201,7 @@ describe('orchestrateManualSend', () => {
               },
             ],
           }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } }
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
         );
       }
       if (url.includes('/api/internal/generate-nft')) {
@@ -213,7 +213,7 @@ describe('orchestrateManualSend', () => {
             metadataHash: 'meta',
             metadata: { attributes: [] },
           }),
-          { status: 200 }
+          { status: 200 },
         );
       }
       if (url.includes('/api/internal/mint-token')) {
@@ -225,7 +225,7 @@ describe('orchestrateManualSend', () => {
           }),
           {
             status: 200,
-          }
+          },
         );
       }
       if (url.includes('/api/internal/send-cast')) {
@@ -265,7 +265,7 @@ describe('orchestrateManualSend', () => {
         tokenURI: 'ipfs://uri',
         holderUsername: 'currentholder',
         holderAddress: '0xholder',
-      })
+      }),
     );
   });
 
@@ -285,8 +285,8 @@ describe('orchestrateManualSend', () => {
                 address: null,
               },
             }),
-            { status: 200 }
-          )
+            { status: 200 },
+          ),
       )
       // Neynar fetch for winner (targetFid: 456)
       .mockImplementationOnce(
@@ -305,8 +305,8 @@ describe('orchestrateManualSend', () => {
                 },
               ],
             }),
-            { status: 200 }
-          )
+            { status: 200 },
+          ),
       )
       // Neynar fetch for departing passenger (currentHolderFid: 123) - fallback
       .mockImplementationOnce(
@@ -325,8 +325,8 @@ describe('orchestrateManualSend', () => {
                 },
               ],
             }),
-            { status: 200 }
-          )
+            { status: 200 },
+          ),
       );
 
     // Update getStaging mock to return staging with the Neynar-fetched address
@@ -390,7 +390,7 @@ describe('orchestrateManualSend', () => {
     const res = await orchestrateManualSend(123, 456);
     expect(res.status).toBe(200);
     expect(storeTokenDataWriteOnce).toHaveBeenCalledWith(
-      expect.objectContaining({ holderAddress: '0xwinner' })
+      expect.objectContaining({ holderAddress: '0xwinner' }),
     );
   });
 });

@@ -190,7 +190,7 @@ describe('orchestrateYoink', () => {
               address: '0xdepart',
             },
           }),
-          { status: 200 }
+          { status: 200 },
         );
       }
       if (url.includes('api.neynar.com')) {
@@ -209,7 +209,7 @@ describe('orchestrateYoink', () => {
               },
             ],
           }),
-          { status: 200 }
+          { status: 200 },
         );
       }
       if (url.includes('/api/internal/generate-nft')) {
@@ -221,7 +221,7 @@ describe('orchestrateYoink', () => {
             metadataHash: 'meta',
             metadata: { attributes: [] },
           }),
-          { status: 200 }
+          { status: 200 },
         );
       }
       if (url.includes('/api/internal/send-cast') || url.includes('/api/workflow-state')) {
@@ -240,10 +240,10 @@ describe('orchestrateYoink', () => {
     expect(res.status).toBe(200);
     expect(acquireLock).toHaveBeenCalledWith(
       'lock:yoink:999:0x1234567890123456789012345678901234567890',
-      expect.any(Number)
+      expect.any(Number),
     );
     expect(releaseLock).toHaveBeenCalledWith(
-      'lock:yoink:999:0x1234567890123456789012345678901234567890'
+      'lock:yoink:999:0x1234567890123456789012345678901234567890',
     );
   });
 
@@ -403,7 +403,7 @@ describe('orchestrateYoink', () => {
     expect(mockContractService.hasBeenPassenger).toHaveBeenCalled();
     expect(mockContractService.hasDepositedEnough).toHaveBeenCalled();
     expect(mockContractService.executeYoink).toHaveBeenCalledWith(
-      '0x1234567890123456789012345678901234567890'
+      '0x1234567890123456789012345678901234567890',
     );
   });
 
@@ -414,7 +414,7 @@ describe('orchestrateYoink', () => {
       expect.objectContaining({
         holderUsername: 'depart',
         holderAddress: '0xdepart',
-      })
+      }),
     );
   });
 });

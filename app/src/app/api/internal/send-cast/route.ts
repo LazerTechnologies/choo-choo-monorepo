@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       console.error('[internal/send-cast] Neynar API key not configured');
       return NextResponse.json(
         { success: false, error: 'Neynar API key not configured' },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
       console.error('[internal/send-cast] ChooChoo signer UUID not configured');
       return NextResponse.json(
         { success: false, error: 'ChooChoo signer UUID not configured' },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
             error: 'Invalid request body',
             details: parsed.error.flatten(),
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -147,7 +147,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json(
           { success: false, error: `Neynar API error: ${errorMessage}` },
-          { status: response.status }
+          { status: response.status },
         );
       }
 
@@ -174,7 +174,7 @@ export async function POST(request: Request) {
           success: false,
           error: `Failed to send cast: ${err instanceof Error ? err.message : 'Unknown error'}`,
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
   } catch (error) {
@@ -184,7 +184,7 @@ export async function POST(request: Request) {
         success: false,
         error: 'Internal server error',
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

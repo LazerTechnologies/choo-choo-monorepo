@@ -9,7 +9,7 @@ describe('Dialog', () => {
       <Dialog>
         <Dialog.Trigger>Open Dialog</Dialog.Trigger>
         <Dialog.Content>Dialog Content</Dialog.Content>
-      </Dialog>
+      </Dialog>,
     );
     const trigger = screen.getByText('Open Dialog');
     expect(trigger).toBeInTheDocument();
@@ -22,7 +22,7 @@ describe('Dialog', () => {
       <Dialog>
         <Dialog.Trigger>Open Dialog</Dialog.Trigger>
         <Dialog.Content>Dialog Content</Dialog.Content>
-      </Dialog>
+      </Dialog>,
     );
 
     fireEvent.click(screen.getByText('Open Dialog'));
@@ -37,7 +37,7 @@ describe('Dialog', () => {
           Dialog Content
           <Dialog.Header />
         </Dialog.Content>
-      </Dialog>
+      </Dialog>,
     );
 
     fireEvent.click(screen.getByText('Open Dialog'));
@@ -57,7 +57,7 @@ describe('Dialog', () => {
           <button>Focusable Element</button>
           <Dialog.Header />
         </Dialog.Content>
-      </Dialog>
+      </Dialog>,
     );
 
     const trigger = screen.getByText('Open Dialog');
@@ -82,7 +82,7 @@ describe('Dialog', () => {
           <Dialog.Trigger>Open Dialog</Dialog.Trigger>
           <Dialog.Content>Dialog Content</Dialog.Content>
         </Dialog>
-      </div>
+      </div>,
     );
 
     fireEvent.click(screen.getByText('Open Dialog'));
@@ -102,7 +102,7 @@ describe('Dialog', () => {
           <Dialog.Header />
           Dialog Content
         </Dialog.Content>
-      </Dialog>
+      </Dialog>,
     );
 
     fireEvent.click(screen.getByText('Open Dialog'));

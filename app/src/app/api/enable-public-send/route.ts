@@ -28,7 +28,7 @@ export async function POST() {
                   accept: 'application/json',
                   'x-api-key': NEYNAR_API_KEY,
                 },
-              }
+              },
             );
             if (userResponse.ok) {
               const userData: NeynarBulkUsersResponse = await userResponse.json();
@@ -63,7 +63,7 @@ export async function POST() {
     } else {
       const castData = await castResponse.json();
       console.log(
-        `[enable-public-send] Successfully sent PUBLIC_SEND_OPEN cast: ${castData.cast?.hash}`
+        `[enable-public-send] Successfully sent PUBLIC_SEND_OPEN cast: ${castData.cast?.hash}`,
       );
     }
 

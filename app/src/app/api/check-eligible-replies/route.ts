@@ -15,7 +15,7 @@ type Reply = { author?: { fid?: number } };
 async function hasEligibleReplies(castHash: string): Promise<boolean> {
   if (!NEYNAR_API_KEY) throw new Error('Missing NEYNAR_API_KEY');
   let allReplies: Reply[] = [];
-  let cursor: string | undefined = undefined;
+  let cursor: string | undefined ;
   let foundEligible = false;
 
   do {
@@ -42,7 +42,7 @@ async function hasEligibleReplies(castHash: string): Promise<boolean> {
       `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fids.join(',')}`,
       {
         headers: { accept: 'application/json', api_key: NEYNAR_API_KEY },
-      }
+      },
     );
     if (!userRes.ok) throw new Error('Failed to fetch users from Neynar');
     const userData = await userRes.json();

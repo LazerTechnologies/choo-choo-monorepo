@@ -6,7 +6,7 @@ import { coinbaseWallet, metaMask } from 'wagmi/connectors';
 import { APP_NAME, APP_ICON_URL, APP_URL } from '@/lib/constants';
 import { useEffect, useState } from 'react';
 import { useConnect, useAccount } from 'wagmi';
-import React from 'react';
+import type React from 'react';
 
 // Custom hook for Coinbase Wallet detection and auto-connection
 function useCoinbaseWalletAutoConnect() {

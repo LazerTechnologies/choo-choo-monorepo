@@ -166,7 +166,7 @@ describe('Data Consistency', () => {
             },
             totalEligibleReactors: 5,
           }),
-          { status: 200 }
+          { status: 200 },
         );
       }
       if (url.includes('api.neynar.com')) {
@@ -185,7 +185,7 @@ describe('Data Consistency', () => {
               },
             ],
           }),
-          { status: 200 }
+          { status: 200 },
         );
       }
       if (url.includes('/api/current-holder')) {
@@ -200,7 +200,7 @@ describe('Data Consistency', () => {
               address: '0xholder',
             },
           }),
-          { status: 200 }
+          { status: 200 },
         );
       }
       if (url.includes('/api/internal/generate-nft')) {
@@ -212,7 +212,7 @@ describe('Data Consistency', () => {
             metadataHash: 'meta',
             metadata: { attributes: [] },
           }),
-          { status: 200 }
+          { status: 200 },
         );
       }
       if (url.includes('/api/internal/mint-token')) {
@@ -224,7 +224,7 @@ describe('Data Consistency', () => {
           }),
           {
             status: 200,
-          }
+          },
         );
       }
       if (url.includes('/api/internal/send-cast')) {
@@ -255,7 +255,7 @@ describe('Data Consistency', () => {
         departingPassenger: expect.objectContaining({
           username: 'currentholder',
         }),
-      })
+      }),
     );
     // Verify promotion was called (which stores the data)
     expect(promoteStaging).toHaveBeenCalled();
@@ -270,7 +270,7 @@ describe('Data Consistency', () => {
         orchestrator: 'random-send',
         sourceCastHash: '0xcast',
         totalEligibleReactors: 5,
-      })
+      }),
     );
     // Verify promotion was called (which stores the data)
     expect(promoteStaging).toHaveBeenCalled();

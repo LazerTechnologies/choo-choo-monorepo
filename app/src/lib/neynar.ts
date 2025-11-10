@@ -1,4 +1,4 @@
-import { NeynarAPIClient, Configuration, WebhookUserCreated } from '@neynar/nodejs-sdk';
+import { NeynarAPIClient, Configuration, type WebhookUserCreated } from '@neynar/nodejs-sdk';
 import { APP_URL } from './constants';
 
 let neynarClient: NeynarAPIClient | null = null;
@@ -65,11 +65,10 @@ export async function sendNeynarMiniAppNotification({
 
     if (result.notification_deliveries.length > 0) {
       return { state: 'success' };
-    } else if (result.notification_deliveries.length === 0) {
+    }if (result.notification_deliveries.length === 0) {
       return { state: 'no_token' };
-    } else {
-      return { state: 'error', error: result || 'Unknown error' };
     }
+      return { state: 'error', error: result || 'Unknown error' };
   } catch (error) {
     return { state: 'error', error };
   }

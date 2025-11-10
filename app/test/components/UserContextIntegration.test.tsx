@@ -108,7 +108,7 @@ describe.skip('User Context Integration', () => {
 
     renderWithProvider(<WinnerSelectionWidget />);
     expect(
-      screen.getByText('Send ChooChoo to a friend, or leave it to chance.')
+      screen.getByText('Send ChooChoo to a friend, or leave it to chance.'),
     ).toBeInTheDocument();
   });
 

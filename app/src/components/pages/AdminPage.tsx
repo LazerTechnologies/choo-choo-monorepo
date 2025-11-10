@@ -94,7 +94,7 @@ function AppStateTesting({
         },
       },
     ],
-    []
+    [],
   );
 
   const handleSetState = useCallback(async () => {
@@ -125,7 +125,7 @@ function AppStateTesting({
           window.dispatchEvent(
             new CustomEvent('workflow-state-changed', {
               detail: state.workflowData,
-            })
+            }),
           );
         } catch {}
 
@@ -604,7 +604,7 @@ function SetTicketMetadata({
   const [error, setError] = useState<string | null>(null);
 
   const handleSetTicketMetadata = useCallback(async () => {
-    const tokenIdNumber = parseInt(tokenId.trim());
+    const tokenIdNumber = Number.parseInt(tokenId.trim());
     if (!tokenId.trim() || isNaN(tokenIdNumber) || tokenIdNumber <= 0) {
       setError('Please enter a valid Token ID');
       return;
@@ -982,7 +982,7 @@ function AppPauseToggle({ adminFid, disabled = false }: { adminFid?: number; dis
       setPendingState(checked);
       setError(null);
     },
-    [adminFid]
+    [adminFid],
   );
 
   const handleConfirmChange = useCallback(async () => {

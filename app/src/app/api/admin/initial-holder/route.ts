@@ -119,14 +119,14 @@ export async function POST(request: Request) {
           error: 'Invalid request data',
           details: validationResult.error.issues,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const { targetFid }: SetInitialHolderRequest = validationResult.data;
 
     console.log(
-      `[admin-set-initial-holder] Admin ${auth.adminFid} attempting to set initial holder to FID ${targetFid}`
+      `[admin-set-initial-holder] Admin ${auth.adminFid} attempting to set initial holder to FID ${targetFid}`,
     );
 
     // Check Redis to see if current holder exists
@@ -136,14 +136,14 @@ export async function POST(request: Request) {
       if (existingHolderData) {
         const existingHolder = JSON.parse(existingHolderData);
         console.log(
-          `[admin-set-initial-holder] Current holder already exists: ${existingHolder.username} (FID: ${existingHolder.fid})`
+          `[admin-set-initial-holder] Current holder already exists: ${existingHolder.username} (FID: ${existingHolder.fid})`,
         );
         return NextResponse.json(
           {
             error:
               'Cannot set initial holder: A current holder already exists. This function is only for fresh deployments.',
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -152,7 +152,7 @@ export async function POST(request: Request) {
       console.error('[admin-set-initial-holder] Redis check failed:', redisError);
       return NextResponse.json(
         { error: 'Failed to check holder status. Please try again later.' },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -163,7 +163,7 @@ export async function POST(request: Request) {
     }
 
     console.log(
-      `[admin-set-initial-holder] Target user found: ${targetUser.username} (${targetUser.address})`
+      `[admin-set-initial-holder] Target user found: ${targetUser.username} (${targetUser.address})`,
     );
 
     // Create the current holder data structure
@@ -192,7 +192,7 @@ export async function POST(request: Request) {
       const storedWorkflowState = await redis.get('workflowState');
       console.log(
         '[admin-set-initial-holder] Verified stored workflow state:',
-        storedWorkflowState
+        storedWorkflowState,
       );
 
       if (storedWorkflowState !== workflowDataJson) {
@@ -205,7 +205,7 @@ export async function POST(request: Request) {
       console.error('[admin-set-initial-holder] Failed to store data in Redis:', redisStoreError);
       return NextResponse.json(
         { error: 'Failed to store initial holder data. Please try again later.' },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -215,7 +215,7 @@ export async function POST(request: Request) {
     } catch {}
 
     console.log(
-      `[admin-set-initial-holder] Successfully set initial current holder: ${targetUser.username} (FID: ${targetUser.fid})`
+      `[admin-set-initial-holder] Successfully set initial current holder: ${targetUser.username} (FID: ${targetUser.fid})`,
     );
     console.log('[admin-set-initial-holder] Set initial workflow state to NOT_CASTED');
 
@@ -237,7 +237,7 @@ export async function POST(request: Request) {
     } catch (err) {
       console.warn(
         '[admin-set-initial-holder] Failed to send journey begins cast (non-critical):',
-        err
+        err,
       );
     }
 

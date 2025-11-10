@@ -1,4 +1,4 @@
-import { Abi } from 'viem';
+import type { Abi } from 'viem';
 import { useWriteContract, useReadContract } from 'wagmi';
 import { CHOOCHOO_TRAIN_ADDRESS } from '@/lib/constants';
 import ChooChooAbiJson from '@/abi/ChooChooTrain.abi.json';

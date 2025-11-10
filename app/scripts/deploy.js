@@ -1,10 +1,10 @@
 import { execSync, spawn } from 'child_process';
+import crypto from 'crypto';
+import dotenv from 'dotenv';
 import fs from 'fs';
+import inquirer from 'inquirer';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import inquirer from 'inquirer';
-import dotenv from 'dotenv';
-import crypto from 'crypto';
 import { mnemonicToAccount } from 'viem/accounts';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -19,7 +19,7 @@ async function validateSeedPhrase(seedPhrase) {
     // Try to create an account from the seed phrase
     const account = mnemonicToAccount(seedPhrase);
     return account.address;
-  } catch (error) {
+  } catch (_error) {
     throw new Error('Invalid seed phrase');
   }
 }
@@ -37,7 +37,7 @@ async function lookupFidByCustodyAddress(custodyAddress, apiKey) {
         accept: 'application/json',
         'x-api-key': apiKey,
       },
-    }
+    },
   );
 
   if (!response.ok) {
@@ -131,7 +131,7 @@ async function loadEnvLocal() {
         ];
 
         // Copy allowed values except SEED_PHRASE to .env
-        const envContent = fs.existsSync('.env') ? fs.readFileSync('.env', 'utf8') + '\n' : '';
+        const envContent = fs.existsSync('.env') ? `${fs.readFileSync('.env', 'utf8')}\n` : '';
         let newEnvContent = envContent;
 
         for (const [key, value] of Object.entries(localEnv)) {
@@ -150,7 +150,7 @@ async function loadEnvLocal() {
         console.log('✅ Values from .env.local have been written to .env');
       }
     }
-  } catch (error) {
+  } catch (_error) {
     // Error reading .env.local, which is fine
     console.log('Note: No .env.local file found');
   }
@@ -251,7 +251,7 @@ async function getGitRemote() {
       encoding: 'utf8',
     }).trim();
     return remoteUrl;
-  } catch (error) {
+  } catch (_error) {
     return null;
   }
 }
@@ -263,7 +263,7 @@ async function checkVercelCLI() {
       shell: process.platform === 'win32',
     });
     return true;
-  } catch (error) {
+  } catch (_error) {
     return false;
   }
 }
@@ -287,7 +287,7 @@ async function loginToVercel() {
   console.log('3. Complete the Vercel account setup in your browser');
   console.log('4. Return here once your Vercel account is created\n');
   console.log(
-    '\nNote: you may need to cancel this script with ctrl+c and run it again if creating a new vercel account'
+    '\nNote: you may need to cancel this script with ctrl+c and run it again if creating a new vercel account',
   );
 
   // Start the login process
@@ -296,7 +296,7 @@ async function loginToVercel() {
   });
 
   // Wait for the login process to complete
-  await new Promise((resolve, reject) => {
+  await new Promise((resolve, _reject) => {
     child.on('close', (code) => {
       if (code === 0) {
         resolve();
@@ -312,7 +312,7 @@ async function loginToVercel() {
   // Keep checking for up to 5 minutes (increased timeout for new account setup)
   console.log('\n📱 Waiting for login to complete...');
   console.log(
-    "If you're creating a new account, please complete the Vercel account setup in your browser first."
+    "If you're creating a new account, please complete the Vercel account setup in your browser first.",
   );
 
   for (let i = 0; i < 150; i++) {
@@ -345,7 +345,7 @@ async function setVercelEnvVar(key, value, projectRoot) {
         stdio: 'ignore',
         env: process.env,
       });
-    } catch (error) {
+    } catch (_error) {
       // Ignore errors from removal (var might not exist)
     }
 
@@ -400,8 +400,8 @@ async function deployToVercel(useGitHub = false) {
             framework: 'nextjs',
           },
           null,
-          2
-        )
+          2,
+        ),
       );
     }
 
@@ -410,10 +410,10 @@ async function deployToVercel(useGitHub = false) {
     // Set up Vercel project
     console.log('\n📦 Setting up Vercel project...');
     console.log(
-      ' An initial deployment is required to get an assigned domain that can be used in the mini app manifest\n'
+      ' An initial deployment is required to get an assigned domain that can be used in the mini app manifest\n',
     );
     console.log(
-      '\n⚠️ Note: choosing a longer, more unique project name will help avoid conflicts with other existing domains\n'
+      '\n⚠️ Note: choosing a longer, more unique project name will help avoid conflicts with other existing domains\n',
     );
     execSync('vercel', {
       cwd: projectRoot,
@@ -460,7 +460,7 @@ async function deployToVercel(useGitHub = false) {
       const accountAddress = await validateSeedPhrase(process.env.SEED_PHRASE);
       fid = await lookupFidByCustodyAddress(
         accountAddress,
-        process.env.NEYNAR_API_KEY ?? 'FARCASTER_V2_FRAMES_DEMO'
+        process.env.NEYNAR_API_KEY ?? 'FARCASTER_V2_FRAMES_DEMO',
       );
 
       // Determine webhook URL based on Neynar configuration
@@ -474,7 +474,7 @@ async function deployToVercel(useGitHub = false) {
         fid,
         accountAddress,
         process.env.SEED_PHRASE,
-        webhookUrl
+        webhookUrl,
       );
       console.log('✅ Mini app metadata generated and signed');
     }
@@ -497,7 +497,7 @@ async function deployToVercel(useGitHub = false) {
 
       // Public vars
       ...Object.fromEntries(
-        Object.entries(process.env).filter(([key]) => key.startsWith('NEXT_PUBLIC_'))
+        Object.entries(process.env).filter(([key]) => key.startsWith('NEXT_PUBLIC_')),
       ),
     };
 
@@ -557,7 +557,7 @@ async function deployToVercel(useGitHub = false) {
           const actualDomain = domainMatch[1];
           if (actualDomain !== domain) {
             console.log(
-              `⚠️  Actual domain (${actualDomain}) differs from assumed domain (${domain})`
+              `⚠️  Actual domain (${actualDomain}) differs from assumed domain (${domain})`,
             );
             console.log('🔄 Updating environment variables with correct domain...');
 
@@ -573,7 +573,7 @@ async function deployToVercel(useGitHub = false) {
                 fid,
                 await validateSeedPhrase(process.env.SEED_PHRASE),
                 process.env.SEED_PHRASE,
-                webhookUrl
+                webhookUrl,
               );
               // Update MINI_APP_METADATA env var using the new function
               await setVercelEnvVar('MINI_APP_METADATA', miniAppMetadata, projectRoot);

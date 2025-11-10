@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     if (!INTERNAL_SECRET) {
       return NextResponse.json(
         { error: 'Server misconfigured: INTERNAL_SECRET missing' },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     if (!response.ok) {
       return NextResponse.json(
         { error: data || 'Failed to send cast' },
-        { status: response.status }
+        { status: response.status },
       );
     }
 

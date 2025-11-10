@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
 
@@ -155,7 +155,7 @@ export async function GET(request: NextRequest) {
           'x-api-key': NEYNAR_API_KEY,
           'x-neynar-experimental': 'false',
         },
-      }
+      },
     );
 
     if (!response.ok) {
@@ -179,7 +179,7 @@ export async function GET(request: NextRequest) {
         error: 'Failed to fetch cast data',
         details: error instanceof Error ? error.message : 'Unknown error',
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

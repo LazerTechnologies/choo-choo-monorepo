@@ -73,7 +73,7 @@ describe('Staging Manager', () => {
         expect.any(String),
         'NX',
         'EX',
-        expect.any(Number)
+        expect.any(Number),
       );
     });
 
@@ -106,7 +106,7 @@ describe('Staging Manager', () => {
         expect.any(String),
         'NX',
         'EX',
-        expect.any(Number)
+        expect.any(Number),
       );
     });
   });
@@ -152,7 +152,7 @@ describe('Staging Manager', () => {
         'staging:42',
         JSON.stringify(existingStaging),
         expect.any(String),
-        expect.any(String)
+        expect.any(String),
       );
     });
 
@@ -274,7 +274,7 @@ describe('Staging Manager', () => {
         expect.any(String), // token data JSON
         expect.any(String), // last moved data JSON
         expect.any(String), // current holder data JSON
-        '42' // token ID
+        '42', // token ID
       );
     });
 
@@ -311,7 +311,7 @@ describe('Staging Manager', () => {
       vi.mocked(redis.get).mockResolvedValue(JSON.stringify(stagingInProgress));
 
       await expect(promoteStaging(42)).rejects.toThrow(
-        'Cannot promote staging entry in status minted'
+        'Cannot promote staging entry in status minted',
       );
     });
   });

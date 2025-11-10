@@ -209,7 +209,7 @@ describe('Metadata Retry Queue', () => {
       'metadata-retry:42',
       expect.stringContaining('"tokenId":42'),
       'EX',
-      7 * 24 * 60 * 60 // 7 days TTL
+      7 * 24 * 60 * 60, // 7 days TTL
     );
 
     // Should add to set for deduplication

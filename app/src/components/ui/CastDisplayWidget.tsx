@@ -97,37 +97,37 @@ export function CastDisplayWidget({ castHash, className = '' }: CastDisplayWidge
         } catch (originalError) {
           console.log(
             '[CastDisplayWidget] Original cast failed, trying fallbacks...',
-            originalError
+            originalError,
           );
         }
 
         // Step 2: Try fallback search for ChooChoo-related casts
         try {
           const fallbackResponse = await axios.get(
-            `/api/cast-data/fallback?originalHash=${castHash}&strategy=choochoo`
+            `/api/cast-data/fallback?originalHash=${castHash}&strategy=choochoo`,
           );
           setCastData(fallbackResponse.data.cast);
           console.log(
             '[CastDisplayWidget] Using ChooChoo fallback cast:',
-            fallbackResponse.data.cast.hash
+            fallbackResponse.data.cast.hash,
           );
           return; // Success, exit early
         } catch (choochooError) {
           console.log(
             '[CastDisplayWidget] ChooChoo fallback failed, trying most recent...',
-            choochooError
+            choochooError,
           );
         }
 
         // Step 3: Try most recent cast as last resort
         try {
           const lastResortResponse = await axios.get(
-            `/api/cast-data/fallback?originalHash=${castHash}&strategy=recent`
+            `/api/cast-data/fallback?originalHash=${castHash}&strategy=recent`,
           );
           setCastData(lastResortResponse.data.cast);
           console.log(
             '[CastDisplayWidget] Using most recent cast fallback:',
-            lastResortResponse.data.cast.hash
+            lastResortResponse.data.cast.hash,
           );
           return; // Success, exit early
         } catch (recentError) {

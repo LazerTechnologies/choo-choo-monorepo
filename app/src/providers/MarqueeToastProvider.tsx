@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import type React from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { MessagePriority, MARQUEE_CONFIG, TRAIN_STATION_MESSAGES } from '@/lib/constants';
 
 interface MarqueeMessage {
@@ -112,7 +113,7 @@ export function MarqueeToastProvider({ children }: { children: React.ReactNode }
         setNewToastAdded(urgentMessage);
       }
     },
-    []
+    [],
   );
 
   const addUserContext = useCallback((user: User) => {
@@ -149,7 +150,7 @@ export function MarqueeToastProvider({ children }: { children: React.ReactNode }
         });
       }
     },
-    [messages]
+    [messages],
   );
 
   // Check if there are emergency messages

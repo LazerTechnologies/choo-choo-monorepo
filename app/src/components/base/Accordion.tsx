@@ -17,7 +17,7 @@ const AccordionItem = React.forwardRef<
     ref={ref}
     className={cn(
       'rounded-base overflow-x-hidden border-2 border-b border-border dark:border-darkBorder shadow-light dark:shadow-dark',
-      className
+      className,
     )}
     {...props}
   />
@@ -33,7 +33,7 @@ const AccordionHeader = React.forwardRef<
       ref={ref}
       className={cn(
         'flex flex-1 items-center justify-between text-text border-border dark:border-darkBorder bg-main p-4 font-heading transition-all [&[data-state=open]>svg]:rotate-180 [&[data-state=open]]:rounded-b-none [&[data-state=open]]:border-b-2',
-        className
+        className,
       )}
       {...props}
     >

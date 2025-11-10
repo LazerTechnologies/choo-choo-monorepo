@@ -29,7 +29,7 @@ async function lookupFidByCustodyAddress(custodyAddress, apiKey) {
         accept: 'application/json',
         'x-api-key': 'FARCASTER_V2_FRAMES_DEMO',
       },
-    }
+    },
   );
 
   if (!response.ok) {
@@ -337,7 +337,7 @@ async function main() {
 
     const fid = await lookupFidByCustodyAddress(
       accountAddress,
-      neynarApiKey ?? 'FARCASTER_V2_FRAMES_DEMO'
+      neynarApiKey ?? 'FARCASTER_V2_FRAMES_DEMO',
     );
 
     // Generate and sign manifest
@@ -354,7 +354,7 @@ async function main() {
       fid,
       accountAddress,
       seedPhrase,
-      webhookUrl
+      webhookUrl,
     );
     console.log('\n✅ Mini app manifest generated' + (seedPhrase ? ' and signed' : ''));
 
@@ -425,7 +425,7 @@ async function main() {
 
     console.log('\n✨ Build complete! Your mini app is ready for deployment. 🪐');
     console.log(
-      '📝 Make sure to configure the environment variables from .env in your hosting provider'
+      '📝 Make sure to configure the environment variables from .env in your hosting provider',
     );
   } catch (error) {
     console.error('\n❌ Error:', error.message);

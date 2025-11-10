@@ -85,8 +85,8 @@ export const ChooChooNotifications = {
    * Notify when random winner mode is enabled
    */
   randomWinnerEnabled: (username: string) => ({
-    title: 'ChooChoo\'s next stop is up to chance!',
-    body: `Reply to ${username}\'s cast about ChooChoo for a chance to ride next!`,
+    title: "ChooChoo's next stop is up to chance!",
+    body: `Reply to ${username}'s cast about ChooChoo for a chance to ride next!`,
     targetUrl: `${process.env.NEXT_PUBLIC_URL}/`,
     targetFids: [], // Send to all users
   }),
@@ -116,7 +116,7 @@ export const ChooChooNotifications = {
    */
   maintenanceStarted: () => ({
     title: '🚧 ChooChoo Maintenance',
-    body: 'ChooChoo has stopped for maintenance. We\'ll be back on the rails soon!',
+    body: "ChooChoo has stopped for maintenance. We'll be back on the rails soon!",
     targetUrl: `${process.env.NEXT_PUBLIC_URL}/`,
     targetFids: [], // Send to all users
   }),
@@ -150,12 +150,14 @@ export async function sendChooChooNotification(
   ...args: unknown[]
 ): Promise<boolean> {
   const notificationTemplate = ChooChooNotifications[notificationType];
-  
+
   if (typeof notificationTemplate === 'function') {
-    const notificationParams = (notificationTemplate as (...args: unknown[]) => SendNotificationParams)(...args);
+    const notificationParams = (
+      notificationTemplate as (...args: unknown[]) => SendNotificationParams
+    )(...args);
     return sendNotification(notificationParams);
   }
-  
+
   console.error('Invalid notification type:', notificationType);
   return false;
 }

@@ -41,7 +41,7 @@ async function handlePost(request: Request) {
         error: 'Invalid request body',
         details: parsed.error.flatten(),
       },
-      { status: 400 }
+      { status: 400 },
     );
   }
 
@@ -62,5 +62,5 @@ async function handlePost(request: Request) {
 export const GET = withLogging(handleGet, 'CONTRACT-READ');
 
 export const POST = withMiddleware(withInternalAuth, (handler) =>
-  withLogging(handler, 'CONTRACT-EXECUTE')
+  withLogging(handler, 'CONTRACT-EXECUTE'),
 )(handlePost);
