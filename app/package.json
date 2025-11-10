@@ -22,7 +22,8 @@
     "deploy:vercel": "node scripts/deploy.js",
     "cleanup": "lsof -ti :3000 | xargs kill -9",
     "tsc": "tsc --noEmit",
-    "test": "cross-env NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS=0x0000000000000000000000000000000000000001 vitest"
+    "test": "cross-env NEXT_PUBLIC_CHOOCHOO_TRAIN_ADDRESS=0x0000000000000000000000000000000000000001 vitest",
+    "update-redis": "npx tsx scripts/update-redis-state.ts"
   },
   "dependencies": {
     "@farcaster/auth-client": ">=0.3.0 <1.0.0",
