@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 process.env.NEXT_PUBLIC_URL = process.env.NEXT_PUBLIC_URL || 'http://localhost:3000';
 
@@ -20,9 +20,105 @@ vi.mock('@/lib/redis-token-utils', () => ({
     attributes: [],
     passengerUsername: 'currentholder',
   }),
-  storeTokenDataWriteOnce: vi.fn().mockResolvedValue('created'),
-  storeLastMovedTimestamp: vi.fn().mockResolvedValue(undefined),
-  REDIS_KEYS: { pendingNFT: (id: number) => `pending-nft:${id}` },
+  REDIS_KEYS: {
+    pendingNFT: (id: number) => `pending-nft:${id}`,
+    token: (id: number) => `token:${id}`,
+    lastMovedTimestamp: 'last-moved-timestamp',
+    currentTokenId: 'current-token-id',
+  },
+}));
+
+vi.mock('@/lib/staging-manager', () => ({
+  __esModule: true,
+  createStaging: vi.fn().mockResolvedValue(undefined),
+  updateStaging: vi.fn().mockResolvedValue({
+    tokenId: 400,
+    status: 'pinata_uploaded',
+    version: 2,
+    orchestrator: 'manual-send',
+    createdAt: new Date().toISOString(),
+    retryCount: 0,
+    newHolder: {
+      fid: 420,
+      username: 'winner',
+      displayName: 'Winner',
+      pfpUrl: 'https://example.com/winner.jpg',
+      address: '0xwinner',
+    },
+    departingPassenger: {
+      fid: 69,
+      username: 'currentholder',
+      displayName: 'Current Holder',
+      pfpUrl: '',
+      address: '0xholder',
+    },
+    imageHash: 'img',
+    metadataHash: 'meta',
+    tokenURI: 'ipfs://uri',
+    attributes: [],
+  }),
+  getStaging: vi.fn().mockImplementation((tokenId: number) => {
+    if (tokenId === 400) {
+      return Promise.resolve({
+        tokenId: 400,
+        status: 'pinata_uploaded',
+        version: 2,
+        orchestrator: 'manual-send',
+        createdAt: new Date().toISOString(),
+        retryCount: 0,
+        newHolder: {
+          fid: 420,
+          username: 'winner',
+          displayName: 'Winner',
+          pfpUrl: 'https://example.com/winner.jpg',
+          address: '0xwinner',
+        },
+        departingPassenger: {
+          fid: 69,
+          username: 'currentholder',
+          displayName: 'Current Holder',
+          pfpUrl: '',
+          address: '0xholder',
+        },
+        imageHash: 'img',
+        metadataHash: 'meta',
+        tokenURI: 'ipfs://uri',
+        attributes: [],
+      });
+    }
+    // For random-send test
+    return Promise.resolve({
+      tokenId: 400,
+      status: 'pinata_uploaded',
+      version: 2,
+      orchestrator: 'random-send',
+      createdAt: new Date().toISOString(),
+      retryCount: 0,
+      newHolder: {
+        fid: 456,
+        username: 'winner',
+        displayName: 'Winner',
+        pfpUrl: 'https://example.com/winner.jpg',
+        address: '0xwinner',
+      },
+      departingPassenger: {
+        fid: 123,
+        username: 'currentholder',
+        displayName: 'Current Holder',
+        pfpUrl: '',
+        address: '0xholder',
+      },
+      sourceCastHash: '0xcast',
+      totalEligibleReactors: 5,
+      imageHash: 'img',
+      metadataHash: 'meta',
+      tokenURI: 'ipfs://uri',
+      attributes: [],
+    });
+  }),
+  promoteStaging: vi.fn().mockResolvedValue(undefined),
+  isStagingStuck: vi.fn().mockReturnValue(false),
+  abandonStaging: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/lib/services/contract', () => ({
@@ -30,11 +126,19 @@ vi.mock('@/lib/services/contract', () => ({
   getContractService: vi.fn(() => ({
     getNextOnChainTicketId: vi.fn().mockResolvedValueOnce(400).mockResolvedValueOnce(401),
     getMintedTokenIdFromTx: vi.fn().mockResolvedValue(400),
+    hasBeenPassenger: vi.fn().mockResolvedValue(false),
+    getCurrentTrainHolder: vi.fn().mockResolvedValue('0xholder'),
   })),
 }));
 
-import { storeTokenDataWriteOnce } from '@/lib/redis-token-utils';
-import { orchestrateRandomSend, orchestrateManualSend } from '@/lib/train-orchestrator';
+vi.mock('@/lib/services/neynar-score', () => ({
+  __esModule: true,
+  checkNeynarScore: vi.fn().mockResolvedValue({ meetsMinimum: true, score: 0.8 }),
+  MIN_NEYNAR_SCORE: 0.5,
+}));
+
+import { createStaging, promoteStaging } from '@/lib/staging-manager';
+import { orchestrateManualSend, orchestrateRandomSend } from '@/lib/train-orchestrator';
 
 describe('Data Consistency', () => {
   const currentHolderFID = 69;
@@ -45,6 +149,8 @@ describe('Data Consistency', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset staging manager mocks
+    vi.mocked(promoteStaging).mockResolvedValue(undefined);
     vi.mocked(global.fetch).mockImplementation(async (input: RequestInfo | URL) => {
       const url = input.toString();
       if (url.includes('/api/internal/select-winner')) {
@@ -110,15 +216,26 @@ describe('Data Consistency', () => {
         );
       }
       if (url.includes('/api/internal/mint-token')) {
-        return new Response(JSON.stringify({ success: true, actualTokenId: 400, txHash: '0xtx' }), {
+        return new Response(
+          JSON.stringify({
+            success: true,
+            actualTokenId: 400,
+            txHash: '0xtx',
+          }),
+          {
+            status: 200,
+          }
+        );
+      }
+      if (url.includes('/api/internal/send-cast')) {
+        return new Response(JSON.stringify({ success: true }), {
           status: 200,
         });
       }
-      if (url.includes('/api/internal/send-cast')) {
-        return new Response(JSON.stringify({ success: true }), { status: 200 });
-      }
       if (url.includes('/api/workflow-state')) {
-        return new Response(JSON.stringify({ success: true }), { status: 200 });
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+        });
       }
       return new Response(JSON.stringify({ ok: true }), { status: 200 });
     });
@@ -130,22 +247,32 @@ describe('Data Consistency', () => {
 
   it('should store departing passenger as NFT ticket holder (manual send)', async () => {
     await orchestrateManualSend(currentHolderFID, targetFID);
-    expect(storeTokenDataWriteOnce).toHaveBeenCalledWith(
+    // Verify staging was created with departing passenger data
+    expect(createStaging).toHaveBeenCalledWith(
+      400,
       expect.objectContaining({
-        holderUsername: 'currentholder',
-        sourceType: 'manual',
+        orchestrator: 'manual-send',
+        departingPassenger: expect.objectContaining({
+          username: 'currentholder',
+        }),
       })
     );
+    // Verify promotion was called (which stores the data)
+    expect(promoteStaging).toHaveBeenCalled();
   });
 
   it('should preserve sourceCastHash and totalEligibleReactors in random send', async () => {
     await orchestrateRandomSend('0xcast');
-    expect(storeTokenDataWriteOnce).toHaveBeenCalledWith(
+    // Verify staging was created with sourceCastHash and totalEligibleReactors
+    expect(createStaging).toHaveBeenCalledWith(
+      400,
       expect.objectContaining({
+        orchestrator: 'random-send',
         sourceCastHash: '0xcast',
         totalEligibleReactors: 5,
-        sourceType: 'send-train',
       })
     );
+    // Verify promotion was called (which stores the data)
+    expect(promoteStaging).toHaveBeenCalled();
   });
 });
