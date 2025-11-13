@@ -466,20 +466,69 @@ export class ContractService {
         client: walletClient,
       });
 
-      const hash = await this.executeWithNonceRetry(() =>
-        contract.write.nextStop([recipient, tokenURI]),
-      );
+      // Pre-flight checks before sending
+      try {
+        const balance = await publicClient.getBalance({ address: account.address });
+        const gasPrice = await publicClient.getGasPrice();
+        const estimatedGas = 200_000n; // Rough estimate for nextStop
+        const estimatedCost = gasPrice * estimatedGas;
 
-      contractLog.info('next-stop.success', {
-        txHash: hash,
-        recipient,
-        msg: `Transaction hash returned: ${hash}`,
-      });
+        contractLog.info('next-stop.attempt', {
+          account: account.address,
+          balance: balance.toString(),
+          estimatedCost: estimatedCost.toString(),
+          gasPrice: gasPrice.toString(),
+          msg: 'Pre-flight checks before sending transaction',
+        });
+
+        if (balance < estimatedCost) {
+          throw new Error(
+            `Insufficient balance. Account ${account.address} has ${balance.toString()} wei, but estimated cost is ${estimatedCost.toString()} wei`,
+          );
+        }
+      } catch (preflightError) {
+        contractLog.error('next-stop.failed', {
+          error: preflightError instanceof Error ? preflightError.message : 'Unknown error',
+          recipient,
+          msg: 'Pre-flight checks failed',
+        });
+        throw preflightError;
+      }
+
+      let hash: `0x${string}`;
+      try {
+        hash = await this.executeWithNonceRetry(() =>
+          contract.write.nextStop([recipient, tokenURI]),
+        );
+
+        contractLog.info('next-stop.success', {
+          txHash: hash,
+          recipient,
+          account: account.address,
+          msg: `Transaction hash returned: ${hash}`,
+        });
+      } catch (sendError) {
+        contractLog.error('next-stop.failed', {
+          error: sendError instanceof Error ? sendError.message : 'Unknown error',
+          recipient,
+          account: account.address,
+          msg: 'Failed to send transaction - hash not returned',
+        });
+        throw new Error(
+          `Failed to send transaction: ${sendError instanceof Error ? sendError.message : 'Unknown error'}. The transaction was not broadcast to the network.`,
+        );
+      }
 
       // Verify transaction was actually broadcast to the network
-      // CRITICAL: Retry multiple times with delays because RPC nodes can take 1-3 seconds to sync
+      // CRITICAL: If hash is returned but transaction doesn't exist, the RPC accepted it but didn't broadcast
       let txFound = false;
-      const maxVerifyAttempts = 6; // 6 attempts = ~5 seconds total
+      const maxVerifyAttempts = 3; // 3 attempts with 2s delays = ~4 seconds total (2 block times)
+
+      contractLog.info('next-stop.attempt', {
+        txHash: hash,
+        msg: `Verifying transaction ${hash} was broadcast to network...`,
+      });
+
       for (let attempt = 1; attempt <= maxVerifyAttempts; attempt++) {
         try {
           const tx = await publicClient.getTransaction({ hash });
@@ -489,33 +538,46 @@ export class ContractService {
               txHash: hash,
               attempt,
               maxAttempts: maxVerifyAttempts,
+              from: tx.from,
+              to: tx.to,
+              nonce: tx.nonce,
               msg: `Transaction ${hash} confirmed on network (attempt ${attempt}/${maxVerifyAttempts})`,
             });
             break;
           }
         } catch (txCheckError) {
+          // Check if it's a "not found" error vs other error
+          const isNotFound =
+            txCheckError instanceof Error &&
+            (txCheckError.message.includes('not found') ||
+              txCheckError.message.includes('could not be found') ||
+              txCheckError.name === 'TransactionNotFoundError');
+
           if (attempt < maxVerifyAttempts) {
-            // Wait with exponential backoff before retrying
-            const delayMs = 500 * attempt; // 500ms, 1s, 1.5s, 2s, 2.5s, 3s
-            contractLog.info('next-stop.attempt', {
+            // Wait 2 seconds (1 block time) between attempts
+            const delayMs = 2000;
+            contractLog.warn('next-stop.attempt', {
               txHash: hash,
               attempt,
               maxAttempts: maxVerifyAttempts,
               delayMs,
+              isNotFound,
+              error: txCheckError instanceof Error ? txCheckError.message : 'Unknown error',
               msg: `Transaction ${hash} not found yet (attempt ${attempt}/${maxVerifyAttempts}), retrying in ${delayMs}ms...`,
             });
             await new Promise((resolve) => setTimeout(resolve, delayMs));
           } else {
-            // Final attempt failed
+            // Final attempt failed - this means the transaction was NEVER broadcast
             contractLog.error('next-stop.failed', {
               txHash: hash,
               attempt,
               maxAttempts: maxVerifyAttempts,
               error: txCheckError instanceof Error ? txCheckError.message : 'Unknown error',
-              msg: `Failed to verify transaction ${hash} exists on network after ${maxVerifyAttempts} attempts`,
+              isNotFound,
+              msg: `Transaction ${hash} was NEVER broadcast to Base after ${maxVerifyAttempts} attempts (~${(maxVerifyAttempts - 1) * 2}s). The RPC returned a hash but failed to actually send the transaction.`,
             });
             throw new Error(
-              `Transaction ${hash} does not exist on the blockchain after ${maxVerifyAttempts} verification attempts (${maxVerifyAttempts * 0.5}s). The RPC may have returned a hash but failed to broadcast the transaction. Check RPC connectivity and try again.`,
+              `Transaction ${hash} was never broadcast to Base after ${maxVerifyAttempts} verification attempts (~${(maxVerifyAttempts - 1) * 2}s). The RPC returned a hash but the transaction does not exist on the network. This indicates the RPC accepted the transaction but failed to broadcast it. Check RPC provider status and connectivity.`,
             );
           }
         }
@@ -523,7 +585,7 @@ export class ContractService {
 
       if (!txFound) {
         throw new Error(
-          `Transaction ${hash} was not found on the network after ${maxVerifyAttempts} attempts. The transaction may have failed to broadcast or the RPC is experiencing sync issues.`,
+          `Transaction ${hash} was not found on Base after ${maxVerifyAttempts} attempts (~${(maxVerifyAttempts - 1) * 2}s). The transaction may have failed to broadcast or the RPC is experiencing sync issues.`,
         );
       }
 
